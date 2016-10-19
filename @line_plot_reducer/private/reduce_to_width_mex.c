@@ -45,20 +45,19 @@ end
 
 %SPEED TEST
 %-------------------------------------------------------------------------
-n_channels = 1; %I varied this to confirm that the parallelization works on
+n_channels = 3; %I varied this to confirm that the parallelization works on
 %different levels than the # of cores
 data = [1 2 3 4 7    1 8 1 8 9   2 9 8 3 9    2 4 5 6 2    9 3 4 8 9    3 9 4 2 3   4 9 0 2 9]';
 %data = repmat(data,[1 n_channels]);
-samples_per_chunk = 5;
+samples_per_chunk = 1000;
 %reduced from 5e6 due to memory issues on laptop
-data = repmat(data,[1000000 n_channels]);
+data = repmat(data,[5e6 n_channels]);
 data(23,1:n_channels) = -1:-1:-1*n_channels;
 len_data_p1 = size(data,1)+1;
- N = 10;
+ N = 40;
  tic
  for i = 1:N
  min_max_data = reduce_to_width_mex(data,samples_per_chunk);
- %[min_data,max_data] = sl.plot.reduce_to_width_mex(data,samples_per_chunk);
  end
  t1 = toc/N
  
@@ -86,37 +85,6 @@ mwSize getScalarInput(const mxArray *rhs){
     return (mwSize) *temp;
     
 }
-
-void min_max_32(double *data, __m256d *min4, __m256d *max4){
-    
-    __m256d d9, d10, d11, d12, d13, d14, d15, d16;
-    __m256d d1 = _mm256_loadu_pd(&data[0]);
-    __m256d d2 = _mm256_loadu_pd(&data[4]);
-    __m256d d3 = _mm256_loadu_pd(&data[8]);
-    __m256d d4 = _mm256_loadu_pd(&data[12]);
-    __m256d d5 = _mm256_loadu_pd(&data[16]);
-    __m256d d6 = _mm256_loadu_pd(&data[20]);
-    __m256d d7 = _mm256_loadu_pd(&data[24]);
-    __m256d d8 = _mm256_loadu_pd(&data[28]);    
-
-    d9  = _mm256_max_pd(d1,d2);
-    d10 = _mm256_min_pd(d1,d2);
-    d11 = _mm256_max_pd(d3,d4);
-    d12 = _mm256_min_pd(d3,d4);
-    d13 = _mm256_max_pd(d5,d6);
-    d14 = _mm256_min_pd(d5,d6);
-    d15 = _mm256_max_pd(d7,d8);
-    d16 = _mm256_min_pd(d7,d8);
-    
-    d9 = _mm256_max_pd(d9,d11);
-    d13 = _mm256_max_pd(d13,d15);
-    d10 = _mm256_min_pd(d10,d12);
-    d14 = _mm256_min_pd(d14,d16);
-    
-    *max4 = _mm256_max_pd(d9,d13);
-    *min4 = _mm256_min_pd(d10,d14);
-}
-
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 {
@@ -220,49 +188,107 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         //Move beyond the first padded data ooint
         ++p_output_data;
     }
+    
+    mwSize n_28s = samples_per_chunk/28;
+    mwSize n_32s = samples_per_chunk/32;
+    mwSize n_16s = samples_per_chunk/16;
+    
+    //mexPrintf("Data Address: %d\n",p_start_data);
 
     #pragma omp parallel for simd collapse(2)
     for (mwSize iChan = 0; iChan < n_chans; iChan++){
+        //Note, we can't initialize anything before this loop, since we
+        //are collapsing the first two loops. This allows us to parallelize
+        //both of the first two loops, which is good when the # of channels
+        //does not equal the # of threads.
         for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){
             
             double *current_data_point = p_start_data + n_samples_data*iChan + iChunk*samples_per_chunk;
             
             //Pointer => start + column wrapping + offset (row into column) - 1
             //-1 is from the ++ we do before the assignment
+            //*2 since we store min and max in each chunk
             double *local_output_data = p_output_data + n_outputs*iChan + 2*iChunk - 1;
-            //double *local_max_data = max_data + n_outputs*iChan + iChunk - 1;
             
-            //             __m256d max4, min4, temp_max4, temp_min4;
-//             
-//             min_max_32(current_data_point,&min4,&max4);
-//             
-//             for (mwSize i32 = 1; i32 < n_32s; i32++){
-//                 current_data_point+=32;
-//                 min_max_32(current_data_point,&temp_min4,&temp_max4);
-//                 max4 = _mm256_max_pd(max4,temp_max4);
-//                 min4 = _mm256_min_pd(min4,temp_min4);
-//             }
-//             
-//             double *temp_max = (double *)&max4;
-//             double *temp_min = (double *)&min4;
-//             
-//             *(++local_min_data) = temp_min[0];
-//             *(++local_max_data) = temp_max[0];
+            //TODO: We need to check that we have at least 32
+            //values, otherwise default to the final loop ...
             
+            //==========================================================
+            __m256d d1,d2,d3,d4;
             
-            double min = *current_data_point;
-            double max = *current_data_point;
+            __m256d max1 = _mm256_set_pd(*current_data_point,*(current_data_point+1),*(current_data_point+2),*(current_data_point+3));
+            __m256d min1 = max1;
+            current_data_point+=4;
+            __m256d max2 = _mm256_set_pd(*current_data_point,*(current_data_point+1),*(current_data_point+2),*(current_data_point+3));
+            __m256d min2 = max2;
+            current_data_point+=4;
+            __m256d max3 = _mm256_set_pd(*current_data_point,*(current_data_point+1),*(current_data_point+2),*(current_data_point+3));
+            __m256d min3 = max3;
+            current_data_point+=4;
+            __m256d max4 = _mm256_set_pd(*current_data_point,*(current_data_point+1),*(current_data_point+2),*(current_data_point+3));
+            __m256d min4 = max4;
+            current_data_point+=4;
             
-            for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){
-                if (*(++current_data_point) > max){
-                    max = *current_data_point;
-                }else if (*current_data_point < min){
-                    min = *current_data_point;
-                }
+            //This loop was written assuming that 
+            for (mwSize i16 = 1; i16 < n_16s; i16++){
+                //I haven't played around with the order of these instructions ...
+                //
+                //Important, we backtrack to previous values to prevent
+                //running into latency issues, i.e. we don't compare
+                //min2 to min3 in this loop because of the latency
+                //required to process this instruction (3)
+                //TODO: 8 might be fine as well instead of 16 due to the
+                //calling of max and min
+                d1 = _mm256_loadu_pd(current_data_point);
+                max1 = _mm256_max_pd(max1,d1);
+                min1 = _mm256_min_pd(min1,d1);
+                current_data_point+=4;
+                d2 = _mm256_loadu_pd(current_data_point);
+                max2 = _mm256_max_pd(max2,d2);
+                min2 = _mm256_min_pd(min2,d2);
+                current_data_point+=4;
+                d3 = _mm256_loadu_pd(current_data_point);
+             	max3 = _mm256_max_pd(max3,d3);
+                min3 = _mm256_min_pd(min3,d3);
+                current_data_point+=4;
+                d4 = _mm256_loadu_pd(current_data_point);
+                max4 = _mm256_max_pd(max4,d4);
+                min4 = _mm256_min_pd(min4,d4);
+                current_data_point+=4;
             }
-            ++current_data_point;
-            *(++local_output_data) = min;
-            *(++local_output_data) = max;
+            //At this point we have 4 entries with 4 doubles each, 1 of
+            //these is the maximum
+            //We might also have additional values that don't
+            //
+            d1 = _mm256_max_pd(max1,max2);
+            d2 = _mm256_max_pd(max3,max4);
+            
+
+            double *temp_max = (double *)&max4;
+            double *temp_min = (double *)&min4;
+            
+            *(++local_output_data) = temp_min[0];
+            *(++local_output_data) = temp_max[0];
+            
+            //TODO: We need to grab the extras in the chunk
+            
+            //--------          Old Code     -------------------
+            //--------------------------------------------------
+// // // //             double min = *current_data_point;
+// // // //             double max = *current_data_point;
+// // // //             
+// // // //             for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){
+// // // //                 if (*(++current_data_point) > max){
+// // // //                     max = *current_data_point;
+// // // //                 }else if (*current_data_point < min){
+// // // //                     min = *current_data_point;
+// // // //                 }
+// // // //             }
+// // // //             ++current_data_point;
+// // // //             *(++local_output_data) = min;
+// // // //             *(++local_output_data) = max;
+            
+            
         }
     }
     
