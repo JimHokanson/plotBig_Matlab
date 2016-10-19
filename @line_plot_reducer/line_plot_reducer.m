@@ -87,6 +87,7 @@ classdef line_plot_reducer < handle
     
     %------------           User Options         --------------------
     properties
+        %These are not currently being used
         d0 = '------- User options --------'
         quick_callback_max_wait = 0.1; %If we've waited this long we'll
         %do a quick plot to update. If this were not in place continuous
@@ -222,6 +223,7 @@ classdef line_plot_reducer < handle
     %------------------------     Debugging    ----------------------------
     properties
         d4 = '------ Debugging ------'
+        last_error
         id %A unique id that can be used to identify the plotter
         %when working with callback optimization, i.e. to identify which
         %object is throwing the callback (debugging)
@@ -267,18 +269,6 @@ classdef line_plot_reducer < handle
             %	line_plot_reducer.init
             obj.init(varargin{:});
             
-            n_axes = length(obj.h_axes);
-            obj.timers = cell(1,n_axes);
-            obj.resize_times = zeros(1,n_axes);
-            obj.resize_data = cell(1,n_axes);
-            obj.processed_resize_times = zeros(1,n_axes);
-            for iTimer = 1:n_axes
-                t = timer();
-                set(t,'Period',0.1)
-                set(t,'TimerFcn',@(~,~)h__runTimer(obj,iTimer));
-                start(t);
-                obj.timers{iTimer} = t;
-            end
         end
     end
     
@@ -326,14 +316,4 @@ classdef line_plot_reducer < handle
     
 end
 
-function h__runTimer(obj,axes_I)
-%TODO:
-    %Check if we need to redraw ...
-    resized_time = obj.resize_times(axes_I);
-    if (obj.processed_resize_times(axes_I) ~= resized_time)
-        %This is where it would be useful to have a lock ...
-        s = obj.resize_data{axes_I};
-        obj.processed_resize_times(axes_I) = resized_time;
-        obj.renderData(s);
-    end
-end
+

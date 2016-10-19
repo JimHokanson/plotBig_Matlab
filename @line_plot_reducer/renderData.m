@@ -47,7 +47,10 @@ end
 
 end
 
-function h__replotData(obj,s,new_axes_width,is_quick)
+%--------------------------------------------------------------------------
+%---------------------   Replotting      ----------------------------------
+%Main entry call
+function h__replotData(obj,s,new_axes_width)
 %
 %   Handles replotting data, as opposed to handling the first plot
 %
@@ -92,7 +95,7 @@ for iG = 1:obj.n_plot_groups
     else
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
         [x_r, y_r] = obj.reduce_to_width(...
-            obj.x{iG}, obj.y{iG}, new_axes_width, new_x_limits, 'use_quick',is_quick);
+            obj.x{iG}, obj.y{iG}, new_axes_width, new_x_limits);
     end
     
     local_h = obj.h_plot{iG};
@@ -104,7 +107,7 @@ end
 
 end
 
-function redraw_option = h__determineRedrawCase(obj,s,is_quick)
+function redraw_option = h__determineRedrawCase(obj,s)
 %
 %   redraw_option = h__determineRedrawCase(obj,s)
 %
@@ -149,16 +152,22 @@ x_lim_changed = ~isequal(obj.last_rendered_xlim,new_x_limits);
 
 %TODO: Check for overlap
 
+NO_CHANGE = 0;
+RESET_TO_ORIGINAL = 1;
+RECOMPUTE_DATA_FOR_PLOTTING = 2;
+
 if x_lim_changed
     %x_lim changed almost always means a redraw
     %Let's build a check in here for being the original
     %If so, go back to that
     if new_x_limits(1) <= obj.x_lim_original(1) && new_x_limits(2) >= obj.x_lim_original(2)
-        redraw_option = 1;
+        redraw_option = RESET_TO_ORIGINAL;
     else
-        redraw_option = 2;
+        redraw_option = RECOMPUTE_DATA_FOR_PLOTTING;
     end
 else
+    disp(s)
+    error('Not sure what happened to cause this to be called')
     %???? Why does this callback get called???
     %Width changed:
     %NOTE: We are currently not doing any width based changes, so we really
@@ -187,7 +196,17 @@ function h__setupCallbacksAndTimers(obj)
 
 n_axes = length(obj.h_axes);
 
-obj.timers = cell(1,length(obj.h_axes));
+obj.timers = cell(1,n_axes);
+obj.resize_times = zeros(1,n_axes);
+obj.resize_data = cell(1,n_axes);
+obj.processed_resize_times = zeros(1,n_axes);
+for iTimer = 1:n_axes
+    t = timer();
+    set(t,'Period',0.1,'ExecutionMode','fixedSpacing')
+    set(t,'TimerFcn',@(~,~)h__runTimer(obj,iTimer));
+    start(t);
+    obj.timers{iTimer} = t;
+end
 
 % Listen for changes to the x limits of the axes.
 obj.axes_listeners = cell(1,n_axes);
@@ -478,4 +497,24 @@ end
 
 
 
+end
+
+function h__runTimer(obj,axes_I)
+%TODO:
+    %Check if we need to redraw ...
+    resized_time = obj.resize_times(axes_I);
+    if (obj.processed_resize_times(axes_I) ~= resized_time)
+        %This is where it would be useful to have a lock ...
+        s = obj.resize_data{axes_I};
+        obj.processed_resize_times(axes_I) = resized_time;
+        try
+            obj.renderData(s);
+        catch ME
+            %Store locally?
+            obj.last_error = ME;
+           disp(ME)
+           ME.stack(1)
+           ME.stack(2)
+        end
+    end
 end

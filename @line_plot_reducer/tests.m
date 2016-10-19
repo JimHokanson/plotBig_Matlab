@@ -175,9 +175,12 @@ function test003_interestingInput()
     %   direction then x becomes by 3 channels, instead of having 
     %   tons of channels
     tic
+    profile on
     wtf = line_plot_reducer(t,x);
     wtf.renderData;
+    profile off
     toc
+    profile viewer
 end
 function test004_simpleLine()
    y = 1:1e8+3457;
