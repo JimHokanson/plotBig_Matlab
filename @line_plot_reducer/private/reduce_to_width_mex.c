@@ -1,4 +1,5 @@
 #include "mex.h"
+#include <immintrin.h>
 //
 //  setenv('MW_MINGW64_LOC','C:\TDM-GCC-64')
 //
@@ -85,6 +86,37 @@ mwSize getScalarInput(const mxArray *rhs){
     return (mwSize) *temp;
     
 }
+
+void min_max_32(double *data, __m256d *min4, __m256d *max4){
+    
+    __m256d d9, d10, d11, d12, d13, d14, d15, d16;
+    __m256d d1 = _mm256_loadu_pd(&data[0]);
+    __m256d d2 = _mm256_loadu_pd(&data[4]);
+    __m256d d3 = _mm256_loadu_pd(&data[8]);
+    __m256d d4 = _mm256_loadu_pd(&data[12]);
+    __m256d d5 = _mm256_loadu_pd(&data[16]);
+    __m256d d6 = _mm256_loadu_pd(&data[20]);
+    __m256d d7 = _mm256_loadu_pd(&data[24]);
+    __m256d d8 = _mm256_loadu_pd(&data[28]);    
+
+    d9  = _mm256_max_pd(d1,d2);
+    d10 = _mm256_min_pd(d1,d2);
+    d11 = _mm256_max_pd(d3,d4);
+    d12 = _mm256_min_pd(d3,d4);
+    d13 = _mm256_max_pd(d5,d6);
+    d14 = _mm256_min_pd(d5,d6);
+    d15 = _mm256_max_pd(d7,d8);
+    d16 = _mm256_min_pd(d7,d8);
+    
+    d9 = _mm256_max_pd(d9,d11);
+    d13 = _mm256_max_pd(d13,d15);
+    d10 = _mm256_min_pd(d10,d12);
+    d14 = _mm256_min_pd(d14,d16);
+    
+    *max4 = _mm256_max_pd(d9,d13);
+    *min4 = _mm256_min_pd(d10,d14);
+}
+
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 {
@@ -199,6 +231,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             //-1 is from the ++ we do before the assignment
             double *local_output_data = p_output_data + n_outputs*iChan + 2*iChunk - 1;
             //double *local_max_data = max_data + n_outputs*iChan + iChunk - 1;
+            
+            //             __m256d max4, min4, temp_max4, temp_min4;
+//             
+//             min_max_32(current_data_point,&min4,&max4);
+//             
+//             for (mwSize i32 = 1; i32 < n_32s; i32++){
+//                 current_data_point+=32;
+//                 min_max_32(current_data_point,&temp_min4,&temp_max4);
+//                 max4 = _mm256_max_pd(max4,temp_max4);
+//                 min4 = _mm256_min_pd(min4,temp_min4);
+//             }
+//             
+//             double *temp_max = (double *)&max4;
+//             double *temp_min = (double *)&min4;
+//             
+//             *(++local_min_data) = temp_min[0];
+//             *(++local_max_data) = temp_max[0];
+            
             
             double min = *current_data_point;
             double max = *current_data_point;
