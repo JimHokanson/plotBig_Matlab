@@ -3,13 +3,13 @@
 //
 //  setenv('MW_MINGW64_LOC','C:\TDM-GCC-64')
 //
-//  mex -O LDFLAGS="$LDFLAGS -fopenmp"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx"  reduce_to_width_mex.c  
+//  mex -O LDFLAGS="$LDFLAGS -fopenmp"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx"    reduce_to_width_mex.c  
 //
 /*
     //Compiling on my mac
     //requires gcc setup, see turtle-json compiling notes
     //TODO: Move a copy of those notes here ...
-    mex CC='/usr/local/Cellar/gcc6/6.1.0/bin/gcc-6' CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" LDFLAGS="$LDFLAGS -fopenmp" COPTIMFLAGS="-O3 -DNDEBUG" -O reduce_to_width_mex.c  
+    mex CC='/usr/local/Cellar/gcc6/6.1.0/bin/gcc-6' COPTIMFLAGS="-O3 -DNDEBUG"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" LDFLAGS="$LDFLAGS -fopenmp" COPTIMFLAGS="-O3 -DNDEBUG" -O reduce_to_width_mex.c  
  */
 
 //Status
@@ -52,9 +52,11 @@ data = [1 2 3 4 7    1 8 1 8 9   2 9 8 3 9    2 4 5 6 2    9 3 4 8 9    3 9 4 2 
 samples_per_chunk = 1000;
 %reduced from 5e6 due to memory issues on laptop
 data = repmat(data,[5e6 n_channels]);
+data(999,1:n_channels) = 1000:(1000+n_channels-1);
+data(998:1000,1:n_channels) = 1000;
 data(23,1:n_channels) = -1:-1:-1*n_channels;
 len_data_p1 = size(data,1)+1;
- N = 40;
+ N = 20;
  tic
  for i = 1:N
  min_max_data = reduce_to_width_mex(data,samples_per_chunk);
@@ -164,12 +166,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         //Need to move one past
     }
     
-//     mexPrintf("n_samples_process: %d\n",n_samples_process);
-//     mexPrintf("n_samples_data: %d\n",n_samples_data);
-//     mexPrintf("n_outputs: %d\n",n_outputs);
-//     mexPrintf("n_samples_extra: %d\n",n_samples_extra);
-    
-    //TODO: Let's merge these
     double *p_output_data = mxMalloc(8*n_chans*n_outputs);
     double *p_output_data_absolute = p_output_data;
     
@@ -189,11 +185,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         ++p_output_data;
     }
     
-    mwSize n_28s = samples_per_chunk/28;
-    mwSize n_32s = samples_per_chunk/32;
-    mwSize n_16s = samples_per_chunk/16;
-    
-    //mexPrintf("Data Address: %d\n",p_start_data);
 
     #pragma omp parallel for simd collapse(2)
     for (mwSize iChan = 0; iChan < n_chans; iChan++){
@@ -206,104 +197,40 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             double *current_data_point = p_start_data + n_samples_data*iChan + iChunk*samples_per_chunk;
             
             //Pointer => start + column wrapping + offset (row into column) - 1
-            //-1 is from the ++ we do before the assignment
             //*2 since we store min and max in each chunk
-            double *local_output_data = p_output_data + n_outputs*iChan + 2*iChunk - 1;
-            
-            //TODO: We need to check that we have at least 32
-            //values, otherwise default to the final loop ...
-            
-            //==========================================================
-            __m256d d1,d2,d3,d4;
-            
-            __m256d max1 = _mm256_set_pd(*current_data_point,*(current_data_point+1),*(current_data_point+2),*(current_data_point+3));
-            __m256d min1 = max1;
-            current_data_point+=4;
-            __m256d max2 = _mm256_set_pd(*current_data_point,*(current_data_point+1),*(current_data_point+2),*(current_data_point+3));
-            __m256d min2 = max2;
-            current_data_point+=4;
-            __m256d max3 = _mm256_set_pd(*current_data_point,*(current_data_point+1),*(current_data_point+2),*(current_data_point+3));
-            __m256d min3 = max3;
-            current_data_point+=4;
-            __m256d max4 = _mm256_set_pd(*current_data_point,*(current_data_point+1),*(current_data_point+2),*(current_data_point+3));
-            __m256d min4 = max4;
-            current_data_point+=4;
-            
-            //This loop was written assuming that 
-            for (mwSize i16 = 1; i16 < n_16s; i16++){
-                //I haven't played around with the order of these instructions ...
-                //
-                //Important, we backtrack to previous values to prevent
-                //running into latency issues, i.e. we don't compare
-                //min2 to min3 in this loop because of the latency
-                //required to process this instruction (3)
-                //TODO: 8 might be fine as well instead of 16 due to the
-                //calling of max and min
-                d1 = _mm256_loadu_pd(current_data_point);
-                max1 = _mm256_max_pd(max1,d1);
-                min1 = _mm256_min_pd(min1,d1);
-                current_data_point+=4;
-                d2 = _mm256_loadu_pd(current_data_point);
-                max2 = _mm256_max_pd(max2,d2);
-                min2 = _mm256_min_pd(min2,d2);
-                current_data_point+=4;
-                d3 = _mm256_loadu_pd(current_data_point);
-             	max3 = _mm256_max_pd(max3,d3);
-                min3 = _mm256_min_pd(min3,d3);
-                current_data_point+=4;
-                d4 = _mm256_loadu_pd(current_data_point);
-                max4 = _mm256_max_pd(max4,d4);
-                min4 = _mm256_min_pd(min4,d4);
-                current_data_point+=4;
-            }
-            //At this point we have 4 entries with 4 doubles each, 1 of
-            //these is the maximum
-            //We might also have additional values that don't
-            //
-            d1 = _mm256_max_pd(max1,max2);
-            d2 = _mm256_max_pd(max3,max4);
-            
+            double *local_output_data = p_output_data + n_outputs*iChan + 2*iChunk;
 
-            double *temp_max = (double *)&max4;
-            double *temp_min = (double *)&min4;
+            double min = *current_data_point;
+            double max = *current_data_point;
             
-            *(++local_output_data) = temp_min[0];
-            *(++local_output_data) = temp_max[0];
+            //We might get some speedup by looking for a slow trend
+            //over the data and adjusting the order that we look
+            //at the values accordingly
             
-            //TODO: We need to grab the extras in the chunk
-            
-            //--------          Old Code     -------------------
-            //--------------------------------------------------
-// // // //             double min = *current_data_point;
-// // // //             double max = *current_data_point;
-// // // //             
-// // // //             for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){
-// // // //                 if (*(++current_data_point) > max){
-// // // //                     max = *current_data_point;
-// // // //                 }else if (*current_data_point < min){
-// // // //                     min = *current_data_point;
-// // // //                 }
-// // // //             }
-// // // //             ++current_data_point;
-// // // //             *(++local_output_data) = min;
-// // // //             *(++local_output_data) = max;
-            
-            
+            //This is the slow part :/
+            for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){
+                if (*(++current_data_point) > max){
+                    max = *current_data_point;
+                }else if (*current_data_point < min){
+                    min = *current_data_point;
+                }
+            }
+
+            *local_output_data = min;
+            *(++local_output_data) = max;            
         }
     }
     
     if (n_samples_extra){
         #pragma omp parallel for simd
         for (mwSize iChan = 0; iChan < n_chans; iChan++){
-            //TODO: This needs to be implemented
             
             double *current_data_point = p_start_data + n_samples_data*iChan + n_chunks*samples_per_chunk;
             
-            double *local_output_data = p_output_data + n_outputs*iChan + 2*n_chunks - 1;
-            //double *local_max_data = max_data + n_outputs*iChan + n_chunks - 1;
+            double *local_output_data = p_output_data + n_outputs*iChan + 2*n_chunks;
+            
             double min = *current_data_point;
             double max = *current_data_point;
-            //TODO: We may only have 1
             
             for (mwSize iSample = 1; iSample < n_samples_extra; iSample++){
                 if (*(++current_data_point) > max){
@@ -312,12 +239,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
                     min = *current_data_point;
                 }
             }
-            *(++local_output_data) = min;
+            *local_output_data = min;
             *(++local_output_data) = max;
         }
     }
-            //TODO: We might have one trailing bit of data to handle that didn't
-        //fit evenly into the search ...
     
     plhs[0] = mxCreateDoubleMatrix(0, 0, mxREAL);
     

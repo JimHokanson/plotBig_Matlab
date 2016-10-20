@@ -159,12 +159,12 @@ function test003_interestingInput()
     %From FEX: 40790
 
     n = 1e7 + randi(1000);                          % Number of samples
-    t = sort(100*rand(1, n));                       % Non-uniform sampling
-    x = [sin(0.10 * t) + 0.05 * randn(1, n); ...
+    t = linspace(0,100,n);
+    y = [sin(0.10 * t) + 0.05 * randn(1, n); ...
         cos(0.43 * t) + 0.001 * t .* randn(1, n); ...
         round(mod(t/10, 5))];
-    x(:, t > 40 & t < 50) = 0;                      % Drop a section of data.
-    x(randi(numel(x), 1, 20)) = randn(1, 20);       % Emulate spikes.
+    y(:, t > 40 & t < 50) = 0;                      % Drop a section of data.
+    y(randi(numel(y), 1, 20)) = randn(1, 20);       % Emulate spikes.
 
     %Why do I get the correct orientation when I do this ...
     %I think it should be many channels with only a few samples,
@@ -175,12 +175,8 @@ function test003_interestingInput()
     %   direction then x becomes by 3 channels, instead of having 
     %   tons of channels
     tic
-    profile on
-    wtf = line_plot_reducer(t,x);
-    wtf.renderData;
-    profile off
+    wtf = plotBig(y','dt',t(2)-t(1));
     toc
-    profile viewer
 end
 function test004_simpleLine()
    y = 1:1e8+3457;
@@ -195,7 +191,7 @@ function test004_simpleLineWithTimeObject()
    y = 1:1e8+3457;
    x = sci.time_series.time(0.01,length(y));
    tic
-    wtf = sl.plot.big_data.LinePlotReducer(x,y);
+    wtf = line_plot_reducer(x,y);
     wtf.renderData;
     toc
 end

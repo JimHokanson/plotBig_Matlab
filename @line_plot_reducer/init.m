@@ -84,7 +84,7 @@ n_groups      = 0; %Increment when both x & y are set ...
 n_inputs      = length(varargin);
 for k = 1:n_inputs
     current_argument = varargin{k};
-    if isnumeric(current_argument) || isa(current_argument,'sci.time_series.time')
+    if isnumeric(current_argument) || isa(current_argument,'sci.time_series.time') || isa(current_argument,'line_plot_reducer.time')
         % If we already have an x, then this must be y.
         if previous_type == 'x'
             
@@ -162,6 +162,10 @@ if previous_type == 'x'
     temp_specs{n_groups} = {};
 elseif previous_type == 'y'
     temp_specs{n_groups} = {};
+end
+
+if n_groups == 0
+   error('Unable to find any plot groups') 
 end
 
 o.x = temp_x;

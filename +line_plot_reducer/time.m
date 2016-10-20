@@ -1,7 +1,7 @@
 classdef time < sl.obj.display_class
     %
     %   Class:
-    %   sci.time_series.time
+    %   line_plot_reducer.time
     %
     %   obj = sci.time_series.time(dt,n_samples)
     %

@@ -1,9 +1,7 @@
 *.asv
 *.bin
 *.m~
-
-temp_directory/
-global_namespace_functions/z_runc_exec_file.m
+*.c~
 
 #Copied from:
 #https://help.github.com/articles/ignoring-files

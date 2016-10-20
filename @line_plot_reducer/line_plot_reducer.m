@@ -89,11 +89,8 @@ classdef line_plot_reducer < handle
     properties
         %These are not currently being used
         d0 = '------- User options --------'
-        quick_callback_max_wait = 0.1; %If we've waited this long we'll
-        %do a quick plot to update. If this were not in place continuous
-        %callback events would mean that the plot would never update since
-        %its always trying to wait for silence (no events), but events keep
-        %coming, delaying the callback indefinitely
+        
+        n_timers_max_before_redraw = 3;
         
         update_delay = 0.05 %This is how long after a zoom request the code
         %should wait before rendering the update. Ideally this is just long
@@ -140,9 +137,18 @@ classdef line_plot_reducer < handle
         timers %cell, {1 x n_axes} - these are held onto between the
         %callback and the final call by the timer to render the plot
         
+        %TODO: This should be a sub-object that does some of this work
+        %for us ...
         resize_times %array
-        processed_resize_times
+        processed_resize_times %array
+        resize_ids
+        processed_ids
+        
+        timer_null_run_count %array
         resize_data %{struct}
+        n_resize_calls = 0 %# of times the figure detected a resize
+        n_render_calls = 0 %We'll keep track of the # of renders done
+        
         
         axes_listeners %cell, {1 x n_axes}
         plot_listeners %cell, {1 x n_groups}
@@ -231,12 +237,12 @@ classdef line_plot_reducer < handle
         %callback_info %sl.plot.big_data.line_plot_reducer.callback_info
         %Not sure what I'm going to store here
         
-        n_resize_calls = 0 %# of times the figure detected a resize
-        n_render_calls = 0 %We'll keep track of the # of renders done
+
         n_x_reductions = 0 %# of times we needed to reduce the data
         %This is the slow part of the code and ideally this is not called
         %very often.
         
+        %TODO: This is no longer relevant ...
         last_redraw_used_original = true
         last_redraw_was_quick = false
         
@@ -273,41 +279,7 @@ classdef line_plot_reducer < handle
     end
     
     methods
-        function resize(obj,h,event_data,axes_I)
-            %
-            %   Called when the xlim property of an axes object changes or
-            %   when an axes is resized.
-            %
-            %   In older versions of Matlab this is also called when the
-            %   figure is moved. TODO: When did this change?
-            %
-            %
-            %   Inputs:
-            %   -------
-            %   h :
-            %   event_data :
-            %   axes_I :
-            %       Index of internal axes being modified
-            %
-            %   See Also:
-            %   sl.plot.big_data.LinePlotReducer.renderData>h__setupCallbacksAndTimers
-            
-            %obj.callback_info.doing = 'resize';
-            
-            obj.n_resize_calls = obj.n_resize_calls + 1;
-            
-            new_xlim = get(obj.h_axes(axes_I),'xlim');
-            
-            s = struct;
-            s.h = h;
-            s.event_data   = event_data;
-            s.axes_I       = axes_I;
-            s.new_xlim     = new_xlim;
-            
-            obj.resize_times(axes_I) = cputime; %array
-            obj.resize_data{axes_I} = s;
 
-        end
     end
     
     methods (Static)
