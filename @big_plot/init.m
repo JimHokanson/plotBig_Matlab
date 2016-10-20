@@ -84,7 +84,8 @@ n_groups      = 0; %Increment when both x & y are set ...
 n_inputs      = length(varargin);
 for k = 1:n_inputs
     current_argument = varargin{k};
-    if isnumeric(current_argument) || isa(current_argument,'sci.time_series.time') || isa(current_argument,'line_plot_reducer.time')
+    %TODO: Anything that acts like a time object would be fine here ...
+    if isnumeric(current_argument) || isa(current_argument,'sci.time_series.time') || isa(current_argument,'big_plot.time')
         % If we already have an x, then this must be y.
         if previous_type == 'x'
             

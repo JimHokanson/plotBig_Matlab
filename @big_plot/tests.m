@@ -46,25 +46,25 @@ function tests
 end
     
         
-        %TYPES OF TESTS - TODO: break up into these tests
-        %----------------------------
-        %1) Speed
-        %2) Previous Bugs
-        %3) Coverage
-        
-        
-        
-        %   For Coverage:
-        %   ---------------
-        %   1) plot(x1,y1)
-        %      hold on
-        %      plot(x2,y2)
-        %      hold off
-        %   2) plot(x1,y1,x2,y2) %See test001
-        %   3) plot(ax,x1,y1)
-        
-        
-        %TODO: On close, support rerendering (low priority)
+%TYPES OF TESTS - TODO: break up into these tests
+%----------------------------
+%1) Speed
+%2) Previous Bugs
+%3) Coverage
+
+
+
+%   For Coverage:
+%   ---------------
+%   1) plot(x1,y1)
+%      hold on
+%      plot(x2,y2)
+%      hold off
+%   2) plot(x1,y1,x2,y2) %See test001
+%   3) plot(ax,x1,y1)
+
+
+%TODO: On close, support rerendering (low priority)
         
 function bugTestingInFEXVersion()
    %See comment from Robbert:
@@ -75,7 +75,7 @@ function bugTestingInFEXVersion()
    %The last peak is apparently not being shown in the FEX version
    y = [0 1 zeros(1,1e6) 1 zeros(1,1e6) 1 0]; 
    x = 1:length(y);
-   wtf = sl.plot.big_data.LinePlotReducer(x,y,'*-');
+   wtf = big_plot(x,y,'*-');
    wtf.renderData();
 end
 function testSpeed()
@@ -155,29 +155,8 @@ function test002_singleLongChannel()
     %profile off
     %profile viewer 
 end
-function test003_interestingInput()
-    %From FEX: 40790
 
-    n = 1e8 + randi(1000);                          % Number of samples
-    t = linspace(0,100,n);
-    y = [sin(0.10 * t) + 0.05 * randn(1, n); ...
-        cos(0.43 * t) + 0.001 * t .* randn(1, n); ...
-        round(mod(t/10, 5))];
-    y(:, t > 40 & t < 50) = 0;                      % Drop a section of data.
-    y(randi(numel(y), 1, 20)) = randn(1, 20);       % Emulate spikes.
 
-    %Why do I get the correct orientation when I do this ...
-    %I think it should be many channels with only a few samples,
-    %where is the correction coming into play???
-    %
-    %   I think it comes with the size of t not matching 
-    %   the size of x, because they only match in the long
-    %   direction then x becomes by 3 channels, instead of having 
-    %   tons of channels
-    tic
-    wtf = plotBig(y','dt',t(2)-t(1));
-    toc
-end
 function test004_simpleLine()
    y = 1:1e8+3457;
    x = y;
@@ -195,30 +174,26 @@ function test004_simpleLineWithTimeObject()
     wtf.renderData;
     toc
 end
-        function testMemoryLeak()
-            for i = 1:200
-                n = 1e7 + randi(1000);                          % Number of samples
-                t = sort(100*rand(1, n));                       % Non-uniform sampling
-                x = [sin(0.10 * t) + 0.05 * randn(1, n); ...
-                    cos(0.43 * t) + 0.001 * t .* randn(1, n); ...
-                    round(mod(t/10, 5))];
-                x(:, t > 40 & t < 50) = 0;                      % Drop a section of data.
-                x(randi(numel(x), 1, 20)) = randn(1, 20);       % Emulate spikes.
-                
-                %TODO: Why do I get the correct orientation when I do this ...
-                %I think it should be many channels with only a few samples,
-                %where is the correction coming into play???
-                wtf = sl.plot.big_data.LinePlotReducer(t,x);
-                wtf.renderData;
-                set(gca,'xlim',[20 40])
-                drawnow
-                pause(2)
-                close all
-                
-            end
-        end
-        %TODO: Add axes that are linked via x
+function testMemoryLeak()
+    for i = 1:200
+        n = 1e7 + randi(1000);                          % Number of samples
+        t = sort(100*rand(1, n));                       % Non-uniform sampling
+        x = [sin(0.10 * t) + 0.05 * randn(1, n); ...
+            cos(0.43 * t) + 0.001 * t .* randn(1, n); ...
+            round(mod(t/10, 5))];
+        x(:, t > 40 & t < 50) = 0;                      % Drop a section of data.
+        x(randi(numel(x), 1, 20)) = randn(1, 20);       % Emulate spikes.
+
+        %TODO: Why do I get the correct orientation when I do this ...
+        %I think it should be many channels with only a few samples,
+        %where is the correction coming into play???
+        wtf = sl.plot.big_data.LinePlotReducer(t,x);
+        wtf.renderData;
+        set(gca,'xlim',[20 40])
+        drawnow
+        pause(2)
+        close all
+
     end
-    
 end
 
