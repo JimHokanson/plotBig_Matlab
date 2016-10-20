@@ -158,7 +158,7 @@ end
 function test003_interestingInput()
     %From FEX: 40790
 
-    n = 1e7 + randi(1000);                          % Number of samples
+    n = 1e8 + randi(1000);                          % Number of samples
     t = linspace(0,100,n);
     y = [sin(0.10 * t) + 0.05 * randn(1, n); ...
         cos(0.43 * t) + 0.001 * t .* randn(1, n); ...

@@ -197,7 +197,7 @@ classdef line_plot_reducer < handle
         last_rendered_axes_width %This is currently not valid as we have
         %hardcoded the render width
         
-        last_rendered_xlim
+        last_rendered_xlim %I think this should be a cell array ...
         x_lim_original
         
         last_render_time = now

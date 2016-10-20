@@ -279,6 +279,9 @@ else
     size_cb = {'SizeChanged'};
 end
 
+%This needs to be fixed ...
+l4 = addlistener(obj.h_figure, size_cb{:}, @(h, event_data) h__resize(obj,h,event_data,1));
+
 for iAxes = 1:n_axes
     l1 = addlistener(obj.h_axes(iAxes), 'XLim', 'PostSet', @(h, event_data) h__resize(obj,h,event_data,iAxes));
     
@@ -287,8 +290,10 @@ for iAxes = 1:n_axes
     %TODO: Also update the object that the axes are dirty ...
     l3 = addlistener(obj.h_axes(iAxes), 'ObjectBeingDestroyed',@(~,~)h__handleAxesBeingDestroyed(obj));
     
-    obj.axes_listeners{iAxes} = [l1 l2 l3];
+    obj.axes_listeners{iAxes} = [l1 l2 l3 l4];
 end
+
+
 
 n_groups = length(obj.h_plot);
 
@@ -561,8 +566,7 @@ function h__resize(obj,h,event_data,axes_I)
     
     obj.n_resize_calls = obj.n_resize_calls + 1;
     
-
-    new_xlim = get(obj.h_axes(axes_I),'xlim');
+    new_xlim = get(obj.h_axes(axes_I),'XLim');
 
     s = struct;
     s.h = h;
@@ -570,7 +574,8 @@ function h__resize(obj,h,event_data,axes_I)
     s.axes_I       = axes_I;
     s.new_xlim     = new_xlim;
     
-    disp(s)
+%     disp(s.event_data);
+%     disp(s.new_xlim);
 
     obj.resize_times(axes_I) = cputime; %array
     obj.resize_ids(axes_I) = obj.resize_ids(axes_I) + 1;
@@ -580,12 +585,19 @@ end
 
 function h__runTimer(obj,axes_I)
 
+    %This all needs to be cleaned up ...
+
     resized_time = obj.resize_times(axes_I);
     resize_id = obj.resize_ids(axes_I);
     processed_id = obj.processed_ids(axes_I);
+%     
+%     x1 = cputime > resized_time + obj.update_delay;
+%     x2 = resize_id ~= processed_id;
+%     x3 = resize_id - processed_id >= obj.n_timers_max_before_redraw;
     
-    if (cputime > resized_time + obj.update_delay && resize_id ~= processed_id) ...
-        || (resize_id - processed_id >= obj.n_timers_max_before_redraw)
+    %This all needs to be cleaned up ...
+    if ~isequal(obj.last_rendered_xlim,get(obj.h_axes(axes_I),'xlim'))
+%         fprintf('x1:%d,  x2:%d, x3:%d\n',x1,x2,x3);
 
         %This second clause should be sufficient, since the only
         %thing that will delay a drawing is to fire more resize events
@@ -594,6 +606,7 @@ function h__runTimer(obj,axes_I)
         obj.processed_ids(axes_I) = resize_id;
         
         s = obj.resize_data{axes_I};
+        s.new_xlim = get(obj.h_axes(axes_I),'xlim');
         obj.processed_resize_times(axes_I) = resized_time;
         try
             obj.renderData(s);
@@ -604,5 +617,10 @@ function h__runTimer(obj,axes_I)
            ME.stack(1)
            ME.stack(2)
         end
+    else
+%         s = obj.resize_data{axes_I};
+%         if isstruct(s)
+%         fprintf('%d\n: x1:%d,  x2:%d, x3:%d ----- %d:%d --- %d:%d\n',obj.n_resize_calls,x1,x2,x3,resize_id,processed_id,s.new_xlim(1),s.new_xlim(2));
+%         end
     end
 end
