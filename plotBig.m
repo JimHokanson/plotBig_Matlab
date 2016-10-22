@@ -1,12 +1,25 @@
-function varagout = plotBig(y,varargin)
+function varargout = plotBig(y,varargin)
 %
 %   Inputs
 %   ------
-%   
+%   y : [samples x chans]
+%       The data to plot.
+%
 %   Optional Inputs
 %   ---------------
-%   
-%   
+%   x : [samples x 1] or [1 x samples]
+%       Currently differing times for each y input are not supported.
+%   dt : scalar
+%       The time difference between two samples, i.e. 1/(sampling_rate)
+%   t0 : starting time
+%
+%   Examples
+%   --------
+%   n = 1e8;
+%   t = linspace(0,100,n);    
+%   y = (cos(0.43 * t) + 0.001 * t .* randn(1, n));
+%   y = y';
+%   plotBig(y,'x',t)
 
 in.x = [];
 in.dt = [];

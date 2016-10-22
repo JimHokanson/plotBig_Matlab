@@ -1,12 +1,17 @@
-function test001_interestingInput()
+function test001_interestingInput(n)
 %
 %   big_plot_tests.test001_interestingInput()
 %   
-    %From FEX: 40790
+%   Most of the time for this test comes from initialization of the data
+%   ...
+%
+%   From FEX: 40790
 
     %TODO: Allow going to smaller values if the computer has less memory
     %For 1e8 we run about 3.2GB given 3 signals and 1 time
-    n = 1e8 + randi(1000);                          % Number of samples
+    if nargin == 0
+        n = 5e7 + randi(1000); % Number of samples
+    end
     t = linspace(0,100,n);
     y = [(sin(0.10 * t) + 0.05 * randn(1, n))', ...
         (cos(0.43 * t) + 0.001 * t .* randn(1, n))', ...
@@ -24,5 +29,5 @@ function test001_interestingInput()
     %   tons of channels
     tic
     wtf = plotBig(y,'dt',t(2)-t(1));
-    toc
+    fprintf('test001: time to process and plot was: %0.3f seconds\n',toc);
 end

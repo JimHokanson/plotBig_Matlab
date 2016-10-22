@@ -24,13 +24,13 @@ classdef big_plot < handle
     %
     %   Examples:
     %   ---------
-    %   line_plot_reducer(t, x)
+    %   big_plot(t, x)
     %
-    %   line_plot_reducer(t, x, 'r:', t, y, 'b', 'LineWidth', 3);
+    %   big_plot(t, x, 'r:', t, y, 'b', 'LineWidth', 3);
     %
-    %   line_plot_reducer(@plot, t, x);
+    %   big_plot(@plot, t, x);
     %
-    %   line_plot_reducer(@stairs, axes_h, t, x);
+    %   big_plot(@stairs, axes_h, t, x);
     %
     %   Based On:
     %   ---------
@@ -42,49 +42,31 @@ classdef big_plot < handle
     %
     %   See Also:
     %   ---------
-    %   sci.time_series.data
     %   plotBig
     %
     %
-    
-    %{
-    Callbacks:
-    ----------
-    
-    %}
-    
+        
     %{
     Other functions for comparison:
-    http://www.mathworks.com/matlabcentral/fileexchange/15850-dsplot-downsampled-plot
-    http://www.mathworks.com/matlabcentral/fileexchange/27359-turbo-plot
-    http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-/
-    http://www.mathworks.com/matlabcentral/fileexchange/42191-jplot
-    
+        http://www.mathworks.com/matlabcentral/fileexchange/15850-dsplot-downsampled-plot
+        http://www.mathworks.com/matlabcentral/fileexchange/27359-turbo-plot
+        http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-/
+        http://www.mathworks.com/matlabcentral/fileexchange/42191-jplot
     %}
     
     %{
-    Relevant posts:
+    Relevant post:
     http://blogs.mathworks.com/loren/2015/12/14/axes-limits-scream-louder-i-cant-hear-you/
-    TODO: Summarize above post
-    
+    Basically this says that you might not always get an event when the
+    x-limit changes. Instead I've decided to use a timer ...
     
     %}
     
     %External Files:
     %---------------
-    %1) line_plot_reducer.init
     %2) line_plot_reducer.renderData
     %3) line_plot_reducer.reduce_to_width
-    
-    properties (Constant,Hidden)
-        %This can be changed to throw out more or less error messages
-        DEBUG = 0
-        %1) Things related to callbacks
-        %2) things from 1) and cleanup
-        %
-        %line_plot_reducer.callback_info
-    end
-    
+
     %------------           User Options         --------------------
     properties
         %These are not currently being used
@@ -105,110 +87,30 @@ classdef big_plot < handle
         %   'obj' will now be available in the callback
     end
     
-    %------------------------   Handles  ----------------------------
     properties
-        d1 = '--------  Handles, Listeners, & Timers ------'
-        h_figure  %Figure handle. Always singular.
-        
-        h_axes %This is normally singular.
-        %There might be multiple axes for plotyy - NYI
-        %
-        %   The value is assigned either as an input to the constructor
-        %   or during the first call to renderData()
-        %
-        
-        h_plot %cell, {1 x n_groups} one for each group of x & y
-        %
-        %   e.g. plot(x1,y1,x2,y2,x3,y3) produces 3 groups
-        %
-        %   This should really be h_line, to be more specific
-        
-        
-        timer %
-        
-
-        n_resize_calls = 0 %# of times the figure detected a resize
-        n_render_calls = 0 %We'll keep track of the # of renders done
-        
-        
-        axes_listeners %cell, {1 x n_axes}
-        plot_listeners %cell, {1 x n_groups}{1 x n_lines}
-        n_active_lines %We decrement this until it gets to zero, then
-        %we clear the timer
-    end
-    
-    %--------------------------    Input Data       -----------------------
-    properties
-        d2 = '-------  Input Data -------'
-        plot_fcn %e.g. @plot
-        
-        linespecs %cell
-        %Each element is paired with the corresponding pair of inputs
-        %
-        %   plot(x1,y1,'r',x2,y2,'c')
-        %
-        %   linspecs = {{'r'} {'c'}}
-        
-        extra_plot_options = {} %cell
-        %These are the parameters that go into the end of a plot function,
-        %such as {'Linewidth', 2}
-        
-        x %cell Each cell corresponds to a different pair of inputs.
-        %
-        %   plot(x1,y1,x2,y2)
-        %
-        %   x = {x1 x2}
-        
-        y %cell, same format as 'x'
-    end
-    
-    %---------------  Intermediate Variables -------------------
-    properties
-        d3 = '----- Intermediate Variables ------'
-        
-        %   This is the original reduced data for the full sized plot
-        x_r_orig %cell
-        y_r_orig %cell
-        
-        
-        last_rendered_xlim %I think this should be a cell array ...
-        x_lim_original
-        
-        last_render_time = now
-         
-    end
-    
-    
-    properties (Dependent)
-        n_plot_groups %The number of sets of x-y pairs that we have. See
-        %example above for 'x'. In that data, regardless of the size of
-        %x1 and x2, we have 2 groups (x1 & x2).
-    end
-    methods
-        function value = get.n_plot_groups(obj)
-            value = length(obj.x);
-        end
-    end
-    
-    %------------------------     Debugging    ----------------------------
-    properties
-        d4 = '------ Debugging ------'
-        last_timer_error
-        
         id %A unique id that can be used to identify the plotter
         %when working with callback optimization, i.e. to identify which
         %object is throwing the callback (debugging)
         
+        h_and_l %big_plot.handles_and_listeners
+        
+        data %big_plot.data
+        
+        render_info %big_plot.render_info
+    end
+    
+    %------------------------     Debugging    ----------------------------
+    properties
+        %This could all get merged into a timer class ...
+        timer 
+        
+        n_resize_calls = 0 %# of times the figure detected a resize
+        
+        last_timer_error
+        
         %callback_info %sl.plot.big_data.line_plot_reducer.callback_info
         %Not sure what I'm going to store here
         
-
-        n_x_reductions = 0 %# of times we needed to reduce the data
-        %This is the slow part of the code and ideally this is not called
-        %very often.
-        
-        %TODO: This is no longer relevant ...
-        last_redraw_used_original = true
     end
     
     %Constructor
@@ -222,17 +124,23 @@ classdef big_plot < handle
             %   See Also:
             %   plotBig()
             
+            temp = now;
+            obj.id = int2str(uint64(floor(1e8*(temp - floor(temp)))));
             
-            %I'm hiding the initialization details in another file to
-            %reduce the high indentation levels and the length of this
-            %function.
-            %
-            %	big_plot.init
-            obj.init(varargin{:});
+            %We need to be able to reference back to the timer so
+            %we pass in the object
+            obj.h_and_l = big_plot.handles_and_listeners(obj);
+            
+            %Population of the input data and plotting instructions ...
+            %We might update the axes, so we pass in h_and_l
+            obj.data = big_plot.data(obj.h_and_l,varargin{:});
+            
+            obj.render_info = big_plot.render_info(obj.data.n_plot_groups);
+            
+            %Now wait for the user to update things and to render the data
+            %...
         end
-        function cleanup_figure(obj)
-            delete(obj.axes_listeners);
-
+        function delete(obj)
             t = obj.timer;
             try
                 stop(t);
@@ -240,13 +148,6 @@ classdef big_plot < handle
             end
             obj.timer = [];
         end
-        function delete(obj)
-           obj.cleanup_figure();
-        end
-    end
-    
-    methods (Static)
-        [x_reduced, y_reduced, extras] = reduce_to_width(x, y, axis_width_in_pixels, x_limits, varargin)
     end
     
 end
