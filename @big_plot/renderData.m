@@ -250,16 +250,37 @@ for iG = 1:obj.data.n_plot_groups
     
     %TODO: Verify that the lines are good
     
+    last_I = obj.render_info.last_I{iG};
+    x_input = obj.data.x{iG};
+    
     %Reduce the data.
     %----------------------------------------
     if use_original
         x_r = obj.render_info.orig_x_r{iG};
         y_r = obj.render_info.orig_y_r{iG};
-        range_I = [1 size(y_r,1)];
+        
+        if isobject(x_input)
+            range_I = [1 x_input.n_samples];
+        else
+            range_I = [1 length(x_input)];
+        end
+        
+        if isequal(last_I,range_I)
+            obj.render_info.logNoRenderCall(new_x_limits);
+            continue
+        end
+        
     else
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
-        [x_r, y_r, range_I] = big_plot.reduce_to_width(obj.data.x{iG}, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits);
+        [x_r, y_r, range_I, same_range] = big_plot.reduce_to_width(x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
+        
+        if same_range
+            obj.render_info.logNoRenderCall(new_x_limits);
+            continue
+        end
     end
+    
+    %disp([x_r(1) x_r(end)])
     
     obj.render_info.logRenderCall(iG,x_r,y_r,range_I,use_original,new_x_limits);
     
@@ -268,6 +289,7 @@ for iG = 1:obj.data.n_plot_groups
     %2) Invalid handles ...
     
     local_h = obj.h_and_l.h_plot{iG};
+    
     % Update the plot.
     if size(x_r,2) == 1
         for iChan = 1:length(local_h)
@@ -278,6 +300,9 @@ for iG = 1:obj.data.n_plot_groups
             set(local_h(iChan), 'XData', x_r(:,iChan), 'YData', y_r(:,iChan));
         end
     end
+    
+    %pause(0.1)
+    %drawnow()
 end
 
 end
@@ -303,7 +328,7 @@ cur_xlim = get(obj.h_and_l.h_axes,'xlim');
 
 if ~isequal(obj.render_info.last_rendered_xlim,cur_xlim)
     
-    %TODO: This will most likely be changing 
+    %TODO: This will most likely be changing
     %once I reimplement the plot listeners
     n_plot_groups = obj.data.n_plot_groups;
     h_plot = obj.h_and_l.h_plot;
@@ -317,7 +342,7 @@ if ~isequal(obj.render_info.last_rendered_xlim,cur_xlim)
             return;
         end
     end
-
+    
     
     s = struct;
     s.new_xlim = cur_xlim;
@@ -333,7 +358,7 @@ if ~isequal(obj.render_info.last_rendered_xlim,cur_xlim)
             fprintf(2,'Killing timer, no more redraws of the current plot will occur\n');
             t = obj.timer;
             stop(t)
-            delete(t) 
+            delete(t)
         end
     end
 end

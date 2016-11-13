@@ -328,6 +328,11 @@ classdef time < sl.obj.display_class
             %        will represent a value of the start_offset + dt.
             %
             %
+            
+            %TODO: Throw an error if any of the indices are out of range
+            %Assume ordered ????
+            %This will slow things down ... :/
+            
             times = obj.start_offset + (indices-1)*obj.dt;
             times = h__getTimeScaled(obj,times);
         end        

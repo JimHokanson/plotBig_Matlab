@@ -20,7 +20,12 @@ function varargout = plotBig(y,varargin)
 %   y = (cos(0.43 * t) + 0.001 * t .* randn(1, n));
 %   y = y';
 %   plotBig(y,'x',t)
+%
+%   Improvements
+%   ------------
+%   1) Allow passing in additional plot arguments ...
 
+in.axes = [];
 in.x = [];
 in.dt = [];
 in.t0 = 0;
@@ -34,7 +39,12 @@ else
     x = in.x;
 end
 
-temp = big_plot(x,y);
+if ~isempty(in.axes)
+    temp = big_plot(in.axes,x,y);
+else
+    temp = big_plot(x,y);
+end
+
 temp.renderData();
 
 if nargout
