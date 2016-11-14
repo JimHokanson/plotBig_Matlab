@@ -137,7 +137,7 @@ classdef time < sl.obj.display_class
             %   new_start_offset :
             
             in.new_start_offset = [];
-            in = sl.in.processVarargin(in,varargin);
+            in = big_plot.sl.in.processVarargin(in,varargin);
             
             if isempty(in.new_start_offset)
                 start_offsets = [objs.start_offset];
@@ -190,7 +190,7 @@ classdef time < sl.obj.display_class
             %       absolute start time is maintained.
             
             in.first_sample_time = [];
-            in = sl.in.processVarargin(in,varargin);
+            in = big_plot.sl.in.processVarargin(in,varargin);
             
             first_sample_real_time = (start_sample-1)*obj.dt + obj.start_offset;
             

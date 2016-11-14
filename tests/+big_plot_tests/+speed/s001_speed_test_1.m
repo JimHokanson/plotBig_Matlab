@@ -9,8 +9,8 @@ function s001_speed_test_1()
     n_samples = [1e5 1e6 1e7 1e8 2e8 3e8];
 
     reps = 1;
-    speeds_old = zeros(reps,length(n_samples));
-    speeds_new = zeros(reps,length(n_samples));
+    speeds_old = ones(reps,length(n_samples));
+    speeds_new = ones(reps,length(n_samples));
 
 %     profile on
     for iRep = 1:reps

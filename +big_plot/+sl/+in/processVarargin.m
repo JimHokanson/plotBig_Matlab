@@ -94,7 +94,7 @@ end
 %Update optional inputs of calling function with this function's options now set
 [in,extras] = processVararginHelper(in,v,c,false,nargout);
 
-NULL = sl.in.NULL;
+NULL = big_plot.sl.in.NULL;
 
 if c.remove_null
    fn = fieldnames(in);
@@ -131,7 +131,7 @@ function [in,extras] = processVararginHelper(in,v,c,is_parsing_options,n_outputs
 populate_extras_flag = n_outputs > 1;
 
 if populate_extras_flag
-    extras = sl.in.process_varargin_result(in,v);
+    extras = big_plot.sl.in.process_varargin_result(in,v);
 else
    extras = []; 
 end
@@ -154,7 +154,7 @@ elseif iscell(v) && length(v) == 1 && isempty(v{1})
     parse_input = false;
 else
     parse_input = true;
-    v = sl.in.propValuePairsToStruct(v,'allow_spaces',c.allow_spaces);
+    v = big_plot.sl.in.propValuePairsToStruct(v,'allow_spaces',c.allow_spaces);
 end
 
 if ~parse_input
