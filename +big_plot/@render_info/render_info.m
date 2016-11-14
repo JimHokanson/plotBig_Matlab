@@ -24,6 +24,7 @@ classdef render_info < handle
         
         n_render_calls = 0
         n_reduction_calls = 0
+        n_same_range_calls = 0;
     end
     
     methods
@@ -37,6 +38,10 @@ classdef render_info < handle
             obj.last_y_r = cell(1,n_groups);
             
             obj.last_I = cell(1,n_groups);
+        end
+        function logNoRenderCall(obj,x_limits)
+            obj.last_rendered_xlim = x_limits;
+            obj.n_same_range_calls = obj.n_same_range_calls + 1;
         end
         function incrementRenderCount(obj)
             obj.n_render_calls = obj.n_render_calls + 1;

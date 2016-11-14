@@ -59,6 +59,7 @@ if direct_inputs_to_big_plot
     
 end
 
+in.axes = [];
 in.x = [];
 in.dt = [];
 in.t0 = 0;
@@ -78,7 +79,12 @@ else
     x = in.x;
 end
 
-temp = big_plot(x,y);
+if ~isempty(in.axes)
+    temp = big_plot(in.axes,x,y);
+else
+    temp = big_plot(x,y);
+end
+
 temp.renderData();
 
 if nargout

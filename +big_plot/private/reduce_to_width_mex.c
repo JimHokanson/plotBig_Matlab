@@ -169,19 +169,40 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     double *p_output_data = mxMalloc(8*n_chans*n_outputs);
     double *p_output_data_absolute = p_output_data;
     
+    //TODO: I don't think this is used
     mwSize pad_offset = pad_with_endpoints ? 1:0;
+    
+    //Initialize the first and last values of the output
+    //---------------------------------------------------------------------
+    //We keep the first and last values if we are not plotting everything
+    //We need to loop through each channel and assign:
+    //  1) The first data point in each channel to the first output value
+    //  2) The last data point in each channel to the last output value
     if (pad_with_endpoints){
         double *pad_output_data = p_output_data;
         double *current_data_point = p_data_absolute;
         for (mwSize iChan = 0; iChan < n_chans; iChan++){
+            
+            //Storage of first data point
             *pad_output_data = *current_data_point;
+            
+            
             pad_output_data += (n_outputs-1);
             current_data_point += (n_samples_data-1);
+            
+            //Storage of last data point
             *pad_output_data = *current_data_point;
+            
+            //Roll over to the next channel
             ++current_data_point;
             ++pad_output_data;
         }
-        //Move beyond the first padded data ooint
+        
+        //Move beyond the first padded data point
+        //TODO: Better variable naming may help here
+        //When looping over the outputs, we want to start by asssigning
+        //data to the 2nd output, since the first has now already been
+        //populated
         ++p_output_data;
     }
     
