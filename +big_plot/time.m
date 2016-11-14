@@ -112,7 +112,7 @@ classdef time < sl.obj.display_class
             in.start_datetime = 0;
             in.start_offset   = [];
             in.sample_offset  = [];
-            in = sl.in.processVarargin(in,varargin);
+            in = big_plot.sl.in.processVarargin(in,varargin);
             
             if ~isempty(in.sample_offset)
                 if ~isempty(in.start_offset)

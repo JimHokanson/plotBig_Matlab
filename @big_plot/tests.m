@@ -63,60 +63,7 @@ end
 %   2) plot(x1,y1,x2,y2) %See test001
 %   3) plot(ax,x1,y1)
 
-
-%TODO: On close, support rerendering (low priority)
-        
-function bugTestingInFEXVersion()
-   %See comment from Robbert:
-   %12 Dec 2014
-   %http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-
-   %
-   %
-   %The last peak is apparently not being shown in the FEX version
-   y = [0 1 zeros(1,1e6) 1 zeros(1,1e6) 1 0]; 
-   x = 1:length(y);
-   wtf = big_plot(x,y,'*-');
-   wtf.renderData();
-end
-function testSpeed()
-
-    %sl.plot.big_data.tests_LinePlotReducer.testSpeed
-
-    %This tests normal plotting, we need to test the same thing
-    %for the LinePlotReducer class
-
-    n_samples = [1e5 1e6 1e7 1e8 2e8 3e8];
-
-    reps = 3;
-    speeds_old = zeros(reps,length(n_samples));
-    speeds_new = zeros(reps,length(n_samples));
-
-    for iRep = 1:reps
-        for iSamples = 1:length(n_samples)
-            cur_n_samples = n_samples(iSamples);
-            data = 1:cur_n_samples;
-
-            close all
-            tic
-            plot(data);
-            drawnow %Seems to block execution until the rendering has finished
-            speeds_old(iRep,iSamples) = toc;
-
-            close all
-            tic
-            wtf = sl.plot.big_data.LinePlotReducer(data);
-            wtf.renderData;
-            drawnow
-            speeds_new(iRep,iSamples) = toc;
-        end
-    end
-
-    %TODO: Implement nice display here ...
-    %Compare
-    %speeds_old
-    %speeds_new
-    keyboard
-end
+       
 function test001_MatrixMultipleInputs()
     %
     %

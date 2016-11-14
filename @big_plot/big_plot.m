@@ -24,21 +24,20 @@ classdef big_plot < handle
     %
     %   Examples:
     %   ---------
-    %   big_plot(t, x)
+    %   b = big_plot(t, y)
     %
-    %   big_plot(t, x, 'r:', t, y, 'b', 'LineWidth', 3);
+    %   b = big_plot(t, y, 'r:', t, y2, 'b', 'LineWidth', 3);
     %
     %   big_plot(@plot, t, x);
     %
-    %   big_plot(@stairs, axes_h, t, x);
     %
     %   Based On:
     %   ---------
     %   This code is based on:
     %   http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-/
     %
-    %   This code is organized a bit better than that code, it handles
-    %   callbacks a bit better, and it should run much faster.
+    %   Differences include:
+    %       - inclusion of time option
     %
     %   See Also:
     %   ---------

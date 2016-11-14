@@ -1,15 +1,15 @@
 function varargout = plotBig(varargin)
+%x Wrapper for big_plot class
+%
+%   Provides simple access to the most common usage of the big_plot class.
 %
 %   Calling Forms
 %   -------------
-%   h = plot(x,y)
-%   h = plot(y)
-%   h = plot(ax,...)
+%   h = plotBig(x,y)
+%   h = plotBig(y)
+%   h = plotBig(ax,...)
 %   etc.
-%   p = 
-%   
-%   
-%   plot_obj = plotBig
+%   p = plotBig(y,varargin)
 %
 %   Inputs
 %   ------
@@ -18,8 +18,8 @@ function varargout = plotBig(varargin)
 %
 %   Outputs
 %   -------
-%   h : line handle
-%   p : big_plot
+%   h : [line handles]
+%   p : big_plot object
 %       
 %
 %   Optional Inputs
@@ -40,25 +40,36 @@ function varargout = plotBig(varargin)
 %   y = (cos(0.43 * t) + 0.001 * t .* randn(1, n));
 %   y = y';
 %   plotBig(y,'x',t)
-%   %or better
+%   %---   or better  -----
 %   plotBig(y,'dt',dt)
 
 %Varargin parsing
 %-------------------
-
-if nargin == 1
-    direct_inputs_to_big_plot = true;
-elseif ischar(varargin{2})
+direct_inputs_to_big_plot = true;
+if nargin > 1 && ischar(varargin{2})
     %TODO: Check for fieldnames from below
-    direct_inputs_to_big_plot = false;
-    y = varargin{1};
-    varargin = varargin(2:end);
+    option_string = varargin{2};
+    if any(strcmp(option_string,{'axes','x','dt','t0','obj'}))
+        direct_inputs_to_big_plot = false;
+        y = varargin{1};
+        varargin = varargin(2:end);
+    end
 end
 
+%Shortcut exit for direct call to big_plot
+%------------------------------------------
 if direct_inputs_to_big_plot
-    
+    temp = big_plot(varargin{:});
+    temp.renderData();
+    if nargout
+       all_lines = temp.h_and_l.h_plot;
+       varargout{1} = vertcat(all_lines{:});
+    end
+    return
 end
 
+%Processing of alternative call method
+%--------------------------------------
 in.axes = [];
 in.x = [];
 in.dt = [];
@@ -67,12 +78,10 @@ in.obj = true;
 in = big_plot.sl.in.processVarargin(in,varargin);
 
 if ~isempty(in.dt)
-    
     n_samples = size(y,1);
     if n_samples == 1
        error('Currently 1 sample per channel is not supported') 
     end
-    
     x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
 else
     %TODO: Check that the length matches ...

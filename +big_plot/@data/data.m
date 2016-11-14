@@ -207,7 +207,8 @@ if previous_type == 'x'
     % Make the implied x explicit. %TODO: Allow being empty ...
     %It would be easier to make a time_series object
     %   - same memory benefit, already implemented
-    temp_x{end+1} = (1:size(ym, 1))';
+    %temp_x{end+1} = (1:size(ym, 1))';
+    temp_x{end+1} = big_plot.time(1,size(ym,1),'sample_offset',1);
     temp_y{end+1} = ym;
     n_groups = n_groups + 1;
     temp_specs{n_groups} = {};
