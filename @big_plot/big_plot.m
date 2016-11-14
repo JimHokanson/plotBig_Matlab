@@ -22,6 +22,10 @@ classdef big_plot < handle
     %   Zooming in on the data engages callbacks that replot the data with
     %   higher fidelity.
     %
+    %   Usage
+    %   -----
+    %   1) Call plotBig
+    %   
     %   Examples:
     %   ---------
     %   b = big_plot(t, y)
@@ -39,11 +43,9 @@ classdef big_plot < handle
     %   Differences include:
     %       - inclusion of time option
     %
-    %   See Also:
-    %   ---------
+    %   See Also
+    %   --------
     %   plotBig
-    %
-    %
         
     %{
     Other functions for comparison:
@@ -61,11 +63,6 @@ classdef big_plot < handle
     
     %}
     
-    %External Files:
-    %---------------
-    %2) line_plot_reducer.renderData
-    %3) line_plot_reducer.reduce_to_width
-
     %------------           User Options         --------------------
     properties
         %These are not currently being used
@@ -91,9 +88,9 @@ classdef big_plot < handle
         %when working with callback optimization, i.e. to identify which
         %object is throwing the callback (debugging)
         
-        h_and_l %big_plot.handles_and_listeners
+        h_and_l     %big_plot.handles_and_listeners
         
-        data %big_plot.data
+        data        %big_plot.data
         
         render_info %big_plot.render_info
     end
@@ -137,7 +134,7 @@ classdef big_plot < handle
             obj.render_info = big_plot.render_info(obj.data.n_plot_groups);
             
             %Now wait for the user to update things and to render the data
-            %...
+            %by calling obj.renderData
         end
         function delete(obj)
             t = obj.timer;

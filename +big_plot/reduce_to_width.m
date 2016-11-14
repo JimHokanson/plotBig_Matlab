@@ -1,8 +1,8 @@
 function [x_reduced, y_reduced, range_I, same_range] = reduce_to_width(x, y, axis_width_in_pixels, x_limits, last_range_I)
-%x Reduces the # of points in a data set
+%x  Reduces the # of points in a data set
 %
-%   [x_reduced, y_reduced] = reduce_to_width(...
-%           x, y, axis_width_in_pixels, x_limits)
+%   [x_reduced, y_reduced, range_I, same_range] = ...
+%       reduce_to_width(x, y, axis_width_in_pixels, x_limits, *last_range_I)
 %
 %   For a given data set, this function returns the maximum and minimum
 %   points within non-overlapping subsets of the data, bounded by the
@@ -23,41 +23,67 @@ function [x_reduced, y_reduced, range_I, same_range] = reduce_to_width(x, y, axi
 %       2 element vector [min,max], can be [-Inf Inf] to indicate everything
 %       This limit is applied to the 'x' input to exclude any points that
 %       are outside the limits.
+%   last_range_I : [min_I max_I] (default [])
+%       This can be used to indicate to the user that the data should
+%       not be processed again, if the resultant indices of the new
+%       data are the same as the indices used before.
+%
+%       e.g. consider x = 1:1e8 with last_range_I = [1 1e8]. If the new
+%       xlimits were [0.95 1e8+1], then the new range_I would be [1 1e8]
+%       Thus, if the renderer has held onto the appropriate y-values
+%       associated with this range, there is no need to recompute the 
+%       values to plot again.
 %
 %
 %   Outputs
 %   -------
-%   x_reduced :
-%   y_reduced :
-%
+%   x_reduced:
+%   y_reduced:
+%   range_I: 
+%   same_range: logical
+%       This can only be determined when 'last_range_I' is passed in. If 
+%       true, then 'x_reduced' and 'y_reduced' are not computed. Note, this
+%       function does not store the reduced data, so it can't pass out what
+%       was last used even if this value is true (without recomputing).
+%       
 %
 %   Example
 %   -------
+%   n = 1e8;
+%   x = 1:n;
+%   y = 1:n;
 %   plot(x,y)
 %   hold all
-%   [xr, yr] = bg_plot.reduce_to_width(x, y, 500, [5 10]);
+%   axis_width = 2000;
+%   [xr, yr] = bg_plot.reduce_to_width(x, y, axis_width, [1 n]);
 %
 %   plot(xr, yr); % This contains many fewer points than plot(x, y)
 %                 %but looks the same.
 %   hold off
+%
+%   Improvements
+%   ------------
+%   1) Pass out an integer which indicates which processing algorithm was
+%   used, such as plotting everything by default, or plotting everything
+%   after reduction, or reducing a subset, or plotting an entire subset 
+%   (I think those may be all of the cases ...)
 
+N_CHANS_MAX = 100; %This was put in place to catch some fall through cases
+%where I was plotting [1 x n] instead of [n x 1] for y. It is also helpful
+%for cases of [n x m] where m is large, since this code isn't the best
+%at handling large m, although we could probably go up pretty high before
+%really causing problems ...
+
+N_SAMPLES_JUST_PLOT = 10000; %If we get less samples than this, then
+%just plot all of the samples, rather than computing the max and the min
+
+%This would occur if the user calls this function directly ...
 if ~exist('last_range_I','var')
     last_range_I = [];
 end
+
 x_reduced = [];
 y_reduced = [];
-range_I = [];
-
-
-% % % % x_reduced = (1:5)';
-% % % % y_reduced = (1:5)';
-% % % % extras = [];
-% % % % return
-%Mex code calls:
-%---------------
-
-N_CHANS_MAX = 100;
-N_SAMPLES_JUST_PLOT = 10000;
 
 n_y_samples = size(y,1);
 n_chans = size(y,2);
@@ -86,10 +112,10 @@ elseif size(x,2) > 1
 end
 
 if isobject(x)
-    x_1 = x.getTimesFromIndices(1);
+    x_1   = x.getTimesFromIndices(1);
     x_end = x.getTimesFromIndices(x.n_samples);
 else
-    x_1 = x(1);
+    x_1   = x(1);
     x_end = x(end);
 end
 
@@ -119,8 +145,12 @@ if show_everything
     if ~isobject(x) && ~isLinearTime(x)
         error('Non-uniform x spacing not yet supported');
     end
-    %TODO: This will need to change
-    %Need to go into the time array, not just generate indices
+    
+    %Note, rather than carrying about exactly where the min and max
+    %occur, we just do a linear spacing of points. This should be fine
+    %as long as we sample sufficiently high. Once the # of points gets
+    %low, so that you can see individual points (due to zooming or just
+    %a low # of samples originally), then we plot everything (correctly)
     x_reduced = linspace(x_1,x_end,n_y_reduced)';
 else
     if isobject(x)

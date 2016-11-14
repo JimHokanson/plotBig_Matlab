@@ -13,6 +13,9 @@ classdef errors
         function ERROR_DETECTED()
             error('JAH:big_plot_tests:generic_error','Error detected in the test code')
         end
+        function ERROR_NOT_THROWN()
+            error('JAH:big_plot_tests:error_not_thrown','An error was not thrown when it should have been')
+        end
     end
     
 end
