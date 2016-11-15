@@ -1,6 +1,6 @@
-function test001_interestingInput(options)
+function e001_interestingInput(options)
 %
-%   big_plot_tests.test001_interestingInput()
+%   big_plot_tests.examples.e001_interestingInput()
 %   
 %   Most of the time for this test comes from initialization of the data
 %   ...
@@ -31,8 +31,12 @@ function test001_interestingInput(options)
     %   the size of x, because they only match in the long
     %   direction then x becomes by 3 channels, instead of having 
     %   tons of channels
-    tic
     %reduce_plot(t,y);
+    subplot(2,1,1)
+    tic
     plotBig(y,'dt',t(2)-t(1));
     fprintf('test001: time to process and plot was: %0.3f seconds\n',toc);
+    subplot(2,1,2)
+    plotBig(t,y)
+    
 end

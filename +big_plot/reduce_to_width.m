@@ -4,6 +4,10 @@ function [x_reduced, y_reduced, range_I, same_range] = reduce_to_width(x, y, axi
 %   [x_reduced, y_reduced, range_I, same_range] = ...
 %       reduce_to_width(x, y, axis_width_in_pixels, x_limits, *last_range_I)
 %
+%
+%       TODO: This violates my function naming policy
+%       
+%
 %   For a given data set, this function returns the maximum and minimum
 %   points within non-overlapping subsets of the data, bounded by the
 %   specified limits.

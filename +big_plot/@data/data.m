@@ -167,7 +167,7 @@ for k = 1:n_inputs
             end
             
             % Store y, x, and a map from y index to x index.
-            temp_x{end+1} = xm; %#ok<AGROW>
+            temp_x{end+1} = h__simplifyX(xm); %#ok<AGROW>
             temp_y{end+1} = ym; %#ok<AGROW>
             n_groups = n_groups + 1;
             % We've now matched this x.
@@ -223,5 +223,18 @@ end
 obj.x = temp_x;
 obj.y = temp_y;
 obj.linespecs = temp_specs;
+
+end
+
+function x_data_out = h__simplifyX(x_data)
+if isobject(x_data)
+    x_data_out = x_data;
+elseif big_plot.hasSameDiff(x_data)
+    dt = (x_data(end)-x_data(1))/(length(x_data)-1);
+    t0 = x_data(1);
+    x_data_out = big_plot.time(dt,length(x_data),'start_offset',t0);
+else
+    x_data_out = x_data;
+end
 
 end
