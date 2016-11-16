@@ -139,7 +139,7 @@ end
 for iG = 1:n_plot_groups
     %Reduce the data.
     %----------------------------------------
-    [x_r, y_r, range_I] = big_plot.reduce_to_width(obj.data.x{iG}, obj.data.y{iG}, n_samples_plot, [-Inf Inf]);
+    [x_r, y_r, range_I] = big_plot.reduceToWidth(obj.data.x{iG}, obj.data.y{iG}, n_samples_plot, [-Inf Inf]);
     
     %We get an empty value when the line is not in the range of the plot
     %Note, this may no longer be true as we always keep the first and last
@@ -257,7 +257,7 @@ for iG = 1:obj.data.n_plot_groups
         
     else
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
-        [x_r, y_r, range_I, same_range] = big_plot.reduce_to_width(x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
+        [x_r, y_r, range_I, same_range] = big_plot.reduceToWidth(x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
         
         if same_range
             obj.render_info.logNoRenderCall(new_x_limits);

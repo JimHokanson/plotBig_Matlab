@@ -227,6 +227,10 @@ obj.linespecs = temp_specs;
 end
 
 function x_data_out = h__simplifyX(x_data)
+%
+%
+%
+
 if isobject(x_data)
     x_data_out = x_data;
 elseif big_plot.hasSameDiff(x_data)

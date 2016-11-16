@@ -1,4 +1,4 @@
-function [x_reduced, y_reduced, range_I, same_range] = reduce_to_width(x, y, axis_width_in_pixels, x_limits, last_range_I)
+function [x_reduced, y_reduced, range_I, same_range] = reduceToWidth(x, y, axis_width_in_pixels, x_limits, last_range_I)
 %x  Reduces the # of points in a data set
 %
 %   [x_reduced, y_reduced, range_I, same_range] = ...
@@ -231,10 +231,5 @@ end
 end
 
 function linear_time = isLinearTime(x)
-%This is a crappy check, ideally we would check everything
-%
-%TODO: check everything, people should be using plotBig
-dt = x(2) - x(1);
-last_x_estimated = x(1) + dt*(length(x)-1);
-linear_time =  abs(last_x_estimated - x(end)) < eps;
+linear_time = same_diff_mex(x);
 end

@@ -7,14 +7,14 @@ function rw001_edge_cases()
 %Incorrect # of arguments
 %------------------------
 try 
-    big_plot.reduce_to_width()
+    big_plot.reduceToWidth()
     big_plot_tests.errors.ERROR_NOT_THROWN()
 end
 
 %XY mismatch
 %-------------------------
 %TODO: Need to throw an error - this shouldn't work ...
-[xr,yr] = big_plot.reduce_to_width((5:100)',(1:1e7)',4000,[0 Inf]);
+[xr,yr] = big_plot.reduceToWidth((5:100)',(1:1e7)',4000,[0 Inf]);
 
 % r = rand(11000,4);
 % big_plot.reduce_to_width()
