@@ -1,6 +1,9 @@
 function testMemoryLeak()
 
-%
+%I want to be able to query the memory usage, which is diffcult
+%on a mac
+
+error('Not yet implemented')
 
     for i = 1:200
         n = 1e7 + randi(1000);                          % Number of samples

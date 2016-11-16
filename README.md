@@ -1,6 +1,8 @@
 # Introduction
 
-Code written to allow plotting large amounts of data quickly in Matlab
+This code makes plotting line plots in Matlab much faster.
+Zooming is also much faster. This code is based on 
+[matlab-plot-big](https://github.com/tuckermcclure/matlab-plot-big)
 
 # Example Code
 
@@ -14,9 +16,23 @@ y = y';
 %Normal plotting, try resizing ...
 plot(t,y)
 
-plotBig(y,'dt',t(2)-t(1));
+%This code
+plotBig(t,y)
+
+%Even better
+plotBig(y,'dt',t(2)-t(1),'t0',0);
 ```
 
-# Approach
+#Approach
 
-JAH TODO
+This code resamples the data such that only a maxima and minima are chosen
+within a given window. Given a limited # of pixels, it is the local maxima
+and minima that are visible. By plotting only a few thousand values, the 
+speed of plotting is sped up significantly. When the axis limits are 
+changed the code replots the data so that any fine details are not lost
+when zooming.
+
+#Current Limitations
+
+* Supports double data only (TODO: Link to issue)
+* Does not support non-evenly sampled data (TODO: Link to issue)
