@@ -1,4 +1,4 @@
-classdef time < sl.obj.display_class
+classdef time < handle
     %
     %   Class:
     %   line_plot_reducer.time

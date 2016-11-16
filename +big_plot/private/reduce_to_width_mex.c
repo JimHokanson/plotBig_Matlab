@@ -109,8 +109,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     
     if (!(nrhs == 2 || nrhs == 4)){
         mexErrMsgIdAndTxt("SL:reduce_to_width:n_inputs","Invalid # of inputs, 2 or 4 expected");
+    }else if (!mxIsClass(prhs[0],"double")){
+        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","First input type needs to be double");
+    }else if (!mxIsClass(prhs[1],"double")){
+        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Second input type needs to be double");
     }
     
+    if (nrhs == 4){
+        if (!mxIsClass(prhs[2],"double")){
+            mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Third input type needs to be double");
+        }else if (!mxIsClass(prhs[3],"double")){
+            mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Fourth input type needs to be double");
+        }  
+    }
     //This will change when we merge the results
     if (!(nlhs == 1)){
         mexErrMsgIdAndTxt("jsmn_mex:n_inputs","Invalid # of outputs, 1 expected");

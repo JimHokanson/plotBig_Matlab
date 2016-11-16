@@ -228,17 +228,18 @@ end
 
 function x_data_out = h__simplifyX(x_data)
 %
-%
+%   Changes a vector x into a time series specification if the data are 
+%   evenly sampled.
 %
 
-if isobject(x_data)
-    x_data_out = x_data;
-elseif big_plot.hasSameDiff(x_data)
+x_data_out = x_data;
+
+%This length here is somewhat arbitrary, although it can't be less than 2
+%otherwise we can't calculate dt
+if ~isobject(x_data) && length(x_data) > 2 && big_plot.hasSameDiff(x_data)
     dt = (x_data(end)-x_data(1))/(length(x_data)-1);
     t0 = x_data(1);
     x_data_out = big_plot.time(dt,length(x_data),'start_offset',t0);
-else
-    x_data_out = x_data;
 end
 
 end

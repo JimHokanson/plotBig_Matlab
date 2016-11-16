@@ -2,12 +2,8 @@ function [x_reduced, y_reduced, range_I, same_range] = reduceToWidth(x, y, axis_
 %x  Reduces the # of points in a data set
 %
 %   [x_reduced, y_reduced, range_I, same_range] = ...
-%       reduce_to_width(x, y, axis_width_in_pixels, x_limits, *last_range_I)
-%
-%
-%       TODO: This violates my function naming policy
+%       reduceToWidth(x, y, axis_width_in_pixels, x_limits, *last_range_I)
 %       
-%
 %   For a given data set, this function returns the maximum and minimum
 %   points within non-overlapping subsets of the data, bounded by the
 %   specified limits.
@@ -101,7 +97,10 @@ end
 if n_y_samples < N_SAMPLES_JUST_PLOT
     y_reduced = y;
     if isobject(x)
-        x_reduced = x.getTimeArray';
+        x_reduced = x.getTimeArray;
+        if size(x_reduced,1) == 1
+            x_reduced = x_reduced';
+        end
     else
         x_reduced = x;
     end

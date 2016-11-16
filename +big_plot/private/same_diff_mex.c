@@ -26,13 +26,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //  
     //      Improvements
     //      ------------
-    //      1) Implement a sentinel value - temporarily change
-    //      last value to be true, so we can remove loop check ...
-    //      2) SIMD
+    //      1) parallel
+    //      2) simd
     
     //TODO: Need to do checks for double type data ...
     if (!(nrhs == 1)){
         mexErrMsgIdAndTxt("SL:same_diff:n_inputs","Invalid # of inputs, 1 expected");
+    }else if (!mxIsClass(prhs[0],"double")){
+        mexErrMsgIdAndTxt("SL:same_diff:input_class_type","Type of inputs class needs to be double");
     }
     
     //This will change when we merge the results
@@ -40,7 +41,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         mexErrMsgIdAndTxt("SL:same_diff:n_inputs","Invalid # of outputs, 1 expected");
     }
 
-    double *data = mxGetData(prhs[0]);
+    
     mwSize n_samples_data = mxGetNumberOfElements(prhs[0]);
     
     plhs[0] = mxCreateLogicalMatrix(1,1);
@@ -51,23 +52,51 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         return;
     }
     
+    double *data = mxGetData(prhs[0]);
+    double *p_start = data;
+    
+    //Starting work on sentinel ...
+    
+    
     double last_sample    = *data;
     double current_sample = *(++data);
-    double last_diff      = current_sample - last_sample;
-    double current_diff;
+    double current_diff   = current_sample - last_sample;
+    double last_diff      = current_diff;
     
-    //double MAX_DIFF = 2*DBL_EPSILON;
     double MAX_DIFF = 0.0001*fabs(last_diff);
-        
-    for (mwSize iSample = 2; iSample < n_samples_data; iSample++){
+     
+    double end_array_value = *(p_start+n_samples_data-1);
+    *(p_start+n_samples_data-1) = mxGetNaN();
+
+    //Newer code, not clear that it is that much faster
+    //-------------------------------------------------
+    while (fabs(current_diff - last_diff) < MAX_DIFF){
+        last_diff      = current_diff;
         last_sample    = current_sample;
         current_sample = *(++data);
-        current_diff   = current_sample - last_sample;
-                
-        if (fabs(current_diff - last_diff) > MAX_DIFF){
-            *pl = false;
-            return;
-        }
-        last_diff = current_diff;
+        current_diff   = current_sample - last_sample; 
     }
+    
+    //Reset terminal value
+    *(p_start+n_samples_data-1) = end_array_value;
+    
+    if (data == p_start+n_samples_data-1){
+        current_diff = end_array_value - last_sample;
+        *pl = (fabs(current_diff - last_diff) < MAX_DIFF);
+    }
+    
+    //Old code
+    //--------------------------------------------------
+//     for (mwSize iSample = 2; iSample < n_samples_data; iSample++){
+//         last_sample    = current_sample;
+//         current_sample = *(++data);
+//         current_diff   = current_sample - last_sample;
+// 
+//         if (fabs(current_diff - last_diff) > MAX_DIFF){
+//             *pl = false;
+//             return;
+//         }
+//         last_diff = current_diff;
+//     }
+    
 }

@@ -32,11 +32,12 @@ function e001_interestingInput(options)
     %   direction then x becomes by 3 channels, instead of having 
     %   tons of channels
     %reduce_plot(t,y);
-    subplot(2,1,1)
+    ax(1) = subplot(2,1,1);
     tic
     plotBig(y,'dt',t(2)-t(1));
     fprintf('test001: time to process and plot was: %0.3f seconds\n',toc);
-    subplot(2,1,2)
+    ax(2) = subplot(2,1,2);
     plotBig(t,y)
+    linkaxes(ax);
     
 end
