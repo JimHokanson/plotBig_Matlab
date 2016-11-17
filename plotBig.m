@@ -79,6 +79,11 @@ in = big_plot.sl.in.processVarargin(in,varargin);
 
 if ~isempty(in.dt)
     n_samples = size(y,1);
+    
+    %This may occur when the data should be transposed i.e. plotting y'
+    %When 'x' is provided, we can adjust y accordingly, but when only
+    %time info is provided, we can't resolve between 1 channel with many
+    %samples and many channels with 1 sample each.
     if n_samples == 1
         error('Currently 1 sample per channel is not supported')
     end
