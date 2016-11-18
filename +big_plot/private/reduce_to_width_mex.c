@@ -3,7 +3,7 @@
 //
 //  setenv('MW_MINGW64_LOC','C:\TDM-GCC-64')
 //
-//  mex -O LDFLAGS="$LDFLAGS -fopenmp"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx"    reduce_to_width_mex.c  
+//  mex -O LDFLAGS="$LDFLAGS -fopenmp"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" reduce_to_width_mex.c  
 //
 /*
     //Compiling on my mac

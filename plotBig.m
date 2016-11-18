@@ -5,11 +5,15 @@ function varargout = plotBig(varargin)
 %
 %   Calling Forms
 %   -------------
+%   1) As a replacement for plot()
 %   h = plotBig(x,y)
 %   h = plotBig(y)
 %   h = plotBig(ax,...)
 %   etc.
-%   h = plotBig(y,varargin)
+%
+%   2) Build time from options
+%   h = plotBig(y,'x',x_data)
+%   h = plotBig(y,'dt',0.01,varargin)
 %
 %   Inputs
 %   ------
@@ -24,6 +28,10 @@ function varargout = plotBig(varargin)
 %
 %   Optional Inputs
 %   ---------------
+%   axes : 
+%       Specify which axes to plot into. This is only needed for the 
+%       calling form in which the time is built bas
+%       
 %   x : [samples x 1] or [1 x samples]
 %       Currently differing times for each y input are not supported.
 %   dt : scalar

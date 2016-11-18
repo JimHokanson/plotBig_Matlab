@@ -4,6 +4,9 @@ This code makes plotting line plots in Matlab much faster.
 Zooming is also much faster. This code is based on 
 [matlab-plot-big](https://github.com/tuckermcclure/matlab-plot-big)
 
+"matlab-plot-big" was the best FEX submission on this topic. This code
+was written to be faster and more memory efficient.
+
 # Example Code
 
 ```Matlab
@@ -34,5 +37,5 @@ when zooming.
 
 #Current Limitations
 
-* Supports double data only (TODO: Link to issue)
-* Does not support non-evenly sampled data (TODO: Link to issue)
+* Supports double data only (https://github.com/JimHokanson/plotBig_Matlab/issues/6)
+* Does not support non-evenly sampled data (https://github.com/JimHokanson/plotBig_Matlab/issues/7)

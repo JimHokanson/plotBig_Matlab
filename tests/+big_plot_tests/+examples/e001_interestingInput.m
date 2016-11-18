@@ -1,4 +1,4 @@
-function e001_interestingInput(options)
+function e001_interestingInput(varargin)
 %
 %   big_plot_tests.examples.e001_interestingInput()
 %   
@@ -6,14 +6,35 @@ function e001_interestingInput(options)
 %   ...
 %
 %   From FEX: 40790
+%
+%   Optional Inputs
+%   ---------------
+%   n: (default 5e7 + randi(1000))
+%       %For 1e8 we run about 3.2GB given 3 signals and 1 time
+%
+%   type:
+%       - 0 - plotBig
+%       - 1 - reduce_plot (FEX 40790) https://github.com/tuckermcclure/matlab-plot-big
+%       - 2 - plot() normal Matlab function ...
+%
 
-    %TODO: Allow going to smaller values if the computer has less memory
-    %For 1e8 we run about 3.2GB given 3 signals and 1 time
-    if nargin == 0
-        n = 5e7 + randi(1000); % Number of samples
-    else
-        big_plot_tests.errors.NOT_YET_IMPLEMENTED;
+%{
+    big_plot_tests.examples.e001_interestingInput('type',0)
+    big_plot_tests.examples.e001_interestingInput('type',1)
+    big_plot_tests.examples.e001_interestingInput('type',2)
+%}
+in.n = 5e7 + randi(1000);
+in.type = 0;
+in = big_plot.sl.in.processVarargin(in,varargin); 
+    
+    n = in.n;
+    
+    if in.type == 1
+       if isempty(which('reduce_plot'))
+          error('Reduce plot not found, can be downloaded from: https://github.com/tuckermcclure/matlab-plot-big')
+       end
     end
+        
     
     fprintf('Initializing data with %d samples\n',n);
     t = linspace(0,100,n);
@@ -34,10 +55,24 @@ function e001_interestingInput(options)
     %reduce_plot(t,y);
     ax(1) = subplot(2,1,1);
     tic
-    plotBig(y,'dt',t(2)-t(1));
+    switch in.type
+        case 0
+            plotBig(y,'dt',t(2)-t(1));
+        case 1
+            reduce_plot(t,y);
+        case 2
+            plot(t,y)
+    end
     fprintf('test001: time to process and plot was: %0.3f seconds\n',toc);
     ax(2) = subplot(2,1,2);
-    plotBig(t,y)
+    switch in.type
+        case 0
+            plotBig(t,y);
+        case 1
+            reduce_plot(t,y);
+        case 2
+            plot(t,y)
+    end
     linkaxes(ax);
     
 end
