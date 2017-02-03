@@ -1,16 +1,9 @@
 #include "mex.h"
-#include <immintrin.h>
+
 //
-//  setenv('MW_MINGW64_LOC','C:\TDM-GCC-64')
+//  For compiling instructions, see big_plot.compile()
 //
-//  mex -O LDFLAGS="$LDFLAGS -fopenmp"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" reduce_to_width_mex.c  
-//
-/*
-    //Compiling on my mac
-    //requires gcc setup, see turtle-json compiling notes
-    //TODO: Move a copy of those notes here ...
-    mex CC='/usr/local/Cellar/gcc6/6.1.0/bin/gcc-6' COPTIMFLAGS="-O3 -DNDEBUG"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" LDFLAGS="$LDFLAGS -fopenmp" COPTIMFLAGS="-O3 -DNDEBUG" -O reduce_to_width_mex.c  
- */
+
 
 //Status
 //-----------
@@ -83,7 +76,7 @@ mwSize getScalarInput(const mxArray *rhs){
     //
     //  TODO: Validate type
     
-    double *temp = mxGetData(rhs);
+    double *temp = (double *)mxGetData(rhs);
     return (mwSize) *temp;
     
 }
@@ -127,8 +120,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         mexErrMsgIdAndTxt("jsmn_mex:n_inputs","Invalid # of outputs, 1 expected");
     }
 
-    double *p_data_absolute = mxGetData(prhs[0]);
-    double *p_start_data = mxGetData(prhs[0]);
+    double *p_data_absolute = (double *)mxGetData(prhs[0]);
+    double *p_start_data = (double *)mxGetData(prhs[0]);
 
     //This is used to adjust the data pointer for each column
     //It can't change ...
@@ -177,7 +170,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         //Need to move one past
     }
     
-    double *p_output_data = mxMalloc(8*n_chans*n_outputs);
+    double *p_output_data = (double *)mxMalloc(8*n_chans*n_outputs);
     double *p_output_data_absolute = p_output_data;
     
     //TODO: I don't think this is used

@@ -98,11 +98,20 @@ classdef big_plot < handle
     %------------------------     Debugging    ----------------------------
     properties
         %This could all get merged into a timer class ...
-        timer 
+        timer %See h__runTimer() in renderData
         
         n_resize_calls = 0 %# of times the figure detected a resize
         
         last_timer_error
+    end
+    
+    properties (Hidden)
+        timer_callback %The function that the timer is running. I exposed
+        %this here so that it could be called manually. I'm not thrilled
+        %with this layout. The callback should probably be moved 
+        %so that we can call it directly
+        
+        manual_callback_running = false
         
         %callback_info %sl.plot.big_data.line_plot_reducer.callback_info
         %Not sure what I'm going to store here
@@ -135,6 +144,9 @@ classdef big_plot < handle
             
             %Now wait for the user to update things and to render the data
             %by calling obj.renderData
+        end
+        function triggerRender(obj)
+            obj.timer_callback();
         end
         function delete(obj)
             t = obj.timer;

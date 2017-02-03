@@ -15,6 +15,7 @@ function varargout = plotBig(varargin)
 %   h = plotBig(y,'x',x_data)
 %   h = plotBig(y,'dt',0.01,varargin)
 %
+%
 %   Inputs
 %   ------
 %   y : [samples x chans]
@@ -37,6 +38,7 @@ function varargout = plotBig(varargin)
 %   dt : scalar
 %       The time difference between two samples, i.e. 1/(sampling_rate)
 %   t0 : starting time
+%   obj: 
 %
 %   Examples
 %   --------
@@ -50,22 +52,47 @@ function varargout = plotBig(varargin)
 %   plotBig(y,'x',t)
 %   %---   or better  -----
 %   plotBig(y,'dt',dt)
+%
+
+%TODO: We should build in support for returning the object with an 
+%input form of (t,y,'obj',true)
+%
+%Currently we assume that the 2nd input will be a character for any
+%optional processing
 
 %Varargin parsing
 %-------------------
 direct_inputs_to_big_plot = true;
-if nargin > 1 && ischar(varargin{2})
-    %TODO: Check for fieldnames from below
-    option_string = varargin{2};
-    if any(strcmp(option_string,{'axes','x','dt','t0','obj'}))
-        direct_inputs_to_big_plot = false;
-        y = varargin{1};
-        varargin = varargin(2:end);
+delete_mask = false(1,nargin);
+s_in = struct;
+for i = 1:(nargin-1)
+    if ischar(varargin{i})
+        option_string = varargin{i};
+        if any(strcmp(option_string,{'axes','x','dt','t0','obj'}))
+            direct_inputs_to_big_plot = false;
+            s_in.(option_string) = varargin{i+1};
+            delete_mask(i:i+1) = true;
+        end
     end
 end
 
+
+% % % % if nargin > 1 
+% % % %     
+% % % %     
+% % % %     && ischar(varargin{2})
+% % % %     %TODO: Check for fieldnames from below
+% % % %     option_string = varargin{2};
+% % % %     if any(strcmp(option_string,{'axes','x','dt','t0','obj'}))
+% % % %         direct_inputs_to_big_plot = false;
+% % % %         y = varargin{1};
+% % % %         varargin = varargin(2:end);
+% % % %     end
+% % % % end
+
 %Shortcut exit for direct call to big_plot
 %------------------------------------------
+%i.e. we had no optional inputs that are pertinent to this function
 if direct_inputs_to_big_plot
     temp = big_plot(varargin{:});
     temp.renderData();
@@ -78,12 +105,15 @@ end
 
 %Processing of alternative call method
 %--------------------------------------
+varargin(delete_mask) = [];
+
+y = varargin{1};
 in.axes = [];
 in.x = [];
 in.dt = [];
 in.t0 = 0;
 in.obj = false;
-in = big_plot.sl.in.processVarargin(in,varargin);
+in = big_plot.sl.in.processVarargin(in,s_in);
 
 if ~isempty(in.dt)
     n_samples = size(y,1);

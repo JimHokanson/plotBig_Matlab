@@ -1,11 +1,18 @@
-function e001_interestingInput(varargin)
+function s = e001_interestingInput(varargin)
 %
-%   big_plot_tests.examples.e001_interestingInput()
+%   s = big_plot_tests.examples.e001_interestingInput()
 %   
-%   Most of the time for this test comes from initialization of the data
-%   ...
+%   Most of the time comes from data intialization ...
 %
-%   From FEX: 40790
+%   This code is based on:
+%           FEX: #40790
+%
+%   Outputs
+%   -------
+%   s :
+%       .y
+%       .t
+%       .h - output from the plot
 %
 %   Optional Inputs
 %   ---------------
@@ -25,6 +32,9 @@ function e001_interestingInput(varargin)
 %}
 in.n = 5e7 + randi(1000);
 in.type = 0;
+in.y = [];
+in.t = [];
+in.get_data_only = false;
 in = big_plot.sl.in.processVarargin(in,varargin); 
     
     n = in.n;
@@ -37,13 +47,28 @@ in = big_plot.sl.in.processVarargin(in,varargin);
         
     
     fprintf('Initializing data with %d samples\n',n);
-    t = linspace(0,100,n);
-    y = [(sin(0.10 * t) + 0.05 * randn(1, n))', ...
-        (cos(0.43 * t) + 0.001 * t .* randn(1, n))', ...
-        round(mod(t/10, 5))'];
-    y(t > 40 & t < 50,:) = 0;                      % Drop a section of data.
-    y(randi(numel(y), 1, 20)) = randn(1, 20);       % Emulate spikes.
+    if ~isempty(in.y) && ~isempty(in.t)
+        y = in.y;
+        t = in.t;
+    else
+        t = linspace(0,100,n);
+        y = [(sin(0.10 * t) + 0.05 * randn(1, n))', ...
+            (cos(0.43 * t) + 0.001 * t .* randn(1, n))', ...
+            round(mod(t/10, 5))'];
+        y(t > 40 & t < 50,:) = 0;                      % Drop a section of data.
+        y(randi(numel(y), 1, 20)) = randn(1, 20);       % Emulate spikes.
+    end
     fprintf('Done initializing data\n');
+    
+    s = struct;
+    s.y = y;
+    s.t = t;
+    
+    if in.get_data_only
+        return
+    end
+        
+    
     %Why do I get the correct orientation when I do this ...
     %I think it should be many channels with only a few samples,
     %where is the correction coming into play???
@@ -68,12 +93,24 @@ in = big_plot.sl.in.processVarargin(in,varargin);
     ax(2) = subplot(2,1,2);
     switch in.type
         case 0
-            plotBig(t,y);
+            %Normally we would get h, but I needed the object
+            %for a demo
+            %
+            %i.e. normally this works:
+            %
+            %   h = plotBig(t,y);
+            %
+            
+            temp = plotBig(y,'dt',t(2)-t(1),'obj',true);
+            s.obj = temp;
+            all_lines = temp.h_and_l.h_plot;
+            h = vertcat(all_lines{:});
         case 1
-            reduce_plot(t,y);
+            h = reduce_plot(t,y);
         case 2
-            plot(t,y)
+            h = plot(t,y);
     end
+    s.h = h;
     linkaxes(ax);
     
 end

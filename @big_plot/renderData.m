@@ -13,6 +13,11 @@ function renderData(obj,s)
 %   s : (struct)
 %       new_xlim
 
+%Relevant objects
+%----------------
+%   big_plot.render_info
+
+
 obj.render_info.incrementRenderCount();
 
 if nargin == 1
@@ -28,7 +33,17 @@ end
 
 end
 
+function h__trigger_manual_callback(obj)
 
+obj.manual_callback_running = true;
+
+h__runTimer(obj);
+
+obj.manual_callback_running = false;
+
+
+
+end
 
 %--------------------------------------------------------------------------
 %-----------------   Initialization  --------------------------------------
@@ -192,6 +207,9 @@ set(t,'TimerFcn',@(~,~)h__runTimer(obj));
 start(t);
 obj.timer = t;
 
+%This might change ...
+obj.timer_callback = @()h__trigger_manual_callback(obj);
+
 end
 
 %--------------------------------------------------------------------------
@@ -308,6 +326,10 @@ end
 end
 
 function h__runTimer(obj)
+
+if obj.manual_callback_running
+    return
+end
 
 cur_xlim = get(obj.h_and_l.h_axes,'xlim');
 
