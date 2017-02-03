@@ -61,8 +61,9 @@ in = big_plot.sl.in.processVarargin(in,varargin);
         case 1
             reduce_plot(t,y);
         case 2
-            plot(t,y)
+            plot(t,y) 
     end
+    drawnow
     fprintf('test001: time to process and plot was: %0.3f seconds\n',toc);
     ax(2) = subplot(2,1,2);
     switch in.type
