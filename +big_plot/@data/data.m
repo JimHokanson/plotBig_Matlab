@@ -167,7 +167,7 @@ for k = 1:n_inputs
             end
             
             % Store y, x, and a map from y index to x index.
-            temp_x{end+1} = xm; %#ok<AGROW>
+            temp_x{end+1} = h__simplifyX(xm); %#ok<AGROW>
             temp_y{end+1} = ym; %#ok<AGROW>
             n_groups = n_groups + 1;
             % We've now matched this x.
@@ -207,7 +207,8 @@ if previous_type == 'x'
     % Make the implied x explicit. %TODO: Allow being empty ...
     %It would be easier to make a time_series object
     %   - same memory benefit, already implemented
-    temp_x{end+1} = (1:size(ym, 1))';
+    %temp_x{end+1} = (1:size(ym, 1))';
+    temp_x{end+1} = big_plot.time(1,size(ym,1),'sample_offset',1);
     temp_y{end+1} = ym;
     n_groups = n_groups + 1;
     temp_specs{n_groups} = {};
@@ -222,5 +223,23 @@ end
 obj.x = temp_x;
 obj.y = temp_y;
 obj.linespecs = temp_specs;
+
+end
+
+function x_data_out = h__simplifyX(x_data)
+%
+%   Changes a vector x into a time series specification if the data are 
+%   evenly sampled.
+%
+
+x_data_out = x_data;
+
+%This length here is somewhat arbitrary, although it can't be less than 2
+%otherwise we can't calculate dt
+if ~isobject(x_data) && length(x_data) > 2 && big_plot.hasSameDiff(x_data)
+    dt = (x_data(end)-x_data(1))/(length(x_data)-1);
+    t0 = x_data(1);
+    x_data_out = big_plot.time(dt,length(x_data),'start_offset',t0);
+end
 
 end

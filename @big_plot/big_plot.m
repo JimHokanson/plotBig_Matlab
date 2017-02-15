@@ -22,29 +22,30 @@ classdef big_plot < handle
     %   Zooming in on the data engages callbacks that replot the data with
     %   higher fidelity.
     %
+    %   Usage
+    %   -----
+    %   1) Call plotBig
+    %   
     %   Examples:
     %   ---------
-    %   big_plot(t, x)
+    %   b = big_plot(t, y)
     %
-    %   big_plot(t, x, 'r:', t, y, 'b', 'LineWidth', 3);
+    %   b = big_plot(t, y, 'r:', t, y2, 'b', 'LineWidth', 3);
     %
     %   big_plot(@plot, t, x);
     %
-    %   big_plot(@stairs, axes_h, t, x);
     %
     %   Based On:
     %   ---------
     %   This code is based on:
     %   http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-/
     %
-    %   This code is organized a bit better than that code, it handles
-    %   callbacks a bit better, and it should run much faster.
+    %   Differences include:
+    %       - inclusion of time option
     %
-    %   See Also:
-    %   ---------
+    %   See Also
+    %   --------
     %   plotBig
-    %
-    %
         
     %{
     Other functions for comparison:
@@ -62,11 +63,6 @@ classdef big_plot < handle
     
     %}
     
-    %External Files:
-    %---------------
-    %2) line_plot_reducer.renderData
-    %3) line_plot_reducer.reduce_to_width
-
     %------------           User Options         --------------------
     properties
         %These are not currently being used
@@ -92,9 +88,9 @@ classdef big_plot < handle
         %when working with callback optimization, i.e. to identify which
         %object is throwing the callback (debugging)
         
-        h_and_l %big_plot.handles_and_listeners
+        h_and_l     %big_plot.handles_and_listeners
         
-        data %big_plot.data
+        data        %big_plot.data
         
         render_info %big_plot.render_info
     end
@@ -102,11 +98,20 @@ classdef big_plot < handle
     %------------------------     Debugging    ----------------------------
     properties
         %This could all get merged into a timer class ...
-        timer 
+        timer %See h__runTimer() in renderData
         
         n_resize_calls = 0 %# of times the figure detected a resize
         
         last_timer_error
+    end
+    
+    properties (Hidden)
+        timer_callback %The function that the timer is running. I exposed
+        %this here so that it could be called manually. I'm not thrilled
+        %with this layout. The callback should probably be moved 
+        %so that we can call it directly
+        
+        manual_callback_running = false
         
         %callback_info %sl.plot.big_data.line_plot_reducer.callback_info
         %Not sure what I'm going to store here
@@ -138,7 +143,10 @@ classdef big_plot < handle
             obj.render_info = big_plot.render_info(obj.data.n_plot_groups);
             
             %Now wait for the user to update things and to render the data
-            %...
+            %by calling obj.renderData
+        end
+        function triggerRender(obj)
+            obj.timer_callback();
         end
         function delete(obj)
             t = obj.timer;

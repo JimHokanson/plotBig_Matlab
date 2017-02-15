@@ -1,4 +1,4 @@
-classdef time < sl.obj.display_class
+classdef time < handle
     %
     %   Class:
     %   line_plot_reducer.time
@@ -112,7 +112,7 @@ classdef time < sl.obj.display_class
             in.start_datetime = 0;
             in.start_offset   = [];
             in.sample_offset  = [];
-            in = sl.in.processVarargin(in,varargin);
+            in = big_plot.sl.in.processVarargin(in,varargin);
             
             if ~isempty(in.sample_offset)
                 if ~isempty(in.start_offset)
@@ -137,7 +137,7 @@ classdef time < sl.obj.display_class
             %   new_start_offset :
             
             in.new_start_offset = [];
-            in = sl.in.processVarargin(in,varargin);
+            in = big_plot.sl.in.processVarargin(in,varargin);
             
             if isempty(in.new_start_offset)
                 start_offsets = [objs.start_offset];
@@ -190,7 +190,7 @@ classdef time < sl.obj.display_class
             %       absolute start time is maintained.
             
             in.first_sample_time = [];
-            in = sl.in.processVarargin(in,varargin);
+            in = big_plot.sl.in.processVarargin(in,varargin);
             
             first_sample_real_time = (start_sample-1)*obj.dt + obj.start_offset;
             

@@ -1,26 +1,22 @@
 function renderData(obj,s)
-% Draws all of the data.
+%x   Draws all of the data.
 %
 %   This is THE main function which actually plots data.
 %
-%   Inputs:
-%   -------
+%   Forms
+%   -----
+%   obj.renderData()  %user mode
+%   obj.renderData(s) %timer only
+%
+%   Inputs
+%   ------
 %   s : (struct)
-%       Data from a callback event with fields:
-%       h : Axes
-%       event_data : matlab.graphics.eventdata.SizeChanged (>= 2014b)
-%                    ??? (pre 2014b)
-%       axes_I :
-%           Which axes
-%   is_quick : logical
-%       If true this is a request to update the plot as quickly as
-%       possible.
-%
-%   This function is called:
-%       1) manually
-%       2) from the timer ...
-%
-%   line_plot_reducer.renderData
+%       new_xlim
+
+%Relevant objects
+%----------------
+%   big_plot.render_info
+
 
 obj.render_info.incrementRenderCount();
 
@@ -30,13 +26,24 @@ else
     h__replotData(obj,s)
 end
 
+%TODO: This should only be called if a rendering occurred
 if ~isempty(obj.post_render_callback)
     obj.post_render_callback();
 end
 
 end
 
+function h__trigger_manual_callback(obj)
 
+obj.manual_callback_running = true;
+
+h__runTimer(obj);
+
+obj.manual_callback_running = false;
+
+
+
+end
 
 %--------------------------------------------------------------------------
 %-----------------   Initialization  --------------------------------------
@@ -147,11 +154,12 @@ end
 for iG = 1:n_plot_groups
     %Reduce the data.
     %----------------------------------------
-    [x_r, y_r, range_I] = big_plot.reduce_to_width(obj.data.x{iG}, obj.data.y{iG}, n_samples_plot, [-Inf Inf]);
+    [x_r, y_r, range_I] = big_plot.reduceToWidth(obj.data.x{iG}, obj.data.y{iG}, n_samples_plot, [-Inf Inf]);
     
     %We get an empty value when the line is not in the range of the plot
     %Note, this may no longer be true as we always keep the first and last
     %points ...
+    
     if isempty(x_r)
         group_x_min(iG) = NaN;
         group_x_max(iG) = NaN;
@@ -176,8 +184,6 @@ for iG = 1:n_plot_groups
     
 end
 
-%TODO: Can we just grab the first and the last ????
-%TODO: We might have NaNs
 orig_x_limits = [min(group_x_min) max(group_x_max)];
 obj.render_info.logOriginalXLim(orig_x_limits);
 
@@ -187,8 +193,6 @@ if ~isempty(obj.data.extra_plot_options)
     plot_args = [plot_args obj.data.extra_plot_options];
 end
 
-
-
 end
 
 %1.3) Timer setup
@@ -196,11 +200,6 @@ function h__setupTimer(obj)
 %
 %   This function runs after everything has been setup...
 %
-%   Called by:
-%   line_plot_reducer.renderData>h__handleFirstPlotting
-%
-%   JAH: I'm not thrilled with the layout of this code but it is fine for
-%   now.
 
 t = timer();
 set(t,'Period',0.1,'ExecutionMode','fixedSpacing')
@@ -208,10 +207,14 @@ set(t,'TimerFcn',@(~,~)h__runTimer(obj));
 start(t);
 obj.timer = t;
 
+%This might change ...
+obj.timer_callback = @()h__trigger_manual_callback(obj);
+
 end
 
 %--------------------------------------------------------------------------
-%---------------------   Replotting      ----------------------------------
+%---------------------          Replotting      ---------------------------
+%--------------------------------------------------------------------------
 %2) Main function for replotting
 function h__replotData(obj,s)
 %
@@ -272,7 +275,7 @@ for iG = 1:obj.data.n_plot_groups
         
     else
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
-        [x_r, y_r, range_I, same_range] = big_plot.reduce_to_width(x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
+        [x_r, y_r, range_I, same_range] = big_plot.reduceToWidth(x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
         
         if same_range
             obj.render_info.logNoRenderCall(new_x_limits);
@@ -323,6 +326,10 @@ end
 end
 
 function h__runTimer(obj)
+
+if obj.manual_callback_running
+    return
+end
 
 cur_xlim = get(obj.h_and_l.h_axes,'xlim');
 
