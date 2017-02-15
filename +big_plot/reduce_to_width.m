@@ -49,6 +49,7 @@ y_reduced = [];
 range_I = [];
 
 
+
 % % % % x_reduced = (1:5)';
 % % % % y_reduced = (1:5)';
 % % % % extras = [];
@@ -71,11 +72,13 @@ end
 if n_y_samples < N_SAMPLES_JUST_PLOT
     y_reduced = y;
     if isobject(x)
-        x_reduced = x.getTimeArray';
+        x_reduced = x.getTimeArray;
+        x_reduced = x_reduced(:); %ensure column vector ..
     else
         x_reduced = x;
     end
     range_I = [1 length(x)];
+    same_range = isequal(range_I,last_range_I);
     return
 end
 
