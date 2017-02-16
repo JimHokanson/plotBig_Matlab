@@ -5,17 +5,17 @@
 //  d = linspace(0,100,1e7);
 //  tic; wtf = same_diff(d); toc;    
 
-//
+//  Compile via:
 //  mex same_diff_mex.c
-//
-//  http://www.mathworks.com/matlabcentral/answers/303782-is-xcode-8-compatible-with-matlab
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 {
     //
-    //      flag = same_diff(data,tolerance)
+    //      Usage
+    //      -----
+    //      flag = same_diff(data,tolerance_multiplier)
     //
-    //      - data is assumed to be 1d
+    //      - data is assumed to be 1d (this could be verified ...)
     //
     //      Computes whether or not all differences are the same
     //      as the first difference
@@ -29,19 +29,25 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //      1) parallel
     //      2) simd
     
-    //TODO: Need to do checks for double type data ...
-    if (!(nrhs == 1)){
-        mexErrMsgIdAndTxt("SL:same_diff:n_inputs","Invalid # of inputs, 1 expected");
-    }else if (!mxIsClass(prhs[0],"double")){
-        mexErrMsgIdAndTxt("SL:same_diff:input_class_type","Type of inputs class needs to be double");
+    double tolerance_multiplier = 0.00001;
+    
+    if (nrhs == 2){
+        if (!mxIsClass(prhs[1],"double")){
+            mexErrMsgIdAndTxt("SL:same_diff:call_error","The 2nd input must be a double");
+        }
+        tolerance_multiplier = mxGetScalar(prhs[1]);
+    }else if (nrhs != 1){
+        mexErrMsgIdAndTxt("SL:same_diff:call_error","Invalid # of inputs, 1 or 2 expected");
     }
     
-    //This will change when we merge the results
+    if (!mxIsClass(prhs[0],"double")){
+        mexErrMsgIdAndTxt("SL:same_diff:call_error","The input array must be of type double");
+    }    
+    
     if (!(nlhs == 1)){
         mexErrMsgIdAndTxt("SL:same_diff:n_inputs","Invalid # of outputs, 1 expected");
     }
 
-    
     mwSize n_samples_data = mxGetNumberOfElements(prhs[0]);
     
     plhs[0] = mxCreateLogicalMatrix(1,1);
@@ -55,16 +61,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     double *data = mxGetData(prhs[0]);
     double *p_start = data;
     
-    //Starting work on sentinel ...
-    
-    
     double last_sample    = *data;
     double current_sample = *(++data);
     double current_diff   = current_sample - last_sample;
     double last_diff      = current_diff;
     
-    double MAX_DIFF = 0.0001*fabs(last_diff);
+    double MAX_DIFF = tolerance_multiplier*fabs(last_diff);
      
+    //sentinel block - don't need to worry about running past the end
+    //since the last value will always be false
     double end_array_value = *(p_start+n_samples_data-1);
     *(p_start+n_samples_data-1) = mxGetNaN();
 
@@ -83,20 +88,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     if (data == p_start+n_samples_data-1){
         current_diff = end_array_value - last_sample;
         *pl = (fabs(current_diff - last_diff) < MAX_DIFF);
+    }else{
+        *pl = false;
     }
-    
-    //Old code
-    //--------------------------------------------------
-//     for (mwSize iSample = 2; iSample < n_samples_data; iSample++){
-//         last_sample    = current_sample;
-//         current_sample = *(++data);
-//         current_diff   = current_sample - last_sample;
-// 
-//         if (fabs(current_diff - last_diff) > MAX_DIFF){
-//             *pl = false;
-//             return;
-//         }
-//         last_diff = current_diff;
-//     }
     
 }
