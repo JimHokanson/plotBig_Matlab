@@ -35,6 +35,12 @@ function compile()
 %   These instructions assume that Apple has still not built openmp
 %   support into XCode. If they do, then no instructions would be needed.
 %
+%   I think these instructions worked just fine:
+%   0) brew update xcode-select
+%   1) brew install gcc
+%
+%   Old instructions
+%   -------------------
 %   0) Make sure homebrew is installed
 %   1) in the terminal run:
 %       brew update xcode-select
@@ -57,68 +63,128 @@ function compile()
 %3) build in try/catch support
 %4) Finish mac support
 
+verbose = true;
+c = mex.compilers.gcc('$this/private/same_diff_mex.c','verbose',verbose);
+c.build();
+
+c = mex.compilers.gcc('$this/private/reduce_to_width_mex.c','verbose',verbose);
+c.addLib('openmp');
+c.build();
 
 
-CURRENT_FUNCTION_NAME = 'big_plot.compile';
-LIB_PATH = 'C:\TDM-GCC-64\lib\gcc\x86_64-w64-mingw32\5.1.0\libgomp.a';
-LIB_FILENAME = 'libgomp.a';
+%temp = mex.file.getDependencies('reduce_to_width_mex.mexmaci64');
 
-%NYI
-MAC_COMPILER_PATH = '/usr/local/Cellar/gcc6/6.1.0/bin/gcc-6';
+keyboard
 
-if ismac()
-    error('mac compiling not yet updated')
-elseif isunix()
-    error('unix compiling not yet written')
-end
+% CURRENT_FUNCTION_NAME = 'big_plot.compile';
+% LIB_PATH = 'C:\TDM-GCC-64\lib\gcc\x86_64-w64-mingw32\5.1.0\libgomp.a';
+% LIB_FILENAME = 'libgomp.a';
+% 
+% %NYI
+% MAC_COMPILER_PATH = '/usr/local/Cellar/gcc6/6.1.0/bin/gcc-6';
+% MAC_COMPILER_PATH = '/usr/local/Cellar/gcc/6.3.0_1/bin/gcc-6';
+% lib_path = '/usr/local/Cellar/gcc/6.3.0_1/lib/gcc/6/libgomp.a'
+% 
+% 
+% %Is this aliased to the install path? - yes
+% %But not all the libs are aliased
+% %/usr/local/lib/gcc/6/
+% 
+% if ismac()
+%     error('mac compiling not yet updated')
+% elseif isunix()
+%     error('unix compiling not yet written')
+% end
+% 
+% package_path = fileparts(which(CURRENT_FUNCTION_NAME));
+% mex_path = fullfile(package_path, 'private');
+% current_path = cd;
+% cd(mex_path);
+% 
+% 
+% %------------------------------------------------------
+% if ismac()
+%     %TODO: make sure we link the openmp library statically
+%     %mex CC='/usr/local/Cellar/gcc6/6.1.0/bin/gcc-6' COPTIMFLAGS="-O3 -DNDEBUG"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" LDFLAGS="$LDFLAGS -fopenmp" COPTIMFLAGS="-O3 -DNDEBUG" -O reduce_to_width_mex.c 
+%     mex CC='/usr/local/Cellar/gcc/6.3.0_1/bin/gcc-6' COPTIMFLAGS="-O3 -DNDEBUG"  ...
+%         CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" LDFLAGS="$LDFLAGS -fopenmp" ...
+%         COPTIMFLAGS="-O3 -DNDEBUG" -O reduce_to_width_mex.c libgomp.a -v
+%     
+%         mex CC='/usr/local/Cellar/gcc/6.3.0_1/bin/gcc-6' COPTIMFLAGS="-O3 -DNDEBUG"  ...
+%         CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" LDFLAGS="$LDFLAGS -fopenmp" ...
+%         COPTIMFLAGS="-O3 -DNDEBUG" -O reduce_to_width_mex.c -lgomp
+%     
+%     
+%     temp = {'CC=''/usr/local/Cellar/gcc/6.3.0_1/bin/gcc-6'''
+%         'COPTIMFLAGS="-O3 -DNDEBUG"'
+%         'CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx"'
+%         'LDFLAGS="$LDFLAGS -fopenmp -Wl,-rpath=\\\$ORIGIN"'
+%         '-O'
+%         'reduce_to_width_mex.c'
+%         '-lgomp'};
+%     
+%     temp = {'CC=''/usr/local/Cellar/gcc/6.3.0_1/bin/gcc-6'''
+%         'COPTIMFLAGS="-O3 -DNDEBUG"'
+%         'CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx -static-libgcc"'
+%         'LDFLAGS="$LDFLAGS -fopenmp"'
+%         '-O'
+%         'reduce_to_width_mex.c'
+%         '-lgomp'
+%         '-v'};
+%     
 
-package_path = fileparts(which(CURRENT_FUNCTION_NAME));
-mex_path = fullfile(package_path, 'private');
-current_path = cd;
-cd(mex_path);
-
-
-%------------------------------------------------------
-if ismac()
-    %TODO: make sure we link the openmp library statically
-    %mex CC='/usr/local/Cellar/gcc6/6.1.0/bin/gcc-6' COPTIMFLAGS="-O3 -DNDEBUG"  CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx" LDFLAGS="$LDFLAGS -fopenmp" COPTIMFLAGS="-O3 -DNDEBUG" -O reduce_to_width_mex.c 
-end
-
-if ispc %pc
-    CC = mex.getCompilerConfigurations;
-    if isempty(CC)
-        error('A compiler is required but none were found')
-    end
-    for iCompiler = 1:length(CC)
-       cur_compiler = CC(iCompiler); 
-       if strcmp(cur_compiler.Language,'C')
-           break
-       end
-    end
-    %TODO: We might need to verify tht this is a professional version ...
-    is_ms = strcmp(cur_compiler.Manufacturer,'Microsoft');
-    is_gnu = strcmp(cur_compiler.Manufacturer,'GNU');
-    if is_ms
-        %I'm not if we c99 would work ...
-    	copyfile('reduce_to_width_mex.c','reduce_to_width_mex.cpp');
-      	mex -O CFLAGS="$CFLAGS /openmp" reduce_to_width_mex.cpp -v
-     	delete('reduce_to_width_mex.cpp')
-    elseif is_gnu
-        if ~exist(LIB_PATH,'file')
-            error('Specified LIB_PATH is not valid')
-
-        end
-        mex_lib_path = fullfile(mex_path, LIB_FILENAME);
-        copyfile(LIB_PATH, mex_path);
-        mex -O LDFLAGS="$LDFLAGS -fopenmp" CFLAGS="$CFLAGS -std=c11 -fopenmp" reduce_to_width_mex.c -v libgomp.a
-        delete(mex_lib_path);
-    else
-        error('Compiler option not recognized')
-    end
-    
-end
-
-cd(current_path);
+%         temp = {'CC=''/usr/local/Cellar/gcc/6.3.0_1/bin/gcc-6'''
+%         'COPTIMFLAGS="-O3 -DNDEBUG"'
+%         'CFLAGS="$CFLAGS -std=c11 -fopenmp -mavx"'
+%         'LDFLAGS="$LDFLAGS -fopenmp"'
+%         '-O'
+%         'reduce_to_width_mex.c'
+%         'libgomp.a'
+%         '-v'};
+%     
+%     
+%     
+%     mex(temp{:})
+%     
+    otool -L reduce_to_width_mex.mexmaci64
+% 
+% end
+% 
+% if ispc %pc
+%     CC = mex.getCompilerConfigurations;
+%     if isempty(CC)
+%         error('A compiler is required but none were found')
+%     end
+%     for iCompiler = 1:length(CC)
+%        cur_compiler = CC(iCompiler); 
+%        if strcmp(cur_compiler.Language,'C')
+%            break
+%        end
+%     end
+%     %TODO: We might need to verify tht this is a professional version ...
+%     is_ms = strcmp(cur_compiler.Manufacturer,'Microsoft');
+%     is_gnu = strcmp(cur_compiler.Manufacturer,'GNU');
+%     if is_ms
+%         %I'm not if we c99 would work ...
+%     	copyfile('reduce_to_width_mex.c','reduce_to_width_mex.cpp');
+%       	mex -O CFLAGS="$CFLAGS /openmp" reduce_to_width_mex.cpp -v
+%      	delete('reduce_to_width_mex.cpp')
+%     elseif is_gnu
+%         if ~exist(LIB_PATH,'file')
+%             error('Specified LIB_PATH is not valid')
+% 
+%         end
+%         mex_lib_path = fullfile(mex_path, LIB_FILENAME);
+%         copyfile(LIB_PATH, mex_path);
+%         mex -O LDFLAGS="$LDFLAGS -fopenmp" CFLAGS="$CFLAGS -std=c11 -fopenmp" reduce_to_width_mex.c -v libgomp.a
+%         delete(mex_lib_path);
+%     else
+%         error('Compiler option not recognized')
+%     end
+%     
+% end
+% 
+% cd(current_path);
 
 end
 
