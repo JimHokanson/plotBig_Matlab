@@ -13,10 +13,10 @@ function compile()
 %TODO: List supported compilers and try and acquire them
 
 verbose = true;
-c = mex.compilers.gcc('$this/private/same_diff_mex.c','verbose',verbose);
+c = mex.compilers.gcc('./private/same_diff_mex.c','verbose',verbose);
 c.build();
 
-c = mex.compilers.gcc('$this/private/reduce_to_width_mex.c','verbose',verbose);
+c = mex.compilers.gcc('./private/reduce_to_width_mex.c','verbose',verbose);
 c.addLib('openmp');
 c.build();
 
