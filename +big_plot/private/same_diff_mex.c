@@ -2,8 +2,12 @@
 #include <math.h> 
 #include "float.h"
 
+//  M-file gateway is:
+//  big_plot.hasSameDiff
+
+
 //  d = linspace(0,100,1e7);
-//  tic; wtf = same_diff(d); toc;    
+//  tic; wtf = big_plot.hasSameDiff(d); toc;    
 
 //  Compile via:
 //  mex same_diff_mex.c
