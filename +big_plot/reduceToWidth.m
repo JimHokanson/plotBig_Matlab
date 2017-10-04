@@ -105,6 +105,7 @@ if n_y_samples < N_SAMPLES_JUST_PLOT
         x_reduced = x;
     end
     range_I = [1 length(x)];
+    same_range = isequal(range_I,last_range_I);
     return
 end
 
