@@ -71,13 +71,19 @@ len_data_p1 = size(data,1)+1;
  %------------------------------------------------------------------------
 */
 
-mwSize getScalarInput(const mxArray *rhs){
+mwSize getScalarInput(const mxArray *input, int input_number){
     //
-    //
-    //  TODO: Validate type
+    //  Inputs
+    //  -------
+    //  input_number : 1 based
+    //      Used for error reporting
     
-    double *temp = (double *)mxGetData(rhs);
-    return (mwSize) *temp;
+    if (!mxIsClass(input,"double")){
+        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Input #%d type needs to be double",input_number);
+    }
+    
+    double temp = mxGetScalar(input);
+    return (mwSize) temp;
     
 }
 
@@ -92,6 +98,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //  ------
     //  data : [samples x channels]
     //  samples_per_chunk : #
+    //      The output is a min and max pair per chunk (with possible data
+    //      padding)
     //   
     //  Optional Inputs
     //  -------
@@ -100,6 +108,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //  end_sample: #, 1 based
     //
     
+    bool process_subset;
+    
+    //---------------------------------------------------------------------
+    //                      Input Checking
+    //---------------------------------------------------------------------
     if (!(nrhs == 2 || nrhs == 4)){
         mexErrMsgIdAndTxt("SL:reduce_to_width:n_inputs","Invalid # of inputs, 2 or 4 expected");
     }else if (!mxIsClass(prhs[0],"double")){
@@ -109,22 +122,25 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     }
     
     if (nrhs == 4){
+        process_subset = true;
         if (!mxIsClass(prhs[2],"double")){
             mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Third input type needs to be double");
         }else if (!mxIsClass(prhs[3],"double")){
             mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Fourth input type needs to be double");
         }  
+    }else{
+        process_subset = false; 
     }
-    //This will change when we merge the results
+    
     if (!(nlhs == 1)){
         mexErrMsgIdAndTxt("jsmn_mex:n_inputs","Invalid # of outputs, 1 expected");
     }
-
-    double *p_data_absolute = (double *)mxGetData(prhs[0]);
-    double *p_start_data = (double *)mxGetData(prhs[0]);
-
-    //This is used to adjust the data pointer for each column
-    //It can't change ...
+    
+    
+    //---------------------------------------------------------------------
+    //                  Initialization of variables
+    //---------------------------------------------------------------------
+    //This is used to adjust the data pointer to the start of each column
     mwSize n_samples_data = mxGetM(prhs[0]);
     
     //This is used to indicate how many samples we need to examine
@@ -132,10 +148,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     mwSize n_samples_process = n_samples_data;
     mwSize n_chans = mxGetN(prhs[0]);
     
-    mwSize samples_per_chunk = getScalarInput(prhs[1]);
-    if (nrhs == 4){
-        mwSize start_index = getScalarInput(prhs[2]) - 1; //make 0 based
-        mwSize stop_index  = getScalarInput(prhs[3]) - 1;
+    mwSize samples_per_chunk = getScalarInput(prhs[1],2);
+    
+    mwSize start_index;
+    mwSize stop_index;
+    
+    //If we process a subset, determine how many samples we need to
+    //offset the start and how many less samples are going to process.
+    //---------------------------------------------------------------------
+    if (process_subset){
+      	start_index = getScalarInput(prhs[2],3) - 1; //make 0 based
+      	stop_index  = getScalarInput(prhs[3],4) - 1;
         
         mwSize max_valid_index = n_samples_data - 1;
         
@@ -147,35 +170,40 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             mexErrMsgIdAndTxt("SL:reduce_to_width:stop_before_start","Start index comes after stop index");
         }
         
-        p_start_data = p_start_data + start_index;
         n_samples_process = stop_index - start_index + 1;
     }
     
+    //In general we pad with the endpoints to prevent axes resizing 
+    //(in Matlab). We always pad with the endpoints when a subset 
+    //is requested.
     bool pad_with_endpoints = n_samples_process != n_samples_data;
-    //Integer division, should floor as desired
+    
+    //Integer division, should automatically floor (as desired)
     mwSize n_chunks = n_samples_process/samples_per_chunk;
-    mwSize n_samples_extra = n_samples_process - n_chunks*samples_per_chunk;
+    mwSize n_samples_not_in_chunk = n_samples_process - n_chunks*samples_per_chunk;
     
-    //We are going to store min and max together
-    mwSize n_outputs = 2*n_chunks;
+    //For each chunk we store a min and max value
+    //Even if the same value we duplicate it.
+    mwSize n_outputs_per_chan = 2*n_chunks;
     
-    if (n_samples_extra){
-        n_outputs+=2; //Add on one extra when things don't evenly divide
+    if (n_samples_not_in_chunk){
+        n_outputs_per_chan += 2; //Add on one extra pair when 
+        //the # of samples per chunk doesn't evenly dividie the input data
     }
     
     //Note, we might get some replication with the first and last
     //data points if only one of those is cropped
     if (pad_with_endpoints){
-        n_outputs+=2;
-        //Need to move one past
+        n_outputs_per_chan += 2;
     }
     
-    double *p_output_data = (double *)mxMalloc(8*n_chans*n_outputs);
-    double *p_output_data_absolute = p_output_data;
+    //Class specific code
+  	double *p_input_data_fixed = (double *)mxGetData(prhs[0]);
+    double *p_input_data = p_input_data_fixed;
     
-    //TODO: I don't think this is used
-    mwSize pad_offset = pad_with_endpoints ? 1:0;
-    
+ 	double *p_output_data_fixed = (double *)mxMalloc(8*n_chans*n_outputs_per_chan);
+    double *p_output_data = p_output_data_fixed;
+        
     //Initialize the first and last values of the output
     //---------------------------------------------------------------------
     //We keep the first and last values if we are not plotting everything
@@ -183,34 +211,41 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //  1) The first data point in each channel to the first output value
     //  2) The last data point in each channel to the last output value
     if (pad_with_endpoints){
-        double *pad_output_data = p_output_data;
-        double *current_data_point = p_data_absolute;
         for (mwSize iChan = 0; iChan < n_chans; iChan++){
             
-            //Storage of first data point
-            *pad_output_data = *current_data_point;
+            //Store first data point to output
+            *p_output_data = *p_input_data;
             
+            //Advance input and output pointers to end of column
+            p_output_data += (n_outputs_per_chan-1);
+            p_input_data += (n_samples_data-1);
             
-            pad_output_data += (n_outputs-1);
-            current_data_point += (n_samples_data-1);
-            
-            //Storage of last data point
-            *pad_output_data = *current_data_point;
+            //Store last data point
+            *p_output_data = *p_input_data;
             
             //Roll over to the next channel
-            ++current_data_point;
-            ++pad_output_data;
+            //1st sample of next is 1 more than last sample of current
+            ++p_input_data;
+            ++p_output_data;
         }
         
-        //Move beyond the first padded data point
-        //TODO: Better variable naming may help here
-        //When looping over the outputs, we want to start by asssigning
-        //data to the 2nd output, since the first has now already been
-        //populated
+        //Adjust pointers for next section
+        //------------------------------------------------
+        //Resetting to initial position
+        p_output_data = p_output_data_fixed;
+        p_input_data = p_input_data_fixed;
+        
+        //Move output beyond first point (logged above)
         ++p_output_data;
+        
+     	if (process_subset){
+            p_input_data = p_input_data + start_index;
+        }
     }
     
-
+    //---------------------------------------------------------------------
+    //                          Chunk processing
+    //---------------------------------------------------------------------
     #pragma omp parallel for simd collapse(2)
     for (mwSize iChan = 0; iChan < n_chans; iChan++){
         //Note, we can't initialize anything before this loop, since we
@@ -219,14 +254,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         //does not equal the # of threads.
         for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){
             
-            double *current_data_point = p_start_data + n_samples_data*iChan + iChunk*samples_per_chunk;
+            double *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk;
             
             //Pointer => start + column wrapping + offset (row into column) - 1
             //*2 since we store min and max in each chunk
-            double *local_output_data = p_output_data + n_outputs*iChan + 2*iChunk;
+            double *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk;
 
-            double min = *current_data_point;
-            double max = *current_data_point;
+            double min = *current_input_data_point;
+            double max = *current_input_data_point;
             
             //We might get some speedup by looking for a slow trend
             //over the data and adjusting the order that we look
@@ -234,34 +269,39 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             
             //This is the slow part :/
             for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){
-                if (*(++current_data_point) > max){
-                    max = *current_data_point;
-                }else if (*current_data_point < min){
-                    min = *current_data_point;
+                if (*(++current_input_data_point) > max){
+                    max = *current_input_data_point;
+                }else if (*current_input_data_point < min){
+                    min = *current_input_data_point;
                 }
             }
 
+            //Store min and max for chunk
+            //---------------------
             *local_output_data = min;
             *(++local_output_data) = max;            
         }
     }
     
-    if (n_samples_extra){
+    //---------------------------------------------------------------------
+    //           Processing last part that didn't fit into a chunk
+    //---------------------------------------------------------------------
+    if (n_samples_not_in_chunk){
         #pragma omp parallel for simd
         for (mwSize iChan = 0; iChan < n_chans; iChan++){
             
-            double *current_data_point = p_start_data + n_samples_data*iChan + n_chunks*samples_per_chunk;
+            double *current_input_data_point = p_input_data + n_samples_data*iChan + n_chunks*samples_per_chunk;
             
-            double *local_output_data = p_output_data + n_outputs*iChan + 2*n_chunks;
+            double *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*n_chunks;
             
-            double min = *current_data_point;
-            double max = *current_data_point;
+            double min = *current_input_data_point;
+            double max = *current_input_data_point;
             
-            for (mwSize iSample = 1; iSample < n_samples_extra; iSample++){
-                if (*(++current_data_point) > max){
-                    max = *current_data_point;
-                }else if (*current_data_point < min){
-                    min = *current_data_point;
+            for (mwSize iSample = 1; iSample < n_samples_not_in_chunk; iSample++){
+                if (*(++current_input_data_point) > max){
+                    max = *current_input_data_point;
+                }else if (*current_input_data_point < min){
+                    min = *current_input_data_point;
                 }
             }
             *local_output_data = min;
@@ -269,10 +309,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         }
     }
     
+    //Finalize output
+    //-------------------
     plhs[0] = mxCreateDoubleMatrix(0, 0, mxREAL);
-    
-    mxSetData(plhs[0],p_output_data_absolute);
-    mxSetM(plhs[0],n_outputs);
+    mxSetData(plhs[0],p_output_data_fixed);
+    mxSetM(plhs[0],n_outputs_per_chan);
     mxSetN(plhs[0],n_chans);
 
 }

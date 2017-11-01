@@ -12,6 +12,7 @@ function compile()
 
 %TODO: List supported compilers and try and acquire them
 
+%This code uses https://github.com/JimHokanson/mex_maker
 verbose = true;
 c = mex.compilers.gcc('./private/same_diff_mex.c','verbose',verbose);
 c.build();
