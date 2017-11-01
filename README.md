@@ -1,11 +1,15 @@
 # Introduction
 
-This code makes plotting line plots in Matlab much faster.
-Zooming is also much faster. This code is based on 
+This code:
+1) Speeds up time to plot data
+2) Speeds up time to plot after zooming
+
+This code is based on an approach which I originally saw in the following code:
 [matlab-plot-big](https://github.com/tuckermcclure/matlab-plot-big)
 
-"matlab-plot-big" was the best FEX submission on this topic. This code
-was written to be faster and more memory efficient.
+This code was written to be:
+1) Faster than matlab-plot-big
+2) More memory efficient than matlab-plot-big
 
 # Example Code
 
