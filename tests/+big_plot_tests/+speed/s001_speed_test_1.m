@@ -3,7 +3,16 @@ function s001_speed_test_1()
 %   big_plot_tests.speed.s001_speed_test_1
 %
 
+    %JAH: On my laptop I'm getting 1 second just for plotting
+    %and the processing is less than that (0.1 sec on laptop for 1e8)
+    %
+    %   i.e. The reduceToWidth call is only a small fraction of the
+    %   execution time 
+    %       - big_plot process rougly 75% of plotting
+    %       - rendering 25% of the time
+
     n_samples = [1e5 1e6 1e7 1e8 2e8 3e8];
+    %n_samples = [1e5 1e6 1e7 1e8];
     %3e8 => 2.4 GB
 
     reps = 3;
@@ -15,6 +24,7 @@ function s001_speed_test_1()
     %https://github.com/tuckermcclure/matlab-plot-big
     use_tm = ~isempty(which('reduce_plot'));
     
+    figure
 	%Testing
     %-----------------------------------------
     for iRep = 1:reps
@@ -22,30 +32,33 @@ function s001_speed_test_1()
         for iSamples = 1:length(n_samples)
             cur_n_samples = n_samples(iSamples);
             fprintf('Plotting %d samples\n',cur_n_samples);
-            data = 1:cur_n_samples;
+            %data = 1:cur_n_samples;
+            data = rand(1,cur_n_samples);
 
             close all
-            tic
+            t1 = tic;
             plot(data);
             drawnow %Seems to block execution until the rendering has finished
-            speeds_old(iRep,iSamples) = toc;
+            speeds_old(iRep,iSamples) = toc(t1);
 
             if use_tm
                 close all
-                tic
+                t1 = tic;
                 reduce_plot(data);
                 drawnow
-                speeds_tm(iRep,iSamples) = toc;
+                speeds_tm(iRep,iSamples) = toc(t1);
             end
             
             close all
-            tic
+            t1 = tic;
             plotBig(data);
+            toc(t1)
             drawnow
-            speeds_new(iRep,iSamples) = toc;
+            speeds_new(iRep,iSamples) = toc(t1);
         end
     end
 
+    figure
     %Summary Data
     %-----------------------------------------
     subplot(1,2,1)
@@ -69,7 +82,12 @@ function s001_speed_test_1()
     
     subplot(1,2,2)
     set(gca,'FontSize',18)
-    plot(n_samples,mean(speeds_old,1)./mean(speeds_new,1),'-o');
+    r = mean(speeds_old,1)./mean(speeds_new,1);
+    disp('Avg speed ratios')
+    disp(r)
+    disp('New Speeds')
+    disp(mean(speeds_new,1))
+    plot(n_samples,r,'-o');
     if use_tm
         hold on
         plot(n_samples,mean(speeds_old,1)./mean(speeds_tm,1),'-o');

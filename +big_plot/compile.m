@@ -19,6 +19,7 @@ c = mex.compilers.gcc('./private/same_diff_mex.c','verbose',verbose);
 c.build();
 
 c = mex.compilers.gcc('./private/reduce_to_width_mex.c','verbose',verbose);
+c.addCompileFlags('-mavx');
 c.addLib('openmp');
 c.build();
 

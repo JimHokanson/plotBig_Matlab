@@ -1,4 +1,5 @@
 #include "mex.h"
+#include <immintrin.h>
 
 //
 //  For compiling instructions, see big_plot.compile()
@@ -93,23 +94,186 @@ mwSize getScalarInput(const mxArray *input, int input_number){
  	type *p_output_data_fixed = (type*)mxMalloc(sizeof(type)*n_chans*n_outputs_per_chan); \
     type *p_output_data = p_output_data_fixed;
     
+#define GRAB_OUTSIDE_POINTS \
+    /*Initialize the first and last values of the output - not class specific*/ \
+    /*---------------------------------------------------------------------*/   \
+    /*We keep the first and last values if we are not plotting everything*/     \
+    /*We need to loop through each channel and assign:*/                        \
+    /*  1) The first data point in each channel to the first output value*/     \
+    /*  2) The last data point in each channel to the last output value*/       \
+    /* */                                                       \
+    /*  - This is not class specific*/                          \
+    /*  - Ideally we could make this optional for streaming*/   \
+    if (pad_with_endpoints){                                    \
+        for (mwSize iChan = 0; iChan < n_chans; iChan++){       \
+            /*Store first data point to output*/                \
+            *p_output_data = *p_input_data;                     \
+                                                                \
+            /*Advance input and output pointers to end of column*/ \
+            p_output_data += (n_outputs_per_chan-1);            \
+            p_input_data += (n_samples_data-1);                 \
+                                                                \
+            /*Store last data point*/                           \
+            *p_output_data = *p_input_data;                     \
+                                                                \
+            /*Roll over to the next channel*/                   \
+            /*1st sample of next is 1 more than last sample of current*/ \
+            ++p_input_data;                                     \
+            ++p_output_data;                                    \
+        }                                                       \
+                                                                \
+        /*Adjust pointers for next section*/                    \
+        /*------------------------------------------------*/    \
+        /*Resetting to initial position*/                       \
+        p_output_data = p_output_data_fixed;                    \
+        p_input_data = p_input_data_fixed;                      \
+                                                                \
+        /*Move output beyond first point (logged above)*/       \
+        ++p_output_data;                                        \
+                                                                \
+        if (process_subset){                                    \
+            p_input_data = p_input_data + start_index;          \
+        }                                                       \
+    }
     
-    
-// #define INIT_MAIN_LOOP(type) \
-//     for (mwSize iChan = 0; iChan < n_chans; iChan++){ \
-//         /*Note, we can't initialize anything before this loop, since we*/ \
-//         /*are collapsing the first two loops. This allows us to parallelize*/ \
-//         /*both of the first two loops, which is good when the # of channels*/ \
-//         /*does not equal the # of threads.*/ \
-//         for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){ \
-//             type *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk; \
-//             /*Pointer => start + column wrapping + offset (row into column) - 1*/ \
-//             /*  *2 since we store min and max in each chunk*/ \
-//             type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk; \
-//             type min = *current_input_data_point; \
-//             type max = *current_input_data_point;
     
 
+    
+    
+#define INIT_MAIN_LOOP(type) \
+    /*#pragma omp parallel for simd collapse(2)*/       \
+    _Pragma("omp parallel for simd collapse(2)")        \
+    for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
+        /*Note, we can't initialize anything before this loop, since we*/       \
+        /*are collapsing the first two loops. This allows us to parallelize*/   \
+        /*both of the first two loops, which is good when the # of channels*/   \
+        /*does not equal the # of threads.*/                                    \
+        for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){   \
+            type *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk; \
+            /*Pointer => start + column wrapping + offset (row into column) - 1*/ \
+            /*  *2 since we store min and max in each chunk*/   \
+            type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk;
+
+#define END_MAIN_LOOP \
+        } \
+    }
+    
+#define RUN_STD_MIN_MAX \
+    for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){   \
+        if (*(++current_input_data_point) > max){                   	\
+            max = *current_input_data_point;                            \
+        }else if (*current_input_data_point < min){                     \
+            min = *current_input_data_point;                            \
+        }                                                               \
+    }
+    
+#define LOG_MIN_MAX \
+    *local_output_data = min; \
+	*(++local_output_data) = max;
+    
+    
+#define PROCESS_EXTRA_NON_CHUNK_SAMPLES(type) \
+    /*---------------------------------------------------------------------*/ \
+    /*           Processing last part that didn't fit into a chunk         */ \
+    /*---------------------------------------------------------------------*/ \
+    if (n_samples_not_in_chunk){                            \
+        _Pragma("omp parallel for simd")                    \
+        for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
+                                                            \
+            type *current_input_data_point = p_input_data + n_samples_data*iChan + n_chunks*samples_per_chunk; \
+                                                            \
+            type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*n_chunks; \
+                                                            \
+            type min = *current_input_data_point;           \
+            type max = *current_input_data_point;           \
+                                                            \
+            for (mwSize iSample = 1; iSample < n_samples_not_in_chunk; iSample++){ \
+                if (*(++current_input_data_point) > max){   \
+                    max = *current_input_data_point;        \
+                }else if (*current_input_data_point < min){ \
+                    min = *current_input_data_point;        \
+                }                                           \
+            }                                               \
+            *local_output_data = min;                       \
+            *(++local_output_data) = max;                   \
+        }                                                   \
+    }
+
+    
+    
+void getMinMaxDoubleStandard(double *min_out, double *max_out, 
+        mwSize samples_per_chunk, double *current_input_data_point){
+    
+	double min = *current_input_data_point;
+ 	double max = *current_input_data_point;
+    
+    for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){   
+        if (*(++current_input_data_point) > max){                   	
+            max = *current_input_data_point;                            
+        }else if (*current_input_data_point < min){                     
+            min = *current_input_data_point;                            
+        }                                                               
+    }
+    
+    *min_out = min;
+    *max_out = max;
+    
+}
+
+void getMinMaxDoubleSIMD(double *min_out, double *max_out, 
+        mwSize samples_per_chunk, double *current_input_data_point){
+        
+    __m256d next;
+    __m256d max_result;
+    __m256d min_result;
+    double max_output[4];
+	double min_output[4];
+    double min;
+    double max;
+
+    max_result = _mm256_loadu_pd(current_input_data_point);
+    min_result = max_result;
+    
+    //0 1 2 3 4 5 6 7 8 9
+    //        1 2 3 4
+    
+    
+    for (mwSize j = 4; j < (samples_per_chunk/4)*4; j+=4){
+        next = _mm256_loadu_pd((current_input_data_point+j));
+        max_result = _mm256_max_pd(max_result, next);
+        min_result = _mm256_min_pd(min_result, next);
+    }
+
+    //Extract max values and reduce ...
+    _mm256_storeu_pd(max_output, max_result);
+    _mm256_storeu_pd(min_output, min_result);
+
+    max = max_output[0];
+    for (int i = 1; i < 4; i++){
+        if (max_output[i] > max){
+            max = max_output[i];
+        } 
+    } 
+    min = min_output[0];
+    for (int i = 1; i < 4; i++){
+        if (min_output[i] < min){
+            min = min_output[i];
+        } 
+    } 
+    
+    for (mwSize j = (samples_per_chunk/4)*4; j < samples_per_chunk; j++){
+        if (*(current_input_data_point + j) > max){
+            max = *(current_input_data_point + j);
+        }else if (*(current_input_data_point + j) < min){
+            min = *(current_input_data_point + j);
+        }
+    }
+                
+    *min_out = min;
+    *max_out = max;
+    
+}
+    
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 {
     //
@@ -130,6 +294,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //      If specified, the end sample must also be specified
     //  end_sample: #, 1 based
     //
+    
+    
+
     
     bool process_subset;
     
@@ -265,123 +432,34 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             mexErrMsgIdAndTxt("JAH:reduce_to_width_mex",
                     "Class is not supported");
     }
+    
+//================================================================
 
 S_PROCESS_DOUBLE:;
     
-    INIT_POINTERS(double)    
-        
-        
-    //TODO: Replace below with macro ...
+    INIT_POINTERS(double);    
     
-    //Initialize the first and last values of the output - not class specific
-    //---------------------------------------------------------------------
-    //We keep the first and last values if we are not plotting everything
-    //We need to loop through each channel and assign:
-    //  1) The first data point in each channel to the first output value
-    //  2) The last data point in each channel to the last output value
-    //
-    //  - This is not class specific
-    //  - Ideally we could make this optional for streaming
-    if (pad_with_endpoints){
-        for (mwSize iChan = 0; iChan < n_chans; iChan++){
-            
-            //Store first data point to output
-            *p_output_data = *p_input_data;
-            
-            //Advance input and output pointers to end of column
-            p_output_data += (n_outputs_per_chan-1);
-            p_input_data += (n_samples_data-1);
-            
-            //Store last data point
-            *p_output_data = *p_input_data;
-            
-            //Roll over to the next channel
-            //1st sample of next is 1 more than last sample of current
-            ++p_input_data;
-            ++p_output_data;
-        }
+    GRAB_OUTSIDE_POINTS;
         
-        //Adjust pointers for next section
-        //------------------------------------------------
-        //Resetting to initial position
-        p_output_data = p_output_data_fixed;
-        p_input_data = p_input_data_fixed;
+    if (samples_per_chunk < 4){
+        INIT_MAIN_LOOP(double)
+            
+            getMinMaxDoubleStandard(local_output_data, local_output_data++, 
+                    samples_per_chunk, current_input_data_point);
+   
+        END_MAIN_LOOP
+    }else{
+        INIT_MAIN_LOOP(double)
         
-        //Move output beyond first point (logged above)
-        ++p_output_data;
-        
-     	if (process_subset){
-            p_input_data = p_input_data + start_index;
-        }
+            getMinMaxDoubleSIMD(local_output_data, local_output_data++, 
+                    samples_per_chunk, current_input_data_point);
+           
+        END_MAIN_LOOP
     }
     
+    PROCESS_EXTRA_NON_CHUNK_SAMPLES(double)
     
     
-    //---------------------------------------------------------------------
-    //                          Chunk processing
-    //---------------------------------------------------------------------
-    #pragma omp parallel for simd collapse(2)
-    for (mwSize iChan = 0; iChan < n_chans; iChan++){ \
-        /*Note, we can't initialize anything before this loop, since we*/ \
-        /*are collapsing the first two loops. This allows us to parallelize*/ \
-        /*both of the first two loops, which is good when the # of channels*/ \
-        /*does not equal the # of threads.*/ \
-        for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){ \
-            double *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk; \
-            /*Pointer => start + column wrapping + offset (row into column) - 1*/ \
-            /*  *2 since we store min and max in each chunk*/ \
-            double *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk; \
-            double min = *current_input_data_point; \
-            double max = *current_input_data_point;
-            
-            //We might get some speedup by looking for a slow trend
-            //over the data and adjusting the order that we look
-            //at the values accordingly
-            
-            //Change to SIMD based on:
-            //https://github.com/JimHokanson/c_simd_examples/blob/master/math_functions/min_max_01.c
-            //
-            //This is the slow part :/
-            for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){
-                if (*(++current_input_data_point) > max){
-                    max = *current_input_data_point;
-                }else if (*current_input_data_point < min){
-                    min = *current_input_data_point;
-                }
-            }
-
-            //Store min and max for chunk
-            //---------------------
-            *local_output_data = min;
-            *(++local_output_data) = max;            
-        }
-    }
-    
-    //---------------------------------------------------------------------
-    //           Processing last part that didn't fit into a chunk
-    //---------------------------------------------------------------------
-    if (n_samples_not_in_chunk){
-        #pragma omp parallel for simd
-        for (mwSize iChan = 0; iChan < n_chans; iChan++){
-            
-            double *current_input_data_point = p_input_data + n_samples_data*iChan + n_chunks*samples_per_chunk;
-            
-            double *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*n_chunks;
-            
-            double min = *current_input_data_point;
-            double max = *current_input_data_point;
-            
-            for (mwSize iSample = 1; iSample < n_samples_not_in_chunk; iSample++){
-                if (*(++current_input_data_point) > max){
-                    max = *current_input_data_point;
-                }else if (*current_input_data_point < min){
-                    min = *current_input_data_point;
-                }
-            }
-            *local_output_data = min;
-            *(++local_output_data) = max;
-        }
-    }
 
 S_FINALIZE:    
     //Finalize output

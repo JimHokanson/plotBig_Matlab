@@ -144,7 +144,9 @@ if show_everything
     %floor - more samples out
     samples_per_chunk = ceil(size(y,1)/axis_width_in_pixels);
     
+    %t = tic;
     y_reduced = reduce_to_width_mex(y,samples_per_chunk);
+    %toc(t)
     n_y_reduced = size(y_reduced,1);
     if ~isobject(x) && ~isLinearTime(x)
         error('Non-uniform x spacing not yet supported');
