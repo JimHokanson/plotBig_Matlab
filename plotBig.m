@@ -6,15 +6,16 @@ function varargout = plotBig(varargin)
 %   Calling Forms
 %   -------------
 %   1) As a replacement for plot()
-%   h = plotBig(x,y)
-%   h = plotBig(y)
-%   h = plotBig(ax,...)
-%   etc.
+%   
+%       h = plotBig(x,y)
+%       h = plotBig(y)
+%       h = plotBig(ax,...)
+%       etc.
 %
 %   2) Build time from options
-%   h = plotBig(y,'x',x_data)
-%   h = plotBig(y,'dt',0.01,varargin)
 %
+%       h = plotBig(y,'x',x_data)
+%       h = plotBig(y,'dt',0.01,varargin)
 %
 %   Inputs
 %   ------
@@ -37,28 +38,28 @@ function varargout = plotBig(varargin)
 %       Currently differing times for each y input are not supported.
 %   dt : scalar
 %       The time difference between two samples, i.e. 1/(sampling_rate)
-%   t0 : starting time
-%   obj: 
+%   t0 : numeric
+%       Starting time.
+%   obj: logical (default false)
+%       If true the underlying big_plot class is returned
 %
 %   Examples
 %   --------
 %   1)
-%   n = 1e8;
-%   t_end = 100;
-%   dt = t_end/(n-1);
-%   t = 0:dt:t_end;
-%   y = (cos(0.43 * t) + 0.001 * t .* randn(1, n));
-%   y = y';
-%   plotBig(y,'x',t)
-%   %---   or better  -----
-%   plotBig(y,'dt',dt)
+%       n = 1e8;
+%       t_end = 100;
+%       dt = t_end/(n-1);
+%       t = 0:dt:t_end;
+%       y = (cos(0.43 * t) + 0.001 * t .* randn(1, n));
+%       y = y';
+%       plotBig(y,'x',t)
 %
-
-%TODO: We should build in support for returning the object with an 
-%input form of (t,y,'obj',true)
+%   2)  This is a quicker version 
+%       plotBig(y,'dt',dt)
 %
-%Currently we assume that the 2nd input will be a character for any
-%optional processing
+%   3)  Move the start time to 5
+%       plotBig(y,'dt',dt,'t0',5)
+%       
 
 %Varargin parsing
 %-------------------
@@ -75,20 +76,6 @@ for i = 1:(nargin-1)
         end
     end
 end
-
-
-% % % % if nargin > 1 
-% % % %     
-% % % %     
-% % % %     && ischar(varargin{2})
-% % % %     %TODO: Check for fieldnames from below
-% % % %     option_string = varargin{2};
-% % % %     if any(strcmp(option_string,{'axes','x','dt','t0','obj'}))
-% % % %         direct_inputs_to_big_plot = false;
-% % % %         y = varargin{1};
-% % % %         varargin = varargin(2:end);
-% % % %     end
-% % % % end
 
 %Shortcut exit for direct call to big_plot
 %------------------------------------------

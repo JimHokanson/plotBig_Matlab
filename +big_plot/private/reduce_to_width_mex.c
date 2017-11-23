@@ -11,16 +11,15 @@
 //2) Starts at an arbitrary index into the data (for processing subsets)
 //
 //TODO
-//-----------
-//3) Merge min and max into one output (for plotting)
-//4) Allow padding with the first and last values of the data 
-//  so that the auto axes limits doesn't cause problems
-//5) Implement the min/max avx instructions - _mm256_min/max_pd
+//------------------------------
+//3) Implement class support
+//4) Implement the min/max avx instructions - _mm256_min/max_pd
     
 
 /*
 //TODO: Degenerate cases:
 
+//I need to move all of this to test cases
 data = ones(1,4);
 
 data = ones(0,4);
@@ -79,13 +78,37 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     //      Used for error reporting
     
     if (!mxIsClass(input,"double")){
-        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Input #%d type needs to be double",input_number);
+        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type",
+                "Input #%d type needs to be double",input_number);
     }
     
     double temp = mxGetScalar(input);
     return (mwSize) temp;
     
 }
+
+#define INIT_POINTERS(type) \
+  	type *p_input_data_fixed = (type*)mxGetData(prhs[0]); \
+    type *p_input_data = p_input_data_fixed; \
+ 	type *p_output_data_fixed = (type*)mxMalloc(sizeof(type)*n_chans*n_outputs_per_chan); \
+    type *p_output_data = p_output_data_fixed;
+    
+    
+    
+// #define INIT_MAIN_LOOP(type) \
+//     for (mwSize iChan = 0; iChan < n_chans; iChan++){ \
+//         /*Note, we can't initialize anything before this loop, since we*/ \
+//         /*are collapsing the first two loops. This allows us to parallelize*/ \
+//         /*both of the first two loops, which is good when the # of channels*/ \
+//         /*does not equal the # of threads.*/ \
+//         for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){ \
+//             type *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk; \
+//             /*Pointer => start + column wrapping + offset (row into column) - 1*/ \
+//             /*  *2 since we store min and max in each chunk*/ \
+//             type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk; \
+//             type min = *current_input_data_point; \
+//             type max = *current_input_data_point;
+    
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 {
@@ -102,7 +125,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //      padding)
     //   
     //  Optional Inputs
-    //  -------
+    //  ---------------
     //  start_sample: #, 1 based
     //      If specified, the end sample must also be specified
     //  end_sample: #, 1 based
@@ -113,27 +136,36 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //---------------------------------------------------------------------
     //                      Input Checking
     //---------------------------------------------------------------------
+    
+    //JAH: Once we update
+    
     if (!(nrhs == 2 || nrhs == 4)){
-        mexErrMsgIdAndTxt("SL:reduce_to_width:n_inputs","Invalid # of inputs, 2 or 4 expected");
+        mexErrMsgIdAndTxt("SL:reduce_to_width:n_inputs",
+                "Invalid # of inputs, 2 or 4 expected");
     }else if (!mxIsClass(prhs[0],"double")){
-        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","First input type needs to be double");
+        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type",
+                "First input type needs to be double");
     }else if (!mxIsClass(prhs[1],"double")){
-        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Second input type needs to be double");
+        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type",
+                "Second input type needs to be double");
     }
     
     if (nrhs == 4){
         process_subset = true;
         if (!mxIsClass(prhs[2],"double")){
-            mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Third input type needs to be double");
+            mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type",
+                    "Third input type needs to be double");
         }else if (!mxIsClass(prhs[3],"double")){
-            mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type","Fourth input type needs to be double");
+            mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type",
+                    "Fourth input type needs to be double");
         }  
     }else{
         process_subset = false; 
     }
     
     if (!(nlhs == 1)){
-        mexErrMsgIdAndTxt("jsmn_mex:n_inputs","Invalid # of outputs, 1 expected");
+        mexErrMsgIdAndTxt("jsmn_mex:n_inputs",
+                "Invalid # of outputs, 1 expected");
     }
     
     
@@ -197,19 +229,59 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         n_outputs_per_chan += 2;
     }
     
-    //Class specific code
-  	double *p_input_data_fixed = (double *)mxGetData(prhs[0]);
-    double *p_input_data = p_input_data_fixed;
+    mxClassID data_class_id = mxGetClassID(prhs[0]);
+    switch (data_class_id){
+        case mxDOUBLE_CLASS:
+            goto S_PROCESS_DOUBLE;
+            break;
+        case mxSINGLE_CLASS:
+            //INIT_POINTERS(float)
+         	break;
+        case mxINT64_CLASS:
+            //INIT_POINTERS(int64_t)
+            break;
+        case mxUINT64_CLASS:
+            //INIT_POINTERS(uint64_t)
+            break;
+        case mxINT32_CLASS:
+            //INIT_POINTERS(int32_t)
+            break;
+        case mxUINT32_CLASS:
+            //INIT_POINTERS(uint32_t)
+            break;
+        case mxINT16_CLASS:
+            //INIT_POINTERS(int16_t)
+            break;
+        case mxUINT16_CLASS:
+            //INIT_POINTERS(uint16_t)
+            break;
+        case mxINT8_CLASS:
+            //INIT_POINTERS(int8_t)
+            break;
+        case mxUINT8_CLASS:
+            //INIT_POINTERS(uint8_t)
+            break;
+        default:
+            mexErrMsgIdAndTxt("JAH:reduce_to_width_mex",
+                    "Class is not supported");
+    }
+
+S_PROCESS_DOUBLE:;
     
- 	double *p_output_data_fixed = (double *)mxMalloc(8*n_chans*n_outputs_per_chan);
-    double *p_output_data = p_output_data_fixed;
+    INIT_POINTERS(double)    
         
-    //Initialize the first and last values of the output
+        
+    //TODO: Replace below with macro ...
+    
+    //Initialize the first and last values of the output - not class specific
     //---------------------------------------------------------------------
     //We keep the first and last values if we are not plotting everything
     //We need to loop through each channel and assign:
     //  1) The first data point in each channel to the first output value
     //  2) The last data point in each channel to the last output value
+    //
+    //  - This is not class specific
+    //  - Ideally we could make this optional for streaming
     if (pad_with_endpoints){
         for (mwSize iChan = 0; iChan < n_chans; iChan++){
             
@@ -243,30 +315,32 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         }
     }
     
+    
+    
     //---------------------------------------------------------------------
     //                          Chunk processing
     //---------------------------------------------------------------------
     #pragma omp parallel for simd collapse(2)
-    for (mwSize iChan = 0; iChan < n_chans; iChan++){
-        //Note, we can't initialize anything before this loop, since we
-        //are collapsing the first two loops. This allows us to parallelize
-        //both of the first two loops, which is good when the # of channels
-        //does not equal the # of threads.
-        for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){
-            
-            double *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk;
-            
-            //Pointer => start + column wrapping + offset (row into column) - 1
-            //*2 since we store min and max in each chunk
-            double *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk;
-
-            double min = *current_input_data_point;
+    for (mwSize iChan = 0; iChan < n_chans; iChan++){ \
+        /*Note, we can't initialize anything before this loop, since we*/ \
+        /*are collapsing the first two loops. This allows us to parallelize*/ \
+        /*both of the first two loops, which is good when the # of channels*/ \
+        /*does not equal the # of threads.*/ \
+        for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){ \
+            double *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk; \
+            /*Pointer => start + column wrapping + offset (row into column) - 1*/ \
+            /*  *2 since we store min and max in each chunk*/ \
+            double *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk; \
+            double min = *current_input_data_point; \
             double max = *current_input_data_point;
             
             //We might get some speedup by looking for a slow trend
             //over the data and adjusting the order that we look
             //at the values accordingly
             
+            //Change to SIMD based on:
+            //https://github.com/JimHokanson/c_simd_examples/blob/master/math_functions/min_max_01.c
+            //
             //This is the slow part :/
             for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){
                 if (*(++current_input_data_point) > max){
@@ -308,10 +382,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             *(++local_output_data) = max;
         }
     }
-    
+
+S_FINALIZE:    
     //Finalize output
-    //-------------------
-    plhs[0] = mxCreateDoubleMatrix(0, 0, mxREAL);
+    //-------------------------------------------------------
+    plhs[0] = mxCreateNumericMatrix(0, 0, data_class_id, mxREAL);
     mxSetData(plhs[0],p_output_data_fixed);
     mxSetM(plhs[0],n_outputs_per_chan);
     mxSetN(plhs[0],n_chans);

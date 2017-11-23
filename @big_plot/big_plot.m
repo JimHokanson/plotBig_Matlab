@@ -26,8 +26,8 @@ classdef big_plot < handle
     %   -----
     %   1) Call plotBig
     %   
-    %   Examples:
-    %   ---------
+    %   Examples
+    %   --------
     %   b = big_plot(t, y)
     %
     %   b = big_plot(t, y, 'r:', t, y2, 'b', 'LineWidth', 3);
@@ -35,13 +35,18 @@ classdef big_plot < handle
     %   big_plot(@plot, t, x);
     %
     %
-    %   Based On:
-    %   ---------
+    %   Based On
+    %   --------
     %   This code is based on:
     %   http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-/
     %
     %   Differences include:
-    %       - inclusion of time option
+    %       - inclusion of time option (dt,t0) to reduce memory usage
+    %       - min/max reduction based on samples, rather than finding
+    %         which samples should procssed based on a time vector,
+    %         resulting in much faster processing
+    %       - multi-thread processing
+    %       
     %
     %   See Also
     %   --------
@@ -68,8 +73,9 @@ classdef big_plot < handle
         %These are not currently being used
         d0 = '------- User options --------'
         
-        %TODO: We could get the # of pixels and potentially
-        %use much less ...
+        %- This could be less, but requires extra processing
+        %- This is actually 1/2 the # of plotted values, since the current
+        %  processor returns min/max for each "sample to plot"
         n_samples_to_plot = 4000;
         
         min_time_between_callbacks = 0.2;

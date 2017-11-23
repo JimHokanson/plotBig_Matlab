@@ -28,7 +28,6 @@ classdef handles_and_listeners < handle
     methods
         function obj = handles_and_listeners(parent)
             obj.parent = parent;
-            %obj.n_plot_groups = n_plot_groups;
         end
         function plot_args = initializeAxes(obj)
             %The user may have already specified the axes.
@@ -77,8 +76,8 @@ classdef handles_and_listeners < handle
             
             %What we really need is when the # of plots drops, we clear the timer ...
             
-            %This needs to be fixed, I thought it was causing a problem but it looks
-            %like it wasn't ...
+            %This needs to be fixed, I thought it was causing a problem 
+            %but it looks like it wasn't ...
             
             % % % % %Is this causing problems???
             % % % % n_active_lines = 0;
