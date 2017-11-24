@@ -6,7 +6,8 @@ classdef big_plot < handle
     %   Manages the information in a standard MATLAB plot so that only the
     %   necessary number of data points are shown. For instance, if the
     %   width of the axis in the plot is only 500 pixels, there's no reason
-    %   to have more than 1000 data points along the width. This tool
+    %   to have more than 1000 data points along the width (Technically
+    %   slightly more may be desireable due to anti-aliasing). This tool
     %   selects which data points to show so that, for each pixel, all of
     %   the data mapping to that pixel is crushed down to just two points,
     %   a minimum and a maximum. Since all of the data is between the
@@ -51,6 +52,11 @@ classdef big_plot < handle
     %   See Also
     %   --------
     %   plotBig
+    
+    %Classes
+    %--------
+    %big_plot.handles_and_listeners
+    
         
     %{
     Other functions for comparison:
@@ -87,6 +93,8 @@ classdef big_plot < handle
         %   e.g. obj.post_render_callback = @()doStuffs(obj)
         %
         %   'obj' will now be available in the callback
+        
+        render_in_progress = false
     end
     
     properties
@@ -111,11 +119,11 @@ classdef big_plot < handle
         last_timer_error
     end
     
-    properties (Hidden)
+    properties 
         timer_callback %The function that the timer is running. I exposed
         %this here so that it could be called manually. I'm not thrilled
         %with this layout. The callback should probably be moved 
-        %so that we can call it directly
+        %so that we can call it directly.
         
         manual_callback_running = false
         
@@ -152,6 +160,9 @@ classdef big_plot < handle
             %by calling obj.renderData
         end
         function triggerRender(obj)
+            %evaluation of property function handle ...
+            %
+            %   Currently a helper function in renderData
             obj.timer_callback();
         end
         function delete(obj)

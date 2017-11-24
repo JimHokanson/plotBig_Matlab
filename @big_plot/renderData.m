@@ -1,22 +1,26 @@
 function renderData(obj,s)
 %x   Draws all of the data.
 %
-%   This is THE main function which actually plots data.
+%   MAIN FUNCTION for plotting data.
 %
 %   Forms
 %   -----
 %   obj.renderData()  %user mode
 %   obj.renderData(s) %timer only
 %
+%   timer at???
+%
 %   Inputs
 %   ------
 %   s : (struct)
 %       new_xlim
-
-%Relevant objects
-%----------------
+%
+%   Relevant objects
+%   ----------------
 %   big_plot.render_info
 
+
+obj.render_in_progress = true;
 
 obj.render_info.incrementRenderCount();
 
@@ -31,9 +35,13 @@ if ~isempty(obj.post_render_callback)
     obj.post_render_callback();
 end
 
+%JAH: Not sure if this should be here or before the post_render_callback
+obj.render_in_progress = false;
+
 end
 
 function h__trigger_manual_callback(obj)
+%
 
 obj.manual_callback_running = true;
 
@@ -97,7 +105,9 @@ obj.h_and_l.intializeListeners();
 
 h__setupTimer(obj);
 
-drawnow();
+%We'll let the user do this ...
+%JAH TODO: Make sure we have a plot call in place
+%drawnow();
 
 end
 
@@ -131,8 +141,7 @@ function [plot_args,temp_h_indices] = h__setupInitialPlotArgs(obj,plot_args)
 %
 
 %This width is a holdover from when I varied this depending on the width of
-%the screen. I've not just hardcoded a "large" screen size.
-%
+%the screen. For now I've not just hardcoded a "large" screen size.
 n_samples_plot = obj.n_samples_to_plot;
 
 %h - handles

@@ -1,7 +1,22 @@
-function s001_speed_test_1()
+function s001_speed_test_1(varargin)
 %
-%   big_plot_tests.speed.s001_speed_test_1
+%   big_plot_tests.speed.s001_speed_test_1(varargin)
 %
+%   Optional Inputs
+%   ---------------
+%   n_samples : array (default [1e5 1e6 1e7 1e8 2e8 3e8])
+%       # of samples to test
+%   reps : scalar (default 3)
+%   
+
+
+
+%{
+profile on
+big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8])
+profile off
+
+%}
 
     %JAH: On my laptop I'm getting 1 second just for plotting
     %and the processing is less than that (0.1 sec on laptop for 1e8)
@@ -10,8 +25,12 @@ function s001_speed_test_1()
     %   execution time 
     %       - big_plot process rougly 75% of plotting
     %       - rendering 25% of the time
+    
+    
+    in.n_samples = [1e5 1e6 1e7 1e8 2e8 3e8];
+    in = big_plot.sl.in.processVarargin(in,varargin);
 
-    n_samples = [1e5 1e6 1e7 1e8 2e8 3e8];
+    n_samples = in.n_samples;
     %n_samples = [1e5 1e6 1e7 1e8];
     %3e8 => 2.4 GB
 
@@ -25,6 +44,7 @@ function s001_speed_test_1()
     use_tm = ~isempty(which('reduce_plot'));
     
     figure
+    ax = gca;
 	%Testing
     %-----------------------------------------
     for iRep = 1:reps
@@ -35,7 +55,7 @@ function s001_speed_test_1()
             %data = 1:cur_n_samples;
             data = rand(1,cur_n_samples);
 
-            close all
+            cla
             t1 = tic;
             plot(data);
             drawnow %Seems to block execution until the rendering has finished

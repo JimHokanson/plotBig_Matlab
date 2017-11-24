@@ -57,9 +57,11 @@ classdef handles_and_listeners < handle
             %---------------------------------------------------------------
             %e.g.
             %plot(x1,y1,x2,y2)
-            %This returns one array of handles, but we break it back up into
-            %handles for 1 and 2
-            %{h1 h2} - where h1 is from x1,y1, h2 is from x2,y2
+            %
+            %   This returns one array of handles, but we break it back up into
+            %   handles for 1 and 2
+            %
+            %   {h1 h2} - where h1 is from x1,y1, h2 is from x2,y2
             obj.h_plot = cell(1,n_plot_groups);
             if ~isempty(temp_h_plot)
                 for iG = 1:n_plot_groups
@@ -118,12 +120,12 @@ classdef handles_and_listeners < handle
             %MATLAB:class:DestructorError
             
             try
-            t = obj.parent.timer;
+                t = obj.parent.timer;
             
                 stop(t);
                 delete(t);
             
-            obj.parent.timer = [];
+                obj.parent.timer = [];
             end
         end
     end

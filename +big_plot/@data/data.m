@@ -95,11 +95,6 @@ h__parseDataAndLinespecs(obj,varargin{cur_I:end})
 %--------------
 %x1 spacing ...
 
-
-
-
-
-
 end
 
 function h__parseDataAndLinespecs(obj,varargin)
@@ -125,7 +120,7 @@ temp_y = {};
 %TODO: This needs to handle poor inputs better
 %case : flipping plot(x,y) with plot(y,x) where x is an object
 % Loop through all of the inputs.
-%------------------------------------------
+%--------------------------------------------------------------------------
 previous_type = 's'; 
 %s - start
 %x - x value specification

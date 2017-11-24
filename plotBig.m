@@ -94,16 +94,29 @@ end
 %--------------------------------------
 varargin(delete_mask) = [];
 
-y = varargin{1};
+%I don't know when we will have 2+ elemements
+%and not have a numeric #2 but I'll leve this in place for now
+if length(varargin) > 1 && isnumeric(varargin{2})
+    x_temp = varargin{1};
+    y = varargin{2};
+else
+    x_temp = [];
+    y = varargin{1};
+end
+
 in.axes = [];
-in.x = [];
+in.x = x_temp;
 in.dt = [];
 in.t0 = 0;
 in.obj = false;
 in = big_plot.sl.in.processVarargin(in,s_in);
 
+n_samples = size(y,1);
+
+
+%Define x based on time specs (if necessary)
+%-------------------------------------------------------------------
 if ~isempty(in.dt)
-    n_samples = size(y,1);
     
     %This may occur when the data should be transposed i.e. plotting y'
     %When 'x' is provided, we can adjust y accordingly, but when only
@@ -115,19 +128,31 @@ if ~isempty(in.dt)
     x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
 else
     x = in.x;
-    if ~any(size(y) == length(x))
+    if isempty(x)
+        in.t0 = 1;
+        in.dt = 1;
+        
+        x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
+    elseif ~any(size(y) == length(x))
         error('Mismatch in # of elements between x and y')
     end
 end
 
+%Setup of the big_plot class
+%-----------------------------------------------------
 if ~isempty(in.axes)
     temp = big_plot(in.axes,x,y);
 else
     temp = big_plot(x,y);
 end
 
+%By calling plotBig (this function) we expect rendering to happen
+%so we call it manually
 temp.renderData();
 
+
+%Output handling
+%-------------------------------------------------------
 if nargout
     if in.obj
         varargout{1} = temp;
