@@ -43,3 +43,5 @@ when zooming.
 
 * Supports double data only (https://github.com/JimHokanson/plotBig_Matlab/issues/6)
 * Does not support non-evenly sampled data (https://github.com/JimHokanson/plotBig_Matlab/issues/7)
+
+JAH TODO: Add gifs
