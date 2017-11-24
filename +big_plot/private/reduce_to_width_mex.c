@@ -441,7 +441,7 @@ S_PROCESS_DOUBLE:;
     
     GRAB_OUTSIDE_POINTS;
         
-    if (samples_per_chunk < 4){
+    if (samples_per_chunk > 4){
         INIT_MAIN_LOOP(double)
             
             getMinMaxDoubleStandard(local_output_data, local_output_data++, 
