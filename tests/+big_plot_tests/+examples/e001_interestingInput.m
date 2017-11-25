@@ -26,13 +26,17 @@ function varargout = e001_interestingInput(varargin)
 %
 
 %{
-    big_plot_tests.examples.e001_interestingInput('type',0)
-    big_plot_tests.examples.e001_interestingInput('type',1)
-    big_plot_tests.examples.e001_interestingInput('type',2)
+    s = big_plot_tests.examples.e001_interestingInput('type',0);
+    s = big_plot_tests.examples.e001_interestingInput('type',1);
+    s = big_plot_tests.examples.e001_interestingInput('type',2);
+
+    s = big_plot_tests.examples.e001_interestingInput('type',0,'data_type','single');
 %}
 
+%50 million samples
 in.n = 5e7 + randi(1000);
 in.type = 0;
+in.data_type = 'double';
 in.y = [];
 in.t = [];
 in.get_data_only = false;
@@ -58,6 +62,14 @@ else
         round(mod(t/10, 5))'];
     y(t > 40 & t < 50,:) = 0;                      % Drop a section of data.
     y(randi(numel(y), 1, 20)) = randn(1, 20);       % Emulate spikes.
+    switch in.data_type
+        case 'double'
+            %do nothing
+        case 'single'
+            y = single(y);
+        otherwise
+            %get data type min and max
+    end
 end
 fprintf('Done initializing data\n');
 

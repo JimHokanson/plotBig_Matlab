@@ -1,5 +1,7 @@
 #include "mex.h"
 #include <immintrin.h>
+#include "simd_guard.h"
+
 
 //
 //  For compiling instructions, see big_plot.compile()
@@ -70,6 +72,9 @@ len_data_p1 = size(data,1)+1;
  fprintf('Same min answers: %d\n',isequal(min_data,squeeze(min_data2)));
  %------------------------------------------------------------------------
 */
+
+
+
 
 mwSize getScalarInput(const mxArray *input, int input_number){
     //
@@ -171,7 +176,6 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     *local_output_data = min; \
 	*(++local_output_data) = max;
     
-    
 #define PROCESS_EXTRA_NON_CHUNK_SAMPLES(type) \
     /*---------------------------------------------------------------------*/ \
     /*           Processing last part that didn't fit into a chunk         */ \
@@ -199,69 +203,187 @@ mwSize getScalarInput(const mxArray *input, int input_number){
         }                                                   \
     }
 
+#define POPULATE_OUTPUT \
+    plhs[0] = mxCreateNumericMatrix(0, 0, data_class_id, mxREAL); \
+    mxSetData(plhs[0],p_output_data_fixed); \
+    mxSetM(plhs[0],n_outputs_per_chan);     \
+    mxSetN(plhs[0],n_chans);                \
+
+#define STD_INPUT_CALL local_output_data, local_output_data++, samples_per_chunk, current_input_data_point
+#define STD_INPUT_DEFINE(type) type *min_out, type *max_out, mwSize samples_per_chunk, type *current_input_data_point    
+    
+#define GET_MIN_MAX_STANDARD(type)              \
+	type min = *current_input_data_point;       \
+ 	type max = *current_input_data_point;       \
+                                                \
+    for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){    \
+        if (*(++current_input_data_point) > max){   \
+            max = *current_input_data_point;        \
+        }else if (*current_input_data_point < min){ \
+            min = *current_input_data_point;        \
+        }                                           \
+    }                                               \
+                                                    \
+    *min_out = min;                                 \
+    *max_out = max;    
     
     
-void getMinMaxDoubleStandard(double *min_out, double *max_out, 
-        mwSize samples_per_chunk, double *current_input_data_point){
-    
-	double min = *current_input_data_point;
- 	double max = *current_input_data_point;
-    
-    for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){   
-        if (*(++current_input_data_point) > max){                   	
-            max = *current_input_data_point;                            
-        }else if (*current_input_data_point < min){                     
-            min = *current_input_data_point;                            
-        }                                                               
-    }
-    
-    *min_out = min;
-    *max_out = max;
-    
+//==================================================================
+//                          MIN MAX STANDARD
+//==================================================================
+void getMinMaxDouble_Standard(STD_INPUT_DEFINE(double)){
+    GET_MIN_MAX_STANDARD(double) 
 }
 
-void getMinMaxDoubleSIMD(double *min_out, double *max_out, 
-        mwSize samples_per_chunk, double *current_input_data_point){
-        
-    __m256d next;
-    __m256d max_result;
-    __m256d min_result;
-    double max_output[4];
-	double min_output[4];
-    double min;
-    double max;
+void getMinMaxFloat_Standard(STD_INPUT_DEFINE(float)){
+    GET_MIN_MAX_STANDARD(float) 
+}
 
-    max_result = _mm256_loadu_pd(current_input_data_point);
+void getMinMaxUint64_Standard(STD_INPUT_DEFINE(uint64_t)){
+    GET_MIN_MAX_STANDARD(uint64_t) 
+}
+
+void getMinMaxUint32_Standard(STD_INPUT_DEFINE(uint32_t)){
+    GET_MIN_MAX_STANDARD(uint32_t) 
+}
+
+void getMinMaxUint16_Standard(STD_INPUT_DEFINE(uint16_t)){
+    GET_MIN_MAX_STANDARD(uint16_t) 
+}
+
+void getMinMaxUint8_Standard(STD_INPUT_DEFINE(uint8_t)){
+    GET_MIN_MAX_STANDARD(uint8_t) 
+}
+
+void getMinMaxInt64_Standard(STD_INPUT_DEFINE(int64_t)){
+    GET_MIN_MAX_STANDARD(int64_t) 
+}
+
+void getMinMaxInt32_Standard(STD_INPUT_DEFINE(int32_t)){
+    GET_MIN_MAX_STANDARD(int32_t) 
+}
+
+void getMinMaxInt16_Standard(STD_INPUT_DEFINE(int16_t)){
+    GET_MIN_MAX_STANDARD(int16_t) 
+}
+
+void getMinMaxInt8_Standard(STD_INPUT_DEFINE(int8_t)){
+    GET_MIN_MAX_STANDARD(int8_t) 
+}
+
+//==================================================================
+    
+// void getMinMaxDoubleStandard(double *min_out, double *max_out, 
+//         mwSize samples_per_chunk, double *current_input_data_point){
+//     
+// 	double min = *current_input_data_point;
+//  	double max = *current_input_data_point;
+//     
+//     for (mwSize iSample = 1; iSample < samples_per_chunk; iSample++){   
+//         if (*(++current_input_data_point) > max){                   	
+//             max = *current_input_data_point;                            
+//         }else if (*current_input_data_point < min){                     
+//             min = *current_input_data_point;                            
+//         }                                                               
+//     }
+//     
+//     *min_out = min;
+//     *max_out = max;
+//     
+// }
+
+//GET_MIN_MAX_SIMD(double,,4,__m256d,_mm256_loadu_pd,_mm256_max_pd,_mm256_min_pd,_mm256_storeu_pd)
+//                next = _mm256_loadu_si256((__m256i *)(data+j));
+
+#define GET_MIN_MAX_SIMD(TYPE,CAST,N_SIMD,SIMD_TYPE,LOAD,MAX,MIN,STORE) \
+    SIMD_TYPE next;                         \
+    SIMD_TYPE max_result;                   \
+    SIMD_TYPE min_result;                   \
+    TYPE max_output[N_SIMD];                \
+	TYPE min_output[N_SIMD];                \
+    TYPE min;                               \
+    TYPE max;                               \
+                                            \
+    max_result = LOAD(CAST current_input_data_point); \
+    min_result = max_result;                \
+                                            \
+    for (mwSize j = N_SIMD; j < (samples_per_chunk/N_SIMD)*N_SIMD; j+=N_SIMD){ \
+        next = LOAD(CAST (current_input_data_point+j)); \
+        max_result = MAX(max_result, next);     \
+        min_result = MIN(min_result, next);     \
+    } \
+        \
+    /*Extract max values and reduce ...*/ \
+    STORE(CAST max_output, max_result);     \
+    STORE(CAST min_output, min_result);     \
+                                            \
+    max = max_output[0];                    \
+    for (int i = 1; i < N_SIMD; i++){       \
+        if (max_output[i] > max){           \
+            max = max_output[i];            \
+        }                                   \
+    }                                       \
+    min = min_output[0];                    \
+    for (int i = 1; i < N_SIMD; i++){       \
+        if (min_output[i] < min){           \
+            min = min_output[i];            \
+        }                                   \
+    }                                       \
+                                            \
+    for (mwSize j = (samples_per_chunk/N_SIMD)*N_SIMD; j < samples_per_chunk; j++){     \
+        if (*(current_input_data_point + j) > max){             \
+            max = *(current_input_data_point + j);              \
+        }else if (*(current_input_data_point + j) < min){       \
+            min = *(current_input_data_point + j);              \
+        }                                                       \
+    }                                                           \
+                                                                \
+    *min_out = min;                                             \
+    *max_out = max;
+
+
+
+void getMinMaxFloatSIMD(STD_INPUT_DEFINE(float)){
+        
+    __m256 next;
+    __m256 max_result;
+    __m256 min_result;
+    float max_output[8];
+	float min_output[8];
+    float min;
+    float max;
+
+    max_result = _mm256_loadu_ps(current_input_data_point);
     min_result = max_result;
     
     //0 1 2 3 4 5 6 7 8 9
     //        1 2 3 4
     
     
-    for (mwSize j = 4; j < (samples_per_chunk/4)*4; j+=4){
-        next = _mm256_loadu_pd((current_input_data_point+j));
-        max_result = _mm256_max_pd(max_result, next);
-        min_result = _mm256_min_pd(min_result, next);
+    for (mwSize j = 8; j < (samples_per_chunk/8)*8; j+=8){
+        next = _mm256_loadu_ps((current_input_data_point+j));
+        max_result = _mm256_max_ps(max_result, next);
+        min_result = _mm256_min_ps(min_result, next);
     }
 
     //Extract max values and reduce ...
-    _mm256_storeu_pd(max_output, max_result);
-    _mm256_storeu_pd(min_output, min_result);
+    _mm256_storeu_ps(max_output, max_result);
+    _mm256_storeu_ps(min_output, min_result);
 
     max = max_output[0];
-    for (int i = 1; i < 4; i++){
+    for (int i = 1; i < 8; i++){
         if (max_output[i] > max){
             max = max_output[i];
         } 
     } 
     min = min_output[0];
-    for (int i = 1; i < 4; i++){
+    for (int i = 1; i < 8; i++){
         if (min_output[i] < min){
             min = min_output[i];
         } 
     } 
     
-    for (mwSize j = (samples_per_chunk/4)*4; j < samples_per_chunk; j++){
+    for (mwSize j = (samples_per_chunk/8)*8; j < samples_per_chunk; j++){
         if (*(current_input_data_point + j) > max){
             max = *(current_input_data_point + j);
         }else if (*(current_input_data_point + j) < min){
@@ -273,7 +395,66 @@ void getMinMaxDoubleSIMD(double *min_out, double *max_out,
     *max_out = max;
     
 }
+
+
+void getMinMaxDoubleSIMD(STD_INPUT_DEFINE(double)){
+        
+    GET_MIN_MAX_SIMD(double,,4,__m256d,_mm256_loadu_pd,_mm256_max_pd,_mm256_min_pd,_mm256_storeu_pd)
     
+//     __m256d next;
+//     __m256d max_result;
+//     __m256d min_result;
+//     double max_output[4];
+// 	double min_output[4];
+//     double min;
+//     double max;
+// 
+//     max_result = _mm256_loadu_pd(current_input_data_point);
+//     min_result = max_result;
+//     
+//     //0 1 2 3 4 5 6 7 8 9
+//     //        1 2 3 4
+//     
+//     
+//     for (mwSize j = 4; j < (samples_per_chunk/4)*4; j+=4){
+//         next = _mm256_loadu_pd((current_input_data_point+j));
+//         max_result = _mm256_max_pd(max_result, next);
+//         min_result = _mm256_min_pd(min_result, next);
+//     }
+// 
+//     //Extract max values and reduce ...
+//     _mm256_storeu_pd(max_output, max_result);
+//     _mm256_storeu_pd(min_output, min_result);
+// 
+//     max = max_output[0];
+//     for (int i = 1; i < 4; i++){
+//         if (max_output[i] > max){
+//             max = max_output[i];
+//         } 
+//     } 
+//     min = min_output[0];
+//     for (int i = 1; i < 4; i++){
+//         if (min_output[i] < min){
+//             min = min_output[i];
+//         } 
+//     } 
+//     
+//     for (mwSize j = (samples_per_chunk/4)*4; j < samples_per_chunk; j++){
+//         if (*(current_input_data_point + j) > max){
+//             max = *(current_input_data_point + j);
+//         }else if (*(current_input_data_point + j) < min){
+//             min = *(current_input_data_point + j);
+//         }
+//     }
+//                 
+//     *min_out = min;
+//     *max_out = max;
+    
+}
+    
+static int hw_struct_initialized = 0;
+static struct cpu_x86 s;
+
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 {
     //
@@ -294,8 +475,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //      If specified, the end sample must also be specified
     //  end_sample: #, 1 based
     //
+        
+    if (!hw_struct_initialized){
+        cpu_x86__detect_host(&s);
+        hw_struct_initialized = 1;
+        mexPrintf("HW: %d\n",hw_struct_initialized);
+    }
     
     
+    
+    //printf("Support for:\n");
+    //printf("AVX: %d\n",s.HW_AVX);
+    //printf("AVX2: %d\n",s.HW_AVX2);
 
     
     bool process_subset;
@@ -309,9 +500,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     if (!(nrhs == 2 || nrhs == 4)){
         mexErrMsgIdAndTxt("SL:reduce_to_width:n_inputs",
                 "Invalid # of inputs, 2 or 4 expected");
-    }else if (!mxIsClass(prhs[0],"double")){
-        mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type",
-                "First input type needs to be double");
     }else if (!mxIsClass(prhs[1],"double")){
         mexErrMsgIdAndTxt("SL:reduce_to_width:input_class_type",
                 "Second input type needs to be double");
@@ -402,7 +590,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             goto S_PROCESS_DOUBLE;
             break;
         case mxSINGLE_CLASS:
-            //INIT_POINTERS(float)
+            goto S_PROCESS_SINGLE;
          	break;
         case mxINT64_CLASS:
             //INIT_POINTERS(int64_t)
@@ -436,37 +624,212 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 //================================================================
 
 S_PROCESS_DOUBLE:;
-    
-    INIT_POINTERS(double);    
-    
-    GRAB_OUTSIDE_POINTS;
-        
-    if (samples_per_chunk > 4){
-        INIT_MAIN_LOOP(double)
-            
-            getMinMaxDoubleStandard(local_output_data, local_output_data++, 
-                    samples_per_chunk, current_input_data_point);
-   
-        END_MAIN_LOOP
-    }else{
-        INIT_MAIN_LOOP(double)
-        
-            getMinMaxDoubleSIMD(local_output_data, local_output_data++, 
-                    samples_per_chunk, current_input_data_point);
-           
-        END_MAIN_LOOP
-    }
-    
-    PROCESS_EXTRA_NON_CHUNK_SAMPLES(double)
-    
-    
+    {
+        INIT_POINTERS(double);    
 
-S_FINALIZE:    
-    //Finalize output
-    //-------------------------------------------------------
-    plhs[0] = mxCreateNumericMatrix(0, 0, data_class_id, mxREAL);
-    mxSetData(plhs[0],p_output_data_fixed);
-    mxSetM(plhs[0],n_outputs_per_chan);
-    mxSetN(plhs[0],n_chans);
+        GRAB_OUTSIDE_POINTS;
+
+        if (!s.HW_AVX || samples_per_chunk > 4){
+            INIT_MAIN_LOOP(double)
+                getMinMaxDouble_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }else{
+            INIT_MAIN_LOOP(double)
+                getMinMaxDoubleSIMD(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }
+
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(double)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_SINGLE:;
+    {
+        INIT_POINTERS(float);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        if (!s.HW_AVX || samples_per_chunk < 8){
+            INIT_MAIN_LOOP(float)
+                getMinMaxFloat_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }else{
+            INIT_MAIN_LOOP(float)
+                getMinMaxFloatSIMD(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }
+
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(float)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_UINT64:;
+    {
+        INIT_POINTERS(uint64_t);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        INIT_MAIN_LOOP(uint64_t)
+            getMinMaxUint64_Standard(STD_INPUT_CALL);
+        END_MAIN_LOOP
+       
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(uint64_t)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_UINT32:;
+    {
+        INIT_POINTERS(uint32_t);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        if (!s.HW_AVX2 || samples_per_chunk < 8){
+            INIT_MAIN_LOOP(uint32_t)
+                getMinMaxUint32_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }else{
+            INIT_MAIN_LOOP(uint32_t)
+                //getMinMaxFloatSIMD(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }
+
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(uint32_t)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_UINT16:;
+    {
+        INIT_POINTERS(uint32_t);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        if (!s.HW_AVX2 || samples_per_chunk < 16){
+            INIT_MAIN_LOOP(uint16_t)
+                getMinMaxUint16_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }else{
+            INIT_MAIN_LOOP(uint16_t)
+                //getMinMaxFloatSIMD(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }
+
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(uint16_t)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_UINT8:;
+    {
+        INIT_POINTERS(uint8_t);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        if (!s.HW_AVX2 || samples_per_chunk < 32){
+            INIT_MAIN_LOOP(uint8_t)
+                getMinMaxUint8_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }else{
+            INIT_MAIN_LOOP(uint8_t)
+                //getMinMaxFloatSIMD(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }
+
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(uint8_t)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_INT64:;
+    {
+        INIT_POINTERS(int64_t);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        INIT_MAIN_LOOP(int64_t)
+            getMinMaxInt64_Standard(STD_INPUT_CALL);
+        END_MAIN_LOOP
+       
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(int64_t)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_INT32:;
+    {
+        INIT_POINTERS(int32_t);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        if (!s.HW_AVX2 || samples_per_chunk < 8){
+            INIT_MAIN_LOOP(int32_t)
+                getMinMaxInt32_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }else{
+            INIT_MAIN_LOOP(int32_t)
+                //getMinMaxFloatSIMD(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }
+
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(int32_t)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_INT16:;
+    {
+        INIT_POINTERS(int16_t);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        if (!s.HW_AVX2 || samples_per_chunk < 16){
+            INIT_MAIN_LOOP(int16_t)
+                getMinMaxInt16_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }else{
+            INIT_MAIN_LOOP(int16_t)
+                //getMinMaxFloatSIMD(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }
+
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(int16_t)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
+S_PROCESS_INT8:;
+    {
+        INIT_POINTERS(int8_t);    
+
+        GRAB_OUTSIDE_POINTS;
+
+        if (!s.HW_AVX2 || samples_per_chunk < 32){
+            INIT_MAIN_LOOP(int8_t)
+                getMinMaxInt8_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }else{
+            INIT_MAIN_LOOP(int8_t)
+                //getMinMaxFloatSIMD(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        }
+
+        PROCESS_EXTRA_NON_CHUNK_SAMPLES(int8_t)
+
+        POPULATE_OUTPUT
+        return;
+    }
+
 
 }

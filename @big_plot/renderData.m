@@ -34,6 +34,8 @@ elseif ~ri.isChangedXLim()
     return
 end
 
+t = tic;
+
 perf_mon.n_render_calls = obj.perf_mon.n_render_calls + 1;
 
 %Start rendering process
@@ -43,9 +45,13 @@ ri.incrementRenderCount();
 
 if obj.render_info.n_render_calls == 1
     h__handleFirstPlotting(obj)
+    type = 1;
 else
-    h__replotData(obj)
+    redraw_option = h__replotData(obj);
+    type = redraw_option+2;
 end
+
+perf_mon.logRenderPerformance(toc(t),type);
 
 if ~isempty(obj.post_render_callback)
     obj.post_render_callback();
@@ -222,7 +228,7 @@ end
 %---------------------          Replotting      ---------------------------
 %--------------------------------------------------------------------------
 %2) Main function for replotting
-function h__replotData(obj)
+function redraw_option = h__replotData(obj)
 %
 %   Handles replotting data, as opposed to handling the first plot
 %
@@ -302,13 +308,10 @@ for iG = find(is_valid_group_mask)
     
     obj.render_info.logRenderCall(iG,x_r,y_r,range_I,use_original,new_x_limits);
     
-    %TODO: At some point we might not be rendering everything due to:
-    %1) No changes in the range_I
-    %2) Invalid handles ...
-    
     local_h = obj.h_and_l.h_plot{iG};
     
-    % Update the plot.
+    %Update the plot.
+    %---------------------------------------
     if size(x_r,2) == 1
         for iChan = 1:length(local_h)
             set(local_h(iChan), 'XData', x_r, 'YData', y_r(:,iChan));
@@ -319,8 +322,6 @@ for iG = find(is_valid_group_mask)
         end
     end
     
-    %pause(0.1)
-    %drawnow()
 end
 
 end

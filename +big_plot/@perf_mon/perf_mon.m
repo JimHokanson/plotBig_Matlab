@@ -11,6 +11,7 @@ classdef perf_mon < handle
         n_calls_all = 0 %This will be the highest. Incremented every time
         %we rerender.
         
+        n_render_calls = 0 %# of times the figure detected a resize
         render_cb_times %array
         render_types %array
         %1 - init
@@ -18,20 +19,14 @@ classdef perf_mon < handle
         %3 - reset to global
         %4 - new render
         
-        n_render_calls = 0 %# of times the figure detected a resize
-        
         %Reduce ...
         %------------------------
+        n_reduce_calls = 0 %Calls to reduceToWidth ...
         reduce_mex_times %array
         reduce_fcn_times
         n_samples_reduce %array
         ms_reduce_per_million_samples %array
-        n_reduce_calls = 0 %Calls to reduceToWidth ...
-        
-        
-        
-        
-        
+
         n_render_busy_calls = 0 %If busy rendering, we increment this
         %   No plotting actually occurs ...
         
@@ -47,11 +42,20 @@ classdef perf_mon < handle
             obj.extendReduceArrays(100);
             obj.extendRenderArrays(100);
         end
+        function logRenderPerformance(obj,elapsed_time,render_type)
+            obj.n_render_calls = obj.n_render_calls + 1;
+            if obj.n_render_calls > length(obj.render_cb_times)
+                obj.extendRenderArrays(2*length(obj.render_cb_times));
+            end
+            I = obj.n_render_calls;
+            obj.render_cb_times(I) = elapsed_time;
+            obj.render_types(I) = render_type;
+        end
         function logReducePerformance(obj,s,fcn_time)
             obj.n_reduce_calls = obj.n_reduce_calls + 1;
             if obj.n_reduce_calls > length(obj.reduce_mex_times)
                 obj.extendReduceArrays(2*length(obj.reduce_mex_times));
-            end 
+            end
             I = obj.n_reduce_calls;
             obj.reduce_fcn_times(I) = fcn_time;
             obj.reduce_mex_times(I) = s.mex_time;
@@ -68,6 +72,17 @@ classdef perf_mon < handle
         function extendRenderArrays(obj,n_samples_add)
             obj.render_cb_times = [obj.render_cb_times zeros(1,n_samples_add)];
             obj.render_types = [obj.render_types zeros(1,n_samples_add)];
+        end
+        function truncate(obj)
+            I = obj.n_reduce_calls + 1;
+            obj.reduce_mex_times(I:end) = [];
+            obj.reduce_fcn_times(I:end) = [];
+            obj.n_samples_reduce(I:end) = [];
+            obj.ms_reduce_per_million_samples(I:end) = [];
+            
+            I = obj.n_render_calls + 1;
+            obj.render_cb_times(I:end) = [];
+            obj.render_types(I:end) = [];
         end
     end
     
