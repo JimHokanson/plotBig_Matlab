@@ -1,7 +1,7 @@
-function [x_reduced, y_reduced, range_I, same_range] = reduceToWidth(x, y, axis_width_in_pixels, x_limits, last_range_I)
+function [x_reduced, y_reduced, s] = reduceToWidth(x, y, axis_width_in_pixels, x_limits, last_range_I)
 %x  Reduces the # of points in a data set
 %
-%   [x_reduced, y_reduced, range_I, same_range] = ...
+%   [x_reduced, y_reduced, s] = ...
 %       reduceToWidth(x, y, axis_width_in_pixels, x_limits, *last_range_I)
 %       
 %   For a given data set, this function returns the maximum and minimum
@@ -37,14 +37,16 @@ function [x_reduced, y_reduced, range_I, same_range] = reduceToWidth(x, y, axis_
 %
 %   Outputs
 %   -------
-%   x_reduced:
-%   y_reduced:
-%   range_I: 
-%   same_range: logical
-%       This can only be determined when 'last_range_I' is passed in. If 
-%       true, then 'x_reduced' and 'y_reduced' are not computed. Note, this
-%       function does not store the reduced data, so it can't pass out what
-%       was last used even if this value is true (without recomputing).
+%   x_reduced :
+%   y_reduced :
+%       s :
+%           - range_I: 
+%           - same_range: logical
+%               This can only be determined when 'last_range_I' is passed
+%               in. If true, then 'x_reduced' and 'y_reduced' are not
+%               computed. Note, this function does not store the reduced 
+%               data, so it can't pass out what was last used even if this 
+%               value is true (without recomputing).
 %       
 %
 %   Example
@@ -61,12 +63,10 @@ function [x_reduced, y_reduced, range_I, same_range] = reduceToWidth(x, y, axis_
 %                 %but looks the same.
 %   hold off
 %
-%   Improvements
-%   ------------
-%   1) Pass out an integer which indicates which processing algorithm was
-%   used, such as plotting everything by default, or plotting everything
-%   after reduction, or reducing a subset, or plotting an entire subset 
-%   (I think those may be all of the cases ...)
+
+s = struct('range_I',[NaN NaN],'same_range',false,'mex_time',0,'plot_all',false,'show_everything',false);
+% s.range_I = [];
+% s.same_range = [];
 
 N_CHANS_MAX = 100; %This was put in place to catch some fall through cases
 %where I was plotting [1 x n] instead of [n x 1] for y. It is also helpful
@@ -95,6 +95,7 @@ if n_chans > N_CHANS_MAX
 end
 
 if n_y_samples < N_SAMPLES_JUST_PLOT
+    s.plot_all = true;
     y_reduced = y;
     if isobject(x)
         x_reduced = x.getTimeArray;
@@ -104,8 +105,8 @@ if n_y_samples < N_SAMPLES_JUST_PLOT
     else
         x_reduced = x;
     end
-    range_I = [1 length(x)];
-    same_range = isequal(range_I,last_range_I);
+    s.range_I = [1 length(x)];
+    s.same_range = isequal(s.range_I,last_range_I);
     return
 end
 
@@ -128,13 +129,15 @@ show_everything = isinf(x_limits(1)) || ...
     (x_limits(1) <= x_1 && x_limits(2) >= x_end);
 
 if show_everything
+    s.show_everything = true;
     if isobject(x)
         range_I = [1 x.n_samples];
     else
         range_I = [1 length(x)];
     end
-    
+    s.range_I = range_I;
     same_range = isequal(range_I,last_range_I);
+    s.same_range = same_range;
     if same_range
         return
     end
@@ -144,9 +147,9 @@ if show_everything
     %floor - more samples out
     samples_per_chunk = ceil(size(y,1)/axis_width_in_pixels);
     
-    %t = tic;
+    t = tic;
     y_reduced = reduce_to_width_mex(y,samples_per_chunk);
-    %toc(t)
+    s.mex_time = toc(t);
     n_y_reduced = size(y_reduced,1);
     if ~isobject(x) && ~isLinearTime(x)
         error('Non-uniform x spacing not yet supported');
@@ -198,13 +201,12 @@ else
     end
     
     range_I = [I1 I2];
+    s.range_I = range_I;
     same_range = isequal(range_I,last_range_I);
+    s.same_range = same_range;
     if same_range
         return
     end
-    
-    %TODO: We may be able to recycle the values if the limits have
-    %changed but the indices haven't really ...
     
     n_samples = I2 - I1 + 1;
     if n_samples < N_SAMPLES_JUST_PLOT
@@ -216,7 +218,9 @@ else
     
     
     samples_per_chunk = ceil(n_samples/axis_width_in_pixels);
+    t = tic;
     y_reduced   = reduce_to_width_mex(y,samples_per_chunk,I1,I2);
+    s.mex_time = toc(t);
     n_y_reduced = size(y_reduced,1);
     %chunk_time_width = (samples_per_chunk-1)*dt;
     x_reduced = zeros(n_y_reduced,1);

@@ -52,7 +52,19 @@ classdef handles_and_listeners < handle
                 
             end
         end
+        function mask = getValidGroupMask(obj)
+            mask = cellfun(@(x) all(ishandle(x)),obj.h_plot);
+        end
         function initializePlotHandles(obj,n_plot_groups,temp_h_plot,temp_h_indices)
+            %
+            %
+            %   Inputs
+            %   ------
+            %   n_plot_groups :
+            %   temp_h_plot : 
+            %   temp_h_indices :
+            %
+            %
             %Break up plot handles to be grouped the same as the inputs were
             %---------------------------------------------------------------
             %e.g.

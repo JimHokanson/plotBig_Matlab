@@ -83,9 +83,7 @@ classdef big_plot < handle
         %- This is actually 1/2 the # of plotted values, since the current
         %  processor returns min/max for each "sample to plot"
         n_samples_to_plot = 4000;
-        
-        min_time_between_callbacks = 0.2;
-        
+                
         post_render_callback = [] %This can be set to render
         %something after the data has been drawn .... Any inputs
         %should be done by binding to the anonymous function.
@@ -93,8 +91,6 @@ classdef big_plot < handle
         %   e.g. obj.post_render_callback = @()doStuffs(obj)
         %
         %   'obj' will now be available in the callback
-        
-        render_in_progress = false
     end
     
     properties
@@ -102,33 +98,23 @@ classdef big_plot < handle
         %when working with callback optimization, i.e. to identify which
         %object is throwing the callback (debugging)
         
+        perf_mon    %big_plot.perf_mon
+        
         h_and_l     %big_plot.handles_and_listeners
         
         data        %big_plot.data
         
         render_info %big_plot.render_info
+        
+        callback_manager %big_plot.callback_manager
     end
     
     %------------------------     Debugging    ----------------------------
     properties
-        %This could all get merged into a timer class ...
-        timer %See h__runTimer() in renderData
+        render_in_progress = false
         
-        n_resize_calls = 0 %# of times the figure detected a resize
-        
-        last_timer_error
-    end
-    
-    properties 
-        timer_callback %The function that the timer is running. I exposed
-        %this here so that it could be called manually. I'm not thrilled
-        %with this layout. The callback should probably be moved 
-        %so that we can call it directly.
-        
-        manual_callback_running = false
-        
-        %callback_info %sl.plot.big_data.line_plot_reducer.callback_info
-        %Not sure what I'm going to store here
+        %This gets set by the callback_manager
+        last_render_error %ME
         
     end
     
@@ -146,33 +132,32 @@ classdef big_plot < handle
             temp = now;
             obj.id = int2str(uint64(floor(1e8*(temp - floor(temp)))));
             
+            obj.perf_mon = big_plot.perf_mon;
+            
             %We need to be able to reference back to the timer so
             %we pass in the object
+            t = tic;
             obj.h_and_l = big_plot.handles_and_listeners(obj);
+            obj.perf_mon.init_h_and_l = toc(t);
             
             %Population of the input data and plotting instructions ...
             %We might update the axes, so we pass in h_and_l
+            t = tic;
             obj.data = big_plot.data(obj.h_and_l,varargin{:});
+            obj.perf_mon.init_data = toc(t);
             
+            t = tic;
             obj.render_info = big_plot.render_info(obj.data.n_plot_groups);
+            obj.perf_mon.init_render = toc(t);
             
-            %Now wait for the user to update things and to render the data
-            %by calling obj.renderData
+            obj.callback_manager = big_plot.callback_manager(obj);
+            
+            %At this point nothing has been rendered. We wait until 
+            %the user chooses to render the class. This is done
+            %automatically with plotBig. It can also be done manually with
+            %renderData()
         end
-        function triggerRender(obj)
-            %evaluation of property function handle ...
-            %
-            %   Currently a helper function in renderData
-            obj.timer_callback();
-        end
-        function delete(obj)
-            t = obj.timer;
-            try
-                stop(t);
-                delete(t);
-            end
-            obj.timer = [];
-        end
+
     end
     
 end

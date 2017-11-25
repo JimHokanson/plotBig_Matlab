@@ -1,6 +1,6 @@
-function s001_speed_test_1(varargin)
+function s001_speed_test_2__zoom_speed(varargin)
 %
-%   big_plot_tests.speed.s001_speed_test_1(varargin)
+%   big_plot_tests.speed.s001_speed_test_2__zoom_speed(varargin)
 %
 %   Optional Inputs
 %   ---------------
