@@ -60,6 +60,9 @@ function varargout = plotBig(varargin)
 %   3)  Move the start time to 5
 %       plotBig(y,'dt',dt,'t0',5)
 %       
+%   See Also
+%   --------
+%   big_plot
 
 %Varargin parsing
 %-------------------

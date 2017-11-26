@@ -36,8 +36,6 @@ end
 
 t = tic;
 
-perf_mon.n_render_calls = obj.perf_mon.n_render_calls + 1;
-
 %Start rendering process
 %---------------------------------------------
 obj.render_in_progress = true;
@@ -118,7 +116,7 @@ obj.render_info.ax_handle = obj.h_and_l.h_axes;
 %-------------------------------
 obj.h_and_l.intializeListeners();
 
-obj.callback_manager.initialize();
+obj.callback_manager.initialize(obj.h_and_l.h_axes);
 
 end
 

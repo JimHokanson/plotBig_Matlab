@@ -34,6 +34,8 @@ classdef perf_mon < handle
         %not contracts
         n_render_resets = 0 %Reset to original data
         
+        t_size1
+        t_size2
     end
     
     methods
@@ -75,12 +77,14 @@ classdef perf_mon < handle
         end
         function truncate(obj)
             I = obj.n_reduce_calls + 1;
+            obj.t_size1 = I;
             obj.reduce_mex_times(I:end) = [];
             obj.reduce_fcn_times(I:end) = [];
             obj.n_samples_reduce(I:end) = [];
             obj.ms_reduce_per_million_samples(I:end) = [];
             
             I = obj.n_render_calls + 1;
+            obj.t_size2 = I;
             obj.render_cb_times(I:end) = [];
             obj.render_types(I:end) = [];
         end

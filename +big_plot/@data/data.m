@@ -24,6 +24,9 @@ classdef data < handle
         %   x = {x1 x2}
         
         y %cell, same format as 'x'
+        % This could also be a data object with:
+        
+        
     end
     
     properties (Dependent)

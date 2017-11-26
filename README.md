@@ -41,7 +41,12 @@ when zooming.
 
 #Current Limitations
 
-* Supports double data only (https://github.com/JimHokanson/plotBig_Matlab/issues/6)
 * Does not support non-evenly sampled data (https://github.com/JimHokanson/plotBig_Matlab/issues/7)
 
-JAH TODO: Add gifs
+# Speed comparisons
+
+The following is the time it took to render random data using 1) default Matlab, 2) Using the matlab-plot-big repo (mpb) and 3) this repo.
+
+![speed1_double](/documentation/speed1_double.png)
+
+![speed1_double](/documentation/speed1_int16.png)

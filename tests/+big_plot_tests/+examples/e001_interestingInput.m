@@ -67,6 +67,14 @@ else
             %do nothing
         case 'single'
             y = single(y);
+        case 'uint32'
+            y = bsxfun(@minus,y,min(y,[],1));
+            y = bsxfun(@rdivide,y,max(y,[],1));
+            y = uint32(y*double(intmax('uint32')));
+        case 'uint16'
+            y = bsxfun(@minus,y,min(y,[],1));
+            y = bsxfun(@rdivide,y,max(y,[],1));
+            y = uint16(y*double(intmax('uint16')));            
         otherwise
             %get data type min and max
     end
@@ -128,6 +136,7 @@ switch in.type
         h = plot(t,y);
 end
 s.h = h;
+s.ax = ax;
 linkaxes(ax);
 
     if nargout
