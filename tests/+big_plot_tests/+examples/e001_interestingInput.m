@@ -27,14 +27,24 @@ function varargout = e001_interestingInput(varargin)
 %
 
 %{
+<<<<<<< HEAD
     big_plot_tests.examples.e001_interestingInput('type',0)
     big_plot_tests.examples.e001_interestingInput('type',1)
     big_plot_tests.examples.e001_interestingInput('type',2)
     big_plot_tests.examples.e001_interestingInput('type',3)
+=======
+    s = big_plot_tests.examples.e001_interestingInput('type',0);
+    s = big_plot_tests.examples.e001_interestingInput('type',1);
+    s = big_plot_tests.examples.e001_interestingInput('type',2);
+
+    s = big_plot_tests.examples.e001_interestingInput('type',0,'data_type','single');
+>>>>>>> 1fd2ff8fdfad5e8529fa93f9ea31f38588370fbe
 %}
 
+%50 million samples
 in.n = 5e7 + randi(1000);
 in.type = 0;
+in.data_type = 'double';
 in.y = [];
 in.t = [];
 in.get_data_only = false;
@@ -60,6 +70,22 @@ else
         round(mod(t/10, 5))'];
     y(t > 40 & t < 50,:) = 0;                      % Drop a section of data.
     y(randi(numel(y), 1, 20)) = randn(1, 20);       % Emulate spikes.
+    switch in.data_type
+        case 'double'
+            %do nothing
+        case 'single'
+            y = single(y);
+        case 'uint32'
+            y = bsxfun(@minus,y,min(y,[],1));
+            y = bsxfun(@rdivide,y,max(y,[],1));
+            y = uint32(y*double(intmax('uint32')));
+        case 'uint16'
+            y = bsxfun(@minus,y,min(y,[],1));
+            y = bsxfun(@rdivide,y,max(y,[],1));
+            y = uint16(y*double(intmax('uint16')));            
+        otherwise
+            %get data type min and max
+    end
 end
 fprintf('Done initializing data\n');
 
@@ -127,6 +153,7 @@ switch in.type
         end
 end
 s.h = h;
+s.ax = ax;
 linkaxes(ax);
 
     if nargout

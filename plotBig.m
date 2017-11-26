@@ -6,15 +6,16 @@ function varargout = plotBig(varargin)
 %   Calling Forms
 %   -------------
 %   1) As a replacement for plot()
-%   h = plotBig(x,y)
-%   h = plotBig(y)
-%   h = plotBig(ax,...)
-%   etc.
+%   
+%       h = plotBig(x,y)
+%       h = plotBig(y)
+%       h = plotBig(ax,...)
+%       etc.
 %
 %   2) Build time from options
-%   h = plotBig(y,'x',x_data)
-%   h = plotBig(y,'dt',0.01,varargin)
 %
+%       h = plotBig(y,'x',x_data)
+%       h = plotBig(y,'dt',0.01,varargin)
 %
 %   Inputs
 %   ------
@@ -37,30 +38,38 @@ function varargout = plotBig(varargin)
 %       Currently differing times for each y input are not supported.
 %   dt : scalar
 %       The time difference between two samples, i.e. 1/(sampling_rate)
+<<<<<<< HEAD
 %   fs : scalar
 %       Sampling rate
 %   t0 : starting time
 %   obj: 
+=======
+%   t0 : numeric
+%       Starting time.
+%   obj: logical (default false)
+%       If true the underlying big_plot class is returned
+>>>>>>> 1fd2ff8fdfad5e8529fa93f9ea31f38588370fbe
 %
 %   Examples
 %   --------
 %   1)
-%   n = 1e8;
-%   t_end = 100;
-%   dt = t_end/(n-1);
-%   t = 0:dt:t_end;
-%   y = (cos(0.43 * t) + 0.001 * t .* randn(1, n));
-%   y = y';
-%   plotBig(y,'x',t)
-%   %---   or better  -----
-%   plotBig(y,'dt',dt)
+%       n = 1e8;
+%       t_end = 100;
+%       dt = t_end/(n-1);
+%       t = 0:dt:t_end;
+%       y = (cos(0.43 * t) + 0.001 * t .* randn(1, n));
+%       y = y';
+%       plotBig(y,'x',t)
 %
-
-%TODO: We should build in support for returning the object with an 
-%input form of (t,y,'obj',true)
+%   2)  This is a quicker version 
+%       plotBig(y,'dt',dt)
 %
-%Currently we assume that the 2nd input will be a character for any
-%optional processing
+%   3)  Move the start time to 5
+%       plotBig(y,'dt',dt,'t0',5)
+%       
+%   See Also
+%   --------
+%   big_plot
 
 %Varargin parsing
 %-------------------
@@ -95,15 +104,25 @@ end
 %--------------------------------------
 varargin(delete_mask) = [];
 
-y = varargin{1};
+%I don't know when we will have 2+ elemements
+%and not have a numeric #2 but I'll leve this in place for now
+if length(varargin) > 1 && isnumeric(varargin{2})
+    x_temp = varargin{1};
+    y = varargin{2};
+else
+    x_temp = [];
+    y = varargin{1};
+end
+
 in.axes = [];
-in.x = [];
+in.x = x_temp;
 in.dt = [];
 in.fs = [];
 in.t0 = 0;
 in.obj = false;
 in = big_plot.sl.in.processVarargin(in,s_in);
 
+<<<<<<< HEAD
 if ~isempty(in.fs)
     in.dt = 1./in.fs;
 end
@@ -111,6 +130,14 @@ end
 if ~isempty(in.dt)
 
     n_samples = size(y,1);
+=======
+n_samples = size(y,1);
+
+
+%Define x based on time specs (if necessary)
+%-------------------------------------------------------------------
+if ~isempty(in.dt)
+>>>>>>> 1fd2ff8fdfad5e8529fa93f9ea31f38588370fbe
     
     %This may occur when the data should be transposed i.e. plotting y'
     %When 'x' is provided, we can adjust y accordingly, but when only
@@ -122,19 +149,31 @@ if ~isempty(in.dt)
     x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
 else
     x = in.x;
-    if ~any(size(y) == length(x))
+    if isempty(x)
+        in.t0 = 1;
+        in.dt = 1;
+        
+        x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
+    elseif ~any(size(y) == length(x))
         error('Mismatch in # of elements between x and y')
     end
 end
 
+%Setup of the big_plot class
+%-----------------------------------------------------
 if ~isempty(in.axes)
     temp = big_plot(in.axes,x,y);
 else
     temp = big_plot(x,y);
 end
 
+%By calling plotBig (this function) we expect rendering to happen
+%so we call it manually
 temp.renderData();
 
+
+%Output handling
+%-------------------------------------------------------
 if nargout
     if in.obj
         varargout{1} = temp;

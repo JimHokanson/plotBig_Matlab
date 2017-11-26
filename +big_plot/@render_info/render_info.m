@@ -5,8 +5,13 @@ classdef render_info < handle
     
     properties (Hidden)
         n_groups
+        ax_handle
     end
-    
+    properties (Constant)
+        NO_CHANGE = 0
+        RESET_TO_ORIGINAL = 1
+        RECOMPUTE_DATA_FOR_PLOTTING = 2
+    end
     properties
         orig_x_r %cell
         orig_y_r %cell
@@ -38,6 +43,14 @@ classdef render_info < handle
             obj.last_y_r = cell(1,n_groups);
             
             obj.last_I = cell(1,n_groups);
+        end
+        function mask = isChangedXLim(obj)
+            if isempty(obj.ax_handle)
+                %True before first render
+                mask = true;
+            else
+                mask = ~isequal(obj.last_rendered_xlim,get(obj.ax_handle,'XLim'));
+            end
         end
         function logNoRenderCall(obj,x_limits)
             obj.last_rendered_xlim = x_limits;
@@ -80,22 +93,17 @@ classdef render_info < handle
             
             x_lim_changed = ~isequal(obj.last_rendered_xlim,new_x_limits);
             
-            NO_CHANGE = 0;
-            RESET_TO_ORIGINAL = 1;
-            RECOMPUTE_DATA_FOR_PLOTTING = 2;
-            
             if x_lim_changed
                 %x_lim changed almost always means a redraw
                 %Let's build a check in here for being the original
                 %If so, go back to that
                 if new_x_limits(1) <= obj.original_xlim(1) && new_x_limits(2) >= obj.original_xlim(2)
-                    redraw_option = RESET_TO_ORIGINAL;
+                    redraw_option = obj.RESET_TO_ORIGINAL;
                 else
-                    redraw_option = RECOMPUTE_DATA_FOR_PLOTTING;
+                    redraw_option = obj.RECOMPUTE_DATA_FOR_PLOTTING;
                 end
             else
-                %By definition now this shouldn't be called ...
-                redraw_option = NO_CHANGE;
+                redraw_option = obj.NO_CHANGE;
             end
             
         end

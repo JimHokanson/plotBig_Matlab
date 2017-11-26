@@ -9,6 +9,7 @@ function compile()
 %2) Support compiler switching
 %3) build in try/catch support
 %4) Finish mac support
+%5) remove output before compiling - move as a function of the build
 
 %TODO: List supported compilers and try and acquire them
 
@@ -18,6 +19,7 @@ c = mex.compilers.gcc('./private/same_diff_mex.c','verbose',verbose);
 c.build();
 
 c = mex.compilers.gcc('./private/reduce_to_width_mex.c','verbose',verbose);
+c.addCompileFlags('-mavx2');
 c.addLib('openmp');
 c.build();
 

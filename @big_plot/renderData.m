@@ -1,52 +1,69 @@
-function renderData(obj,s)
+function renderData(obj)
 %x   Draws all of the data.
 %
-%   This is THE main function which actually plots data.
+%   MAIN FUNCTION for plotting data.
 %
 %   Forms
 %   -----
 %   obj.renderData()  %user mode
 %   obj.renderData(s) %timer only
 %
+%   timer at???
+%
 %   Inputs
 %   ------
 %   s : (struct)
 %       new_xlim
-
-%Relevant objects
-%----------------
+%
+%   Relevant objects
+%   ----------------
 %   big_plot.render_info
 
+perf_mon = obj.perf_mon;
+ri = obj.render_info;
 
-obj.render_info.incrementRenderCount();
-
-if nargin == 1
-    h__handleFirstPlotting(obj)
-else
-    h__replotData(obj,s)
+%Initial Checks
+%--------------------------------------------
+%This is currently high due to a timer. Ideally we can switch to callbacks
+%and reduce this ...
+perf_mon.n_calls_all = perf_mon.n_calls_all + 1;
+if obj.render_in_progress
+    perf_mon.n_render_busy_calls = perf_mon.n_render_busy_calls + 1;
+    return
+elseif ~ri.isChangedXLim()
+    return
 end
 
-%TODO: This should only be called if a rendering occurred
+t = tic;
+
+%Start rendering process
+%---------------------------------------------
+obj.render_in_progress = true;
+ri.incrementRenderCount();
+
+if obj.render_info.n_render_calls == 1
+    h__handleFirstPlotting(obj)
+    type = 1;
+else
+    redraw_option = h__replotData(obj);
+    type = redraw_option+2;
+end
+
+perf_mon.logRenderPerformance(toc(t),type);
+
 if ~isempty(obj.post_render_callback)
     obj.post_render_callback();
 end
 
-end
-
-function h__trigger_manual_callback(obj)
-
-obj.manual_callback_running = true;
-
-h__runTimer(obj);
-
-obj.manual_callback_running = false;
-
-
+%We'll put this here instead of before the callback to consider the
+%callback still a part of the rendering process
+obj.render_in_progress = false;
 
 end
 
 %--------------------------------------------------------------------------
-%-----------------   Initialization  --------------------------------------
+%-----------------           Initialization                ----------------
+%--------------------------------------------------------------------------
 %1) Main function for plotting
 function h__handleFirstPlotting(obj)
 %
@@ -71,13 +88,17 @@ plot_args = obj.h_and_l.initializeAxes();
 %   Then we wouldn't see plot(x1,y1), unless we changed our hold status,
 %   but this could be messy
 
-%NOTE: This doesn't support stairs or plotyy
+%- This doesn't support stairs or plotyy
+%- The data has been reduced at this point
 temp_h_plot = obj.data.plot_fcn(plot_args{:});
 
 obj.h_and_l.initializePlotHandles(obj.data.n_plot_groups,temp_h_plot,temp_h_indices);
 
+obj.render_info.ax_handle = obj.h_and_l.h_axes;
+
 %This needs to be fixed
-%The idea is to be able to fetch the raw data from the line ...
+%The idea is to be able to fetch the raw data from the line itself
+%In general my concern is avoiding dangling references
 %
 %--------------------------------------------------------------------------
 % % % % %TODO: Make sure this is exposed in the documentation
@@ -95,9 +116,7 @@ obj.h_and_l.initializePlotHandles(obj.data.n_plot_groups,temp_h_plot,temp_h_indi
 %-------------------------------
 obj.h_and_l.intializeListeners();
 
-h__setupTimer(obj);
-
-drawnow();
+obj.callback_manager.initialize(obj.h_and_l.h_axes);
 
 end
 
@@ -131,8 +150,7 @@ function [plot_args,temp_h_indices] = h__setupInitialPlotArgs(obj,plot_args)
 %
 
 %This width is a holdover from when I varied this depending on the width of
-%the screen. I've not just hardcoded a "large" screen size.
-%
+%the screen. For now I've not just hardcoded a "large" screen size.
 n_samples_plot = obj.n_samples_to_plot;
 
 %h - handles
@@ -151,11 +169,18 @@ for iG = 1:n_plot_groups
     temp_h_indices{iG} = start_h:end_h;
 end
 
+perf_mon = obj.perf_mon;
+
 for iG = 1:n_plot_groups
+    
     %Reduce the data.
     %----------------------------------------
-    [x_r, y_r, range_I] = big_plot.reduceToWidth(obj.data.x{iG}, obj.data.y{iG}, n_samples_plot, [-Inf Inf]);
-    
+    t = tic;
+    [x_r, y_r, s] = big_plot.reduceToWidth(...
+                obj.data.x{iG}, obj.data.y{iG}, n_samples_plot, [-Inf Inf]);
+    perf_mon.logReducePerformance(s,toc(t));
+            
+            
     %We get an empty value when the line is not in the range of the plot
     %Note, this may no longer be true as we always keep the first and last
     %points ...
@@ -173,7 +198,9 @@ for iG = 1:n_plot_groups
     
     %We might change this to two different calls
     %since we don't know the limits yet ...
-    obj.render_info.logRenderCall(iG,x_r,y_r,range_I,true,NaN);
+    is_original = true;
+    x_limits = NaN;
+    obj.render_info.logRenderCall(iG,x_r,y_r,s.range_I,is_original,x_limits);
     
     plot_args = [plot_args {x_r y_r}]; %#ok<AGROW>
     
@@ -195,28 +222,11 @@ end
 
 end
 
-%1.3) Timer setup
-function h__setupTimer(obj)
-%
-%   This function runs after everything has been setup...
-%
-
-t = timer();
-set(t,'Period',0.1,'ExecutionMode','fixedSpacing')
-set(t,'TimerFcn',@(~,~)h__runTimer(obj));
-start(t);
-obj.timer = t;
-
-%This might change ...
-obj.timer_callback = @()h__trigger_manual_callback(obj);
-
-end
-
 %--------------------------------------------------------------------------
 %---------------------          Replotting      ---------------------------
 %--------------------------------------------------------------------------
 %2) Main function for replotting
-function h__replotData(obj,s)
+function redraw_option = h__replotData(obj)
 %
 %   Handles replotting data, as opposed to handling the first plot
 %
@@ -228,31 +238,38 @@ function h__replotData(obj,s)
 %       Currently hardcoded as the max width
 %
 
-new_x_limits = s.new_xlim;
+ax = obj.h_and_l.h_axes;
 
-redraw_option = obj.render_info.determineRedrawCase(new_x_limits);
+%TODO: Verify all lines are good ...
+is_valid_group_mask = obj.h_and_l.getValidGroupMask();
+if ~any(is_valid_group_mask)
+    obj.callback_manager.killCallbacks();
+end
+
+new_x_limits = get(ax,'XLim');
+ri = obj.render_info;
+perf_mon = obj.perf_mon;
+redraw_option = ri.determineRedrawCase(new_x_limits);
 
 use_original = false;
 switch redraw_option
-    case 0
+    case ri.NO_CHANGE
         %no change needed
+        perf_mon.n_render_no_ops = perf_mon.n_render_no_ops + 1;
         return
-    case 1
+    case ri.RESET_TO_ORIGINAL
         %reset data to original view
+        perf_mon.n_render_resets = perf_mon.n_render_resets + 1;
         use_original = true;
-        %obj.last_redraw_used_original = true;
-    case 2
+    case ri.RECOMPUTE_DATA_FOR_PLOTTING
         %recompute data for plotting
-        %obj.last_redraw_used_original = false;
         obj.render_info.incrementReductionCalls();
     otherwise
         error('Uh oh, Jim broke the code')
 end
 
-for iG = 1:obj.data.n_plot_groups
-    
-    %TODO: Verify that the lines are good
-    
+for iG = find(is_valid_group_mask)
+        
     last_I = obj.render_info.last_I{iG};
     x_input = obj.data.x{iG};
     
@@ -274,26 +291,25 @@ for iG = 1:obj.data.n_plot_groups
         end
         
     else
+        t = tic;
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
-        [x_r, y_r, range_I, same_range] = big_plot.reduceToWidth(x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
+        [x_r, y_r, s] = big_plot.reduceToWidth(...
+                x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
+        perf_mon.logReducePerformance(s,toc(t));
+        range_I = s.range_I;
         
-        if same_range
+        if s.same_range
             obj.render_info.logNoRenderCall(new_x_limits);
             continue
         end
-    end
-    
-    %disp([x_r(1) x_r(end)])
+    end    
     
     obj.render_info.logRenderCall(iG,x_r,y_r,range_I,use_original,new_x_limits);
     
-    %TODO: At some point we might not be rendering everything due to:
-    %1) No changes in the range_I
-    %2) Invalid handles ...
-    
     local_h = obj.h_and_l.h_plot{iG};
     
-    % Update the plot.
+    %Update the plot.
+    %---------------------------------------
     if size(x_r,2) == 1
         for iChan = 1:length(local_h)
             set(local_h(iChan), 'XData', x_r, 'YData', y_r(:,iChan));
@@ -304,8 +320,6 @@ for iG = 1:obj.data.n_plot_groups
         end
     end
     
-    %pause(0.1)
-    %drawnow()
 end
 
 end
@@ -323,50 +337,4 @@ if obj.n_active_lines <= 0
     obj.cleanup_figure();
 end
 
-end
-
-function h__runTimer(obj)
-
-if obj.manual_callback_running
-    return
-end
-
-cur_xlim = get(obj.h_and_l.h_axes,'xlim');
-
-if ~isequal(obj.render_info.last_rendered_xlim,cur_xlim)
-    
-    %TODO: This will most likely be changing
-    %once I reimplement the plot listeners
-    n_plot_groups = obj.data.n_plot_groups;
-    h_plot = obj.h_and_l.h_plot;
-    for iG = 1:n_plot_groups
-        if any(~ishandle(h_plot{iG}))
-            t = obj.timer;
-            try
-                stop(t)
-                delete(t)
-            end
-            return;
-        end
-    end
-    
-    
-    s = struct;
-    s.new_xlim = cur_xlim;
-    
-    try
-        obj.renderData(s);
-    catch ME
-        obj.last_timer_error = ME;
-        disp(ME)
-        ME.stack(1)
-        ME.stack(2)
-        try
-            fprintf(2,'Killing timer, no more redraws of the current plot will occur\n');
-            t = obj.timer;
-            stop(t)
-            delete(t)
-        end
-    end
-end
 end

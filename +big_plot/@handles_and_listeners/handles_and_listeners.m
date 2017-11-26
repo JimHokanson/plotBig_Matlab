@@ -28,7 +28,6 @@ classdef handles_and_listeners < handle
     methods
         function obj = handles_and_listeners(parent)
             obj.parent = parent;
-            %obj.n_plot_groups = n_plot_groups;
         end
         function plot_args = initializeAxes(obj)
             %The user may have already specified the axes.
@@ -53,14 +52,28 @@ classdef handles_and_listeners < handle
                 
             end
         end
+        function mask = getValidGroupMask(obj)
+            mask = cellfun(@(x) all(ishandle(x)),obj.h_plot);
+        end
         function initializePlotHandles(obj,n_plot_groups,temp_h_plot,temp_h_indices)
+            %
+            %
+            %   Inputs
+            %   ------
+            %   n_plot_groups :
+            %   temp_h_plot : 
+            %   temp_h_indices :
+            %
+            %
             %Break up plot handles to be grouped the same as the inputs were
             %---------------------------------------------------------------
             %e.g.
             %plot(x1,y1,x2,y2)
-            %This returns one array of handles, but we break it back up into
-            %handles for 1 and 2
-            %{h1 h2} - where h1 is from x1,y1, h2 is from x2,y2
+            %
+            %   This returns one array of handles, but we break it back up into
+            %   handles for 1 and 2
+            %
+            %   {h1 h2} - where h1 is from x1,y1, h2 is from x2,y2
             obj.h_plot = cell(1,n_plot_groups);
             if ~isempty(temp_h_plot)
                 for iG = 1:n_plot_groups
@@ -77,8 +90,8 @@ classdef handles_and_listeners < handle
             
             %What we really need is when the # of plots drops, we clear the timer ...
             
-            %This needs to be fixed, I thought it was causing a problem but it looks
-            %like it wasn't ...
+            %This needs to be fixed, I thought it was causing a problem 
+            %but it looks like it wasn't ...
             
             % % % % %Is this causing problems???
             % % % % n_active_lines = 0;
@@ -119,12 +132,12 @@ classdef handles_and_listeners < handle
             %MATLAB:class:DestructorError
             
             try
-            t = obj.parent.timer;
+                t = obj.parent.timer;
             
                 stop(t);
                 delete(t);
             
-            obj.parent.timer = [];
+                obj.parent.timer = [];
             end
         end
     end

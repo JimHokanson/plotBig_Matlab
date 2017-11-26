@@ -6,7 +6,8 @@ classdef big_plot < handle
     %   Manages the information in a standard MATLAB plot so that only the
     %   necessary number of data points are shown. For instance, if the
     %   width of the axis in the plot is only 500 pixels, there's no reason
-    %   to have more than 1000 data points along the width. This tool
+    %   to have more than 1000 data points along the width (Technically
+    %   slightly more may be desireable due to anti-aliasing). This tool
     %   selects which data points to show so that, for each pixel, all of
     %   the data mapping to that pixel is crushed down to just two points,
     %   a minimum and a maximum. Since all of the data is between the
@@ -26,8 +27,8 @@ classdef big_plot < handle
     %   -----
     %   1) Call plotBig
     %   
-    %   Examples:
-    %   ---------
+    %   Examples
+    %   --------
     %   b = big_plot(t, y)
     %
     %   b = big_plot(t, y, 'r:', t, y2, 'b', 'LineWidth', 3);
@@ -35,17 +36,27 @@ classdef big_plot < handle
     %   big_plot(@plot, t, x);
     %
     %
-    %   Based On:
-    %   ---------
+    %   Based On
+    %   --------
     %   This code is based on:
     %   http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-/
     %
     %   Differences include:
-    %       - inclusion of time option
+    %       - inclusion of time option (dt,t0) to reduce memory usage
+    %       - min/max reduction based on samples, rather than finding
+    %         which samples should procssed based on a time vector,
+    %         resulting in much faster processing
+    %       - multi-thread processing
+    %       
     %
     %   See Also
     %   --------
     %   plotBig
+    
+    %Classes
+    %--------
+    %big_plot.handles_and_listeners
+    
         
     %{
     Other functions for comparison:
@@ -68,12 +79,11 @@ classdef big_plot < handle
         %These are not currently being used
         d0 = '------- User options --------'
         
-        %TODO: We could get the # of pixels and potentially
-        %use much less ...
+        %- This could be less, but requires extra processing
+        %- This is actually 1/2 the # of plotted values, since the current
+        %  processor returns min/max for each "sample to plot"
         n_samples_to_plot = 4000;
-        
-        min_time_between_callbacks = 0.2;
-        
+                
         post_render_callback = [] %This can be set to render
         %something after the data has been drawn .... Any inputs
         %should be done by binding to the anonymous function.
@@ -88,33 +98,23 @@ classdef big_plot < handle
         %when working with callback optimization, i.e. to identify which
         %object is throwing the callback (debugging)
         
+        perf_mon    %big_plot.perf_mon
+        
         h_and_l     %big_plot.handles_and_listeners
         
         data        %big_plot.data
         
         render_info %big_plot.render_info
+        
+        callback_manager %big_plot.callback_manager
     end
     
     %------------------------     Debugging    ----------------------------
     properties
-        %This could all get merged into a timer class ...
-        timer %See h__runTimer() in renderData
+        render_in_progress = false
         
-        n_resize_calls = 0 %# of times the figure detected a resize
-        
-        last_timer_error
-    end
-    
-    properties (Hidden)
-        timer_callback %The function that the timer is running. I exposed
-        %this here so that it could be called manually. I'm not thrilled
-        %with this layout. The callback should probably be moved 
-        %so that we can call it directly
-        
-        manual_callback_running = false
-        
-        %callback_info %sl.plot.big_data.line_plot_reducer.callback_info
-        %Not sure what I'm going to store here
+        %This gets set by the callback_manager
+        last_render_error %ME
         
     end
     
@@ -132,30 +132,32 @@ classdef big_plot < handle
             temp = now;
             obj.id = int2str(uint64(floor(1e8*(temp - floor(temp)))));
             
+            obj.perf_mon = big_plot.perf_mon;
+            
             %We need to be able to reference back to the timer so
             %we pass in the object
+            t = tic;
             obj.h_and_l = big_plot.handles_and_listeners(obj);
+            obj.perf_mon.init_h_and_l = toc(t);
             
             %Population of the input data and plotting instructions ...
             %We might update the axes, so we pass in h_and_l
+            t = tic;
             obj.data = big_plot.data(obj.h_and_l,varargin{:});
+            obj.perf_mon.init_data = toc(t);
             
+            t = tic;
             obj.render_info = big_plot.render_info(obj.data.n_plot_groups);
+            obj.perf_mon.init_render = toc(t);
             
-            %Now wait for the user to update things and to render the data
-            %by calling obj.renderData
+            obj.callback_manager = big_plot.callback_manager(obj);
+            
+            %At this point nothing has been rendered. We wait until 
+            %the user chooses to render the class. This is done
+            %automatically with plotBig. It can also be done manually with
+            %renderData()
         end
-        function triggerRender(obj)
-            obj.timer_callback();
-        end
-        function delete(obj)
-            t = obj.timer;
-            try
-                stop(t);
-                delete(t);
-            end
-            obj.timer = [];
-        end
+
     end
     
 end
