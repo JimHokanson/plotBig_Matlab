@@ -47,6 +47,8 @@ when zooming.
 
 The following is the time it took to render random data using 1) default Matlab, 2) Using the matlab-plot-big repo (mpb) and 3) this repo.
 
+The speedups are perhaps a bit hard to really appreciate. The main point of interest is that using this library render times are reasonable for a large number of points.
+
 ![speed1_double](/documentation/speed1_double.png)
 
 ![speed1_double](/documentation/speed1_int16.png)
