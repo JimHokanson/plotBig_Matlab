@@ -24,23 +24,7 @@
 
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
-#   if _WIN32
-
-//Windows
-//-----------------------------
-#include <Windows.h>
-#include <intrin.h>
-
-__int64 xgetbv(unsigned int x){
-    return _xgetbv(x);
-}
-
-
-void cpuid(int32_t out[4], int32_t x){
-    __cpuidex(out, x, 0);
-}
-
-#   elif defined(__GNUC__) || defined(__clang__)
+#   if defined(__GNUC__) || defined(__clang__)
 
 //Linux/Mac
 //-----------------------------
@@ -58,6 +42,24 @@ uint64_t xgetbv(unsigned int index){
     __asm__ __volatile__("xgetbv" : "=a"(eax), "=d"(edx) : "c"(index));
     return ((uint64_t)edx << 32) | eax;
 }
+
+#   elif _WIN32
+
+//Windows
+//-----------------------------
+#include <Windows.h>
+#include <intrin.h>
+
+__int64 xgetbv(unsigned int x){
+    return _xgetbv(x);
+}
+
+
+void cpuid(int32_t out[4], int32_t x){
+    __cpuidex(out, x, 0);
+}
+
+
 
 
 #   else
