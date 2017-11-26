@@ -28,7 +28,7 @@ classdef data < handle
         y %cell, same format as 'x'
         % This could also be a data object with:
         
-        
+        y_object_present = false;
     end
     
     properties (Dependent)
@@ -135,7 +135,9 @@ n_inputs      = length(varargin);
 for k = 1:n_inputs
     current_argument = varargin{k};
     %TODO: Anything that acts like a time object would be fine here ...
-    if isnumeric(current_argument) || isa(current_argument,'sci.time_series.time') || isa(current_argument,'big_plot.time')
+    if isnumeric(current_argument) || isobject(current_argument) 
+        %%isa(current_argument,'sci.time_series.time') || isa(current_argument,'big_plot.time')
+        
         % If we already have an x, then this must be y.
         if previous_type == 'x'
             
@@ -174,7 +176,16 @@ for k = 1:n_inputs
             previous_type = 'y';
             
             % If we don't have an x, this must be x.
-        else
+        elseif isnumeric(current_argument)
+            previous_type = 'x';
+        elseif any(strcmp(fieldnames(current_argument),'is_xy'))
+            obj.y_object_present = true;
+            xy = current_argument;
+            temp_x{end+1} = xy; %#ok<AGROW>
+            temp_y{end+1} = xy; %#ok<AGROW>
+            n_groups = n_groups + 1;
+            previous_type = 'y';
+        else %Assume x object for now    
             previous_type = 'x';
         end
     elseif is_line_spec_fh(varargin{k})

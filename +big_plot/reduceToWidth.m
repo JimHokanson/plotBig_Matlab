@@ -85,8 +85,14 @@ end
 x_reduced = [];
 y_reduced = [];
 
-n_y_samples = size(y,1);
-n_chans = size(y,2);
+if isobject(y)
+    n_y_samples = y.n_samples;
+    %We'll impose this limitation for now ...
+    n_chans = 1;
+else
+    n_y_samples = size(y,1);
+    n_chans = size(y,2);
+end
 if n_chans > N_CHANS_MAX
     %We might be able to handle more, but I ran into problems when
     %accidentally plotting the transpose of the actual data which had
@@ -96,7 +102,11 @@ end
 
 if n_y_samples < N_SAMPLES_JUST_PLOT
     s.plot_all = true;
-    y_reduced = y;
+    if isobject(y)
+        y_reduced = y.getRawData();
+    else
+        y_reduced = y;
+    end
     if isobject(x)
         x_reduced = x.getTimeArray;
         if size(x_reduced,1) == 1
@@ -110,7 +120,17 @@ if n_y_samples < N_SAMPLES_JUST_PLOT
     return
 end
 
-if isobject(x) && x.n_samples ~= size(y,1)
+if isobject(y)
+   r = y.getDataReduction(x_limits,axis_width_in_pixels);
+   x_reduced = r.x_reduced;
+   y_reduced = r.y_reduced;
+   s.range_I = [NaN NaN];
+   s.same_range = false;
+   s.mex_time = r.mex_time;
+   return
+end
+
+if isobject(x) && x.n_samples ~= n_y_samples
     error('Size mismatch between time object and input data')
 elseif size(x,2) > 1
     error('Multiple x channels not yet handled')
@@ -145,7 +165,7 @@ if show_everything
     %Not sure if I want before if ceil or floor
     %ceil - less samples out
     %floor - more samples out
-    samples_per_chunk = ceil(size(y,1)/axis_width_in_pixels);
+    samples_per_chunk = ceil(n_y_samples/axis_width_in_pixels);
     
     t = tic;
     y_reduced = reduce_to_width_mex(y,samples_per_chunk);

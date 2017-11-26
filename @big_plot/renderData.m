@@ -247,9 +247,15 @@ if ~any(is_valid_group_mask)
 end
 
 new_x_limits = get(ax,'XLim');
-ri = obj.render_info;
+
 perf_mon = obj.perf_mon;
-redraw_option = ri.determineRedrawCase(new_x_limits);
+ri = obj.render_info;
+
+if obj.data.y_object_present
+    redraw_option = ri.RECOMPUTE_DATA_FOR_PLOTTING;
+else
+    redraw_option = ri.determineRedrawCase(new_x_limits);
+end
 
 use_original = false;
 switch redraw_option

@@ -2,6 +2,9 @@ classdef render_info < handle
     %
     %   Class:
     %   big_plot.render_info
+    %
+    %   This just got complicated because now I'm allowing the underlying
+    %   data to change (y must be an object)
     
     properties (Hidden)
         n_groups
