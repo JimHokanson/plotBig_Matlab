@@ -49,6 +49,5 @@ The following is the time it took to render random data using 1) default Matlab,
 
 The speedups are perhaps a bit hard to really appreciate. The main point of interest is that using this library render times are reasonable for a large number of points.
 
-![speed1_double](/documentation/speed1_double.png)
-
-![speed1_double](/documentation/speed1_int16.png)
+<img src="/documentation/speed1_double.png" alt="speed1_double" height="300"/>
+<img src="/documentation/speed1_int16.png" alt="speed1_int16" height="300"/>
