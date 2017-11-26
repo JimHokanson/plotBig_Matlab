@@ -130,7 +130,7 @@ s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8
     end
     hold off
 
-    legend_strings = {'Old Speed','New Speed'};
+    legend_strings = {'Old Speed','This Speed'};
     if use_tm
         legend_strings = [legend_strings 'matlab-plot-big'];
     end
@@ -150,9 +150,9 @@ s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8
     disp('New Speeds')
     disp(mean(speeds_new,1))
     plot(n_samples/1e6,r,'-o','linewidth',2);
-    legend_strings = {'ML/New'};
+    legend_strings = {'ML/this'};
     if use_tm
-        legend_strings = [legend_strings 'ML/mpb' 'mpb/new'];
+        legend_strings = [legend_strings 'ML/mpb' 'mpb/this'];
     end
     if use_tm
         hold on
