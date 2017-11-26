@@ -3,6 +3,8 @@ classdef data < handle
     %   Class:
     %   big_plot.data
     
+    %TODO: This should really be consider plotting instructions not data
+    
     properties
         plot_fcn %e.g. @plot
         
