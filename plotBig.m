@@ -37,6 +37,8 @@ function varargout = plotBig(varargin)
 %       Currently differing times for each y input are not supported.
 %   dt : scalar
 %       The time difference between two samples, i.e. 1/(sampling_rate)
+%   fs : scalar
+%       Sampling rate
 %   t0 : starting time
 %   obj: 
 %
@@ -68,27 +70,13 @@ s_in = struct;
 for i = 1:(nargin-1)
     if ischar(varargin{i})
         option_string = varargin{i};
-        if any(strcmp(option_string,{'axes','x','dt','t0','obj'}))
+        if any(strcmp(option_string,{'axes','x','dt','t0','obj','fs'}))
             direct_inputs_to_big_plot = false;
             s_in.(option_string) = varargin{i+1};
             delete_mask(i:i+1) = true;
         end
     end
 end
-
-
-% % % % if nargin > 1 
-% % % %     
-% % % %     
-% % % %     && ischar(varargin{2})
-% % % %     %TODO: Check for fieldnames from below
-% % % %     option_string = varargin{2};
-% % % %     if any(strcmp(option_string,{'axes','x','dt','t0','obj'}))
-% % % %         direct_inputs_to_big_plot = false;
-% % % %         y = varargin{1};
-% % % %         varargin = varargin(2:end);
-% % % %     end
-% % % % end
 
 %Shortcut exit for direct call to big_plot
 %------------------------------------------
@@ -111,11 +99,17 @@ y = varargin{1};
 in.axes = [];
 in.x = [];
 in.dt = [];
+in.fs = [];
 in.t0 = 0;
 in.obj = false;
 in = big_plot.sl.in.processVarargin(in,s_in);
 
+if ~isempty(in.fs)
+    in.dt = 1./in.fs;
+end
+
 if ~isempty(in.dt)
+
     n_samples = size(y,1);
     
     %This may occur when the data should be transposed i.e. plotting y'

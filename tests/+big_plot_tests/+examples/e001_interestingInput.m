@@ -23,12 +23,14 @@ function varargout = e001_interestingInput(varargin)
 %       - 0 - plotBig
 %       - 1 - reduce_plot (FEX 40790) https://github.com/tuckermcclure/matlab-plot-big
 %       - 2 - plot() normal Matlab function ...
+%       - 3 - animatedline
 %
 
 %{
     big_plot_tests.examples.e001_interestingInput('type',0)
     big_plot_tests.examples.e001_interestingInput('type',1)
     big_plot_tests.examples.e001_interestingInput('type',2)
+    big_plot_tests.examples.e001_interestingInput('type',3)
 %}
 
 in.n = 5e7 + randi(1000);
@@ -92,9 +94,14 @@ switch in.type
         reduce_plot(t,y);
     case 2
         plot(t,y)
+    case 3
+        for i = 1:3
+            animatedline(t,y(:,i),'MaximumNumPoints',size(y,1));
+        end
 end
 drawnow
 fprintf('test001: time to process and plot (single subplot) was: %0.3f seconds\n',toc);
+
 ax(2) = subplot(2,1,2);
 switch in.type
     case 0
@@ -114,6 +121,10 @@ switch in.type
         h = reduce_plot(t,y);
     case 2
         h = plot(t,y);
+    case 3
+        for i = 1:3
+            h = animatedline(t,y(:,i),'MaximumNumPoints',size(y,1));
+        end
 end
 s.h = h;
 linkaxes(ax);

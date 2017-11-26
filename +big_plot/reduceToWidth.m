@@ -1,4 +1,5 @@
-function [x_reduced, y_reduced, range_I, same_range] = reduceToWidth(x, y, axis_width_in_pixels, x_limits, last_range_I)
+function [x_reduced, y_reduced, range_I, same_range] = ...
+    reduceToWidth(x, y, axis_width_in_pixels, x_limits, last_range_I)
 %x  Reduces the # of points in a data set
 %
 %   [x_reduced, y_reduced, range_I, same_range] = ...
