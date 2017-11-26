@@ -38,17 +38,13 @@ function varargout = plotBig(varargin)
 %       Currently differing times for each y input are not supported.
 %   dt : scalar
 %       The time difference between two samples, i.e. 1/(sampling_rate)
-<<<<<<< HEAD
+
 %   fs : scalar
 %       Sampling rate
-%   t0 : starting time
-%   obj: 
-=======
 %   t0 : numeric
 %       Starting time.
 %   obj: logical (default false)
 %       If true the underlying big_plot class is returned
->>>>>>> 1fd2ff8fdfad5e8529fa93f9ea31f38588370fbe
 %
 %   Examples
 %   --------
@@ -122,22 +118,22 @@ in.t0 = 0;
 in.obj = false;
 in = big_plot.sl.in.processVarargin(in,s_in);
 
-<<<<<<< HEAD
+
 if ~isempty(in.fs)
     in.dt = 1./in.fs;
 end
 
-if ~isempty(in.dt)
 
-    n_samples = size(y,1);
-=======
-n_samples = size(y,1);
 
+if isobject(y)
+    %TODO: Short circuit
+end
 
 %Define x based on time specs (if necessary)
 %-------------------------------------------------------------------
+n_samples = size(y,1);
 if ~isempty(in.dt)
->>>>>>> 1fd2ff8fdfad5e8529fa93f9ea31f38588370fbe
+    
     
     %This may occur when the data should be transposed i.e. plotting y'
     %When 'x' is provided, we can adjust y accordingly, but when only

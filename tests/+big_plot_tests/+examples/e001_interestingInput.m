@@ -27,18 +27,12 @@ function varargout = e001_interestingInput(varargin)
 %
 
 %{
-<<<<<<< HEAD
-    big_plot_tests.examples.e001_interestingInput('type',0)
-    big_plot_tests.examples.e001_interestingInput('type',1)
-    big_plot_tests.examples.e001_interestingInput('type',2)
-    big_plot_tests.examples.e001_interestingInput('type',3)
-=======
     s = big_plot_tests.examples.e001_interestingInput('type',0);
     s = big_plot_tests.examples.e001_interestingInput('type',1);
     s = big_plot_tests.examples.e001_interestingInput('type',2);
 
     s = big_plot_tests.examples.e001_interestingInput('type',0,'data_type','single');
->>>>>>> 1fd2ff8fdfad5e8529fa93f9ea31f38588370fbe
+
 %}
 
 %50 million samples
