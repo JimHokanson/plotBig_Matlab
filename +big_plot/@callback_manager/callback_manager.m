@@ -46,10 +46,10 @@ classdef callback_manager < handle
                 size_cb = {'SizeChanged'};
             end
 
-            obj.L1 = addlistener(axes_handle, 'XLim',  'PostSet', @(~,~) obj.listenerCallback);
+            %obj.L1 = addlistener(axes_handle, 'XLim',  'PostSet', @(~,~) obj.listenerCallback);
             %I'm not sure if I need this one ...
-            obj.L2 = addlistener(axes_handle, size_cb{:}, @(~,~) obj.listenerCallback);
-            obj.L3 = addlistener(axes_handle,'MarkedClean',@(~,~) obj.cleanListen);
+            %obj.L2 = addlistener(axes_handle, size_cb{:}, @(~,~) obj.listenerCallback);
+            obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.cleanListen);
 
             set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
         end
