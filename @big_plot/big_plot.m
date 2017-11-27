@@ -83,6 +83,16 @@ classdef big_plot < handle
         %- This is actually 1/2 the # of plotted values, since the current
         %  processor returns min/max for each "sample to plot"
         n_samples_to_plot = 4000;
+        
+        %NYI
+        %- when 
+        rerender_on_adding_data = false
+        %1 - if new data is within the current limits
+        %    i.e. if we are plotting 0 to 200 and we just added data
+        %    from 150 to 250
+        
+        %Won't implement this, need something else to handle this logic
+        %expand_to_new_data
                 
         post_render_callback = [] %This can be set to render
         %something after the data has been drawn .... Any inputs
@@ -157,7 +167,6 @@ classdef big_plot < handle
             %automatically with plotBig. It can also be done manually with
             %renderData()
         end
-
     end
     
 end
