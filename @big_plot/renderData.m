@@ -95,6 +95,11 @@ plot_args = obj.h_and_l.initializeAxes();
 
 %- This doesn't support stairs or plotyy
 %- The data has been reduced at this point
+
+%We might not get any handles
+%- no data (non-dynamic)
+%- no data but streaming
+%??? - what do we want to do here
 temp_h_plot = obj.data.plot_fcn(plot_args{:});
 
 obj.h_and_l.initializePlotHandles(obj.data.n_plot_groups,temp_h_plot,temp_h_indices);

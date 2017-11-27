@@ -123,10 +123,24 @@ if ~isempty(in.fs)
     in.dt = 1./in.fs;
 end
 
-
-
+%This is a mess and should be cleaned up
+%-----------------------------------------
 if isobject(y)
-    %TODO: Short circuit
+    if ~isempty(in.axes)
+        temp = big_plot(in.axes,y);
+    else
+        temp = big_plot(y);
+    end
+    temp.renderData();
+    if nargout
+        if in.obj
+            varargout{1} = temp;
+        else
+            all_lines = temp.h_and_l.h_plot;
+            varargout{1} = vertcat(all_lines{:});
+        end
+    end
+    return
 end
 
 %Define x based on time specs (if necessary)

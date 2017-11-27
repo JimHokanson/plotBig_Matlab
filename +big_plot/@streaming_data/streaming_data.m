@@ -6,34 +6,68 @@ classdef streaming_data < handle
     
     %{
         profile on
+        
+        %I create the data up front because rand() is a bit slow and
+        %I want to disentangle data creation versus plotting
         fh = @(t) 0.0005.*t.*sin(0.01*t) + rand(1,length(t));
         dt = 1/10000;
         t = 0:dt:30;
         y = fh(t);
         t2 = 30+dt:dt:40;
         y2 = fh(t2);
-
-        xy = big_plot.streaming_data(dt,2*length(y),'initial_data',y);
-
-        xy.addData(y2);
-  
         t3 = 40+dt:dt:500;
         y3 = fh(t3);
-    
-        xy.addData(y3);
-    
-        plotBig(xy)
-    
         t4 = 500+dt:dt:2000;
         y4 = fh(t4);
-    
-        xy.addData(y4);
-        set(gca,'xlim',[0 2000])
-    
         t5 = 2000+dt:dt:10000;
         y5 = fh(t5);
+    
+        %This buffer size is a bit small but it works for now ...
+        init_buffer_size = 2*length(y);
+        xy = big_plot.streaming_data(dt,init_buffer_size,'initial_data',y);
+
+        %Evaluate these manually 
+        xy.addData(y2);
+ 
+        xy.addData(y3);
+    
+        %The actual plotting
+        plotBig(xy)
+
+        %Adding more data to the plot
+        xy.addData(y4);
+    
+        %For now this is manual ...
+        set(gca,'xlim',[0 2000])
+
+        %Adding more data
         xy.addData(y5);
         set(gca,'xlim',[0 10000])
+    
+        %A new example
+        %-------------------
+        clf
+        dt = 1/10000;
+    
+        %Needing initial data is currently a bug ...
+        xy = big_plot.streaming_data(dt,1e6,'initial_data',1);
+        
+        %rand is slow so we omit it here (unlike above)
+        fh = @(t) 0.0005.*t.*sin(0.05*t);
+
+        o = plotBig(xy,'obj',true)
+        set(gca,'ylim',[-5 5])
+        
+        t1 = tic;
+        for i = 1:2000
+            t = i-1+dt:dt:i;
+            y = fh(t);
+            xy.addData(y);
+            set(gca,'xlim',[0 i])
+            drawnow
+        end
+        toc(t1)
+    
         profile off
     
         profile viewer
