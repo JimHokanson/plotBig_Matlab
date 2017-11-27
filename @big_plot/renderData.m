@@ -51,6 +51,11 @@ end
 
 perf_mon.logRenderPerformance(toc(t),type);
 
+%We place this locally in the callback to make it as quick as possible
+%to determine if we want to run a new callack or not (by checking if the
+%new xlim is the same as what we last rendered)
+obj.callback_manager.xlim = obj.render_info.last_rendered_xlim;
+
 if ~isempty(obj.post_render_callback)
     obj.post_render_callback();
 end

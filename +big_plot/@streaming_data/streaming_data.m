@@ -39,12 +39,11 @@ classdef streaming_data < handle
         profile viewer
     %}
     
-        %{
-    subplot(1,2,1)
-    plot(xy.y(1:xy.n_samples))
-    subplot(1,2,2)
-    plot(xy.y_small(1:xy.I_small_all))
-    
+    %{
+        subplot(1,2,1)
+        plot(xy.y(1:xy.n_samples))
+        subplot(1,2,2)
+        plot(xy.y_small(1:xy.I_small_all))
     %}
     
     properties 
@@ -104,9 +103,11 @@ classdef streaming_data < handle
         end
         function r = getDataReduction(obj,x_limits,axis_width_in_pixels)
             
+            t_end = obj.getTimesFromIndices(obj.n_samples);
+            
             if isinf(x_limits)
                 t1 = obj.getTimesFromIndices(1);
-                t2 = obj.getTimesFromIndices(obj.n_samples);
+                t2 = t_end;
                 x1 = 1;
                 x2 = obj.n_samples;
                 x1_small = 1;
@@ -130,16 +131,23 @@ classdef streaming_data < handle
                 if x2_small > obj.I_small_all
                     x2_small = obj.I_small_all;
                 end
+                
             end
             
             if x2_small - x1_small > 2*axis_width_in_pixels
                 start_I = x1_small;
                 end_I = x2_small;
                 data = obj.y_small;
+                %Note we need to update time as we might have zoomed
+                %past our data ...
+                t1 = obj.getTimesFromIndices(x1_small,true);
+                t2 = obj.getTimesFromIndices(x2_small,true);
             else
                 start_I = x1;
                 end_I = x2;
                 data = obj.y;
+              	t1 = obj.getTimesFromIndices(x1);
+                t2 = obj.getTimesFromIndices(x2);
             end
                             
             n_y_samples = end_I - start_I + 1;
@@ -149,7 +157,7 @@ classdef streaming_data < handle
             y_reduced = big_plot.reduceToWidth_mex(data,samples_per_chunk,start_I,end_I);
             mex_time = toc(t);
             n_y_reduced = length(y_reduced);
-            x_reduced = [t1 linspace(t1,t2,n_y_reduced-2) t2]';
+            x_reduced = [0 linspace(t1,t2,n_y_reduced-2) t_end]';
             
             r = big_plot.xy_reduction;
             r.y_reduced = y_reduced;
