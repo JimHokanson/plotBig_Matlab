@@ -1,15 +1,27 @@
 # Introduction
 
 This code:
-1) Speeds up time to plot data
-2) Speeds up time to plot after zooming
+1) Speeds up time to plot data.
+2) Speeds up time to plot after zooming.
+3) Has support for plotting streaming data. (documentation needed)
 
 This code is based on an approach which I originally saw in the following code:
 [matlab-plot-big](https://github.com/tuckermcclure/matlab-plot-big)
 
 This code was written to be:
-1) Faster than matlab-plot-big
-2) More memory efficient than matlab-plot-big
+1) Faster than matlab-plot-big (see speed section below)
+2) More memory efficient than matlab-plot-big (by supporting a time vector as t0 and dt)
+
+## Speedup Approach
+
+This code resamples the data such that only a maxima and minima are chosen within a given window. Given a limited # of pixels, it is the local maxima and minima that are visible. By plotting only a few thousand values, the speed of plotting is sped up significantly. When the axis limits are changed the code replots the data so that any fine details are not lost when zooming.
+
+Speedups specific to this code:
+
+1) For evenly sampled data we can downsample without looking at the x-data.
+2) The code is written in C for speed.
+3) The code uses OpenMP to run across multiple processors.
+4) The code used SIMD intrinsics to further speedup computing within the processor.
 
 # Example Code
 
@@ -29,19 +41,14 @@ plotBig(t,y)
 %Even better
 plotBig(y,'dt',t(2)-t(1),'t0',0);
 ```
+# Streaming Data
 
-# Approach
+TODO: Add documentation
 
-This code resamples the data such that only a maxima and minima are chosen
-within a given window. Given a limited # of pixels, it is the local maxima
-and minima that are visible. By plotting only a few thousand values, the 
-speed of plotting is sped up significantly. When the axis limits are 
-changed the code replots the data so that any fine details are not lost
-when zooming.
 
 # Current Limitations
 
-* Does not support non-evenly sampled data (https://github.com/JimHokanson/plotBig_Matlab/issues/7)
+* Does not support non-evenly sampled data. This is currently low priority. (https://github.com/JimHokanson/plotBig_Matlab/issues/7)
 * Only supports standard numerical times, not datetimes and the like.
 
 # Speed comparisons
