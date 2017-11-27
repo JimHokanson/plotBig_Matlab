@@ -125,8 +125,9 @@ classdef streaming_data < handle
         I_small_complete = 0        
         I_small_all
         
+        %Populated by big_plot
         %Should get updated so that when adding data we can force a redraw
-        big_plot_obj 
+        data_added_callback 
     end
     
     methods
@@ -177,8 +178,6 @@ classdef streaming_data < handle
             t_end = obj.getTimesFromIndices(obj.n_samples);
             
             if isinf(x_limits)
-                t1 = obj.getTimesFromIndices(1);
-                t2 = t_end;
                 x1 = 1;
                 x2 = obj.n_samples;
                 x1_small = 1;
@@ -285,11 +284,19 @@ classdef streaming_data < handle
                 obj.y = [obj.y; NaN(n_samples_add,1,class(obj.y))];
             end
             start_I = obj.n_samples+1;
+            start_time = obj.getTimesFromIndices(start_I);
             end_I = n_samples_total;
             obj.y(start_I:end_I) = new_data;
             obj.n_samples = end_I;
             
             h__processSmall(obj)
+            
+            %The callback isn't valid until the data has
+            %been added to the big_plot class.
+            if ~isempty(obj.data_added_callback)
+               obj.data_added_callback(start_time); 
+            end
+            
         end
     end
 end

@@ -18,7 +18,10 @@ classdef callback_manager < handle
         L1
         L2
         L3
-        xlim
+        
+        %This gets update ASAP when entering rendering
+        last_processed_xlim
+        perf_mon
     end
     
 
@@ -26,51 +29,40 @@ classdef callback_manager < handle
     methods
         function obj = callback_manager(parent)
             obj.parent = parent;
+            obj.perf_mon = parent.perf_mon;
             obj.fig_handle = big_plot.persistent_figure.getFigure();
         end
         function initialize(obj,axes_handle)
-            
-            %obj.ax_hidden = axes(obj.fig_handle,'XLim',get(obj.axes_handle);
-            
+            %
+            %   This gets initialized in the first call to
+            %   big_plot.renderData
+                        
             [obj.j_comp, temp] = javacomponent('javax.swing.JButton',[],obj.fig_handle);
             obj.h_container = handle(temp);
             set(obj.h_container,'BusyAction','queue','Interruptible','off');
 
             obj.axes_handle = axes_handle;
-            
-            %
 
-            if verLessThan('matlab', '8.4')
-                size_cb = {'Position', 'PostSet'};
-            else
-                size_cb = {'SizeChanged'};
-            end
-
-            %obj.L1 = addlistener(axes_handle, 'XLim',  'PostSet', @(~,~) obj.listenerCallback);
-            %I'm not sure if I need this one ...
-            %obj.L2 = addlistener(axes_handle, size_cb{:}, @(~,~) obj.listenerCallback);
             obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.cleanListen);
 
             set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
         end
         function cleanListen(obj)
-            if isequal(obj.xlim,get(obj.axes_handle,'XLim'))
+            
+            %No need to render if the xlim hasn't changed from what we last
+            %rendered
+            if isequal(obj.last_processed_xlim,get(obj.axes_handle,'XLim'))
                 return
             end
-            obj.listenerCallback();
+            obj.throwCallbackOnEDT();
         end
-        function listenerCallback(obj)
+        function throwCallbackOnEDT(obj)
             %This should trigger a EDT callback from the listener
             %
-            %By doing this we queue the callbacks. Listeners don't queue so
-            %we can miss them. Ideally this runs fast enough so that we
-            %don't ever miss a valid change.
-            %
-            %   It doesn't :/
-            %   If we double click to zoom out we miss it ...
-            
+            %By doing this we queue the callbacks.
+                        
             %This can become invalid with user interaction
-            try
+            try %#ok<TRYNC>
                 %fprintf('1 %s\n',mat2str(get(obj.axes_handle,'xlim')));
                 
                 if obj.last_string_index == 1
@@ -110,13 +102,7 @@ classdef callback_manager < handle
             try %#ok<TRYNC>
                 delete(obj.h_container);
             end
-            try
-               delete(obj.L1) 
-            end
-            try 
-               delete(obj.L2) 
-            end
-            try
+            try %#ok<TRYNC>
                delete(obj.L3) 
             end
             

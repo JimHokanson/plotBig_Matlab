@@ -86,7 +86,7 @@ classdef big_plot < handle
         
         %NYI
         %- when 
-        rerender_on_adding_data = false
+        rerender_on_adding_in_bounds_data = true
         %1 - if new data is within the current limits
         %    i.e. if we are plotting 0 to 200 and we just added data
         %    from 150 to 250
@@ -125,7 +125,11 @@ classdef big_plot < handle
         
         %This gets set by the callback_manager
         last_render_error %ME
-        
+    end
+    
+    %---------------------    Internal    -----------------------------
+    properties
+       force_rerender = false; 
     end
     
     %Constructor
@@ -162,13 +166,53 @@ classdef big_plot < handle
             
             obj.callback_manager = big_plot.callback_manager(obj);
             
+            if obj.data.y_object_present
+               %Add callback 
+               if length(obj.data.y) > 1
+                   error('Case not yet handled')
+               else
+                  obj.data.y{1}.data_added_callback = @(new_x_start) h__dataAdded(obj,new_x_start); 
+               end
+            end
+            
             %At this point nothing has been rendered. We wait until 
             %the user chooses to render the class. This is done
             %automatically with plotBig. It can also be done manually with
             %renderData()
         end
     end
+end
+
+function h__dataAdded(obj,new_x_start)
+    %For adding data we'll assume we're adding onto the right end
+    %
+    %   Thus we might want to rerendering if we have something like the
+    %   following.
+    %
+    %   Axes     x------------------------------x
+    %   Old Data x---------x
+    %   New Data           x------x
+    %
+    %   We want to rerender to force visualization of the new data
+    %
+    %   We don't necessarily want to rerender if we have:
+    %   Axes     x---------------x
+    %   Old Data x------------------x
+    %   New Data                    x------x
+    %
+    %   i.e. from zooming in on the old data
     
+    %handle might become invalid from user ...
+    try %#ok<TRYNC>
+        cur_xlim = get(obj.h_and_l.h_axes,'XLim');
+        if obj.rerender_on_adding_in_bounds_data && new_x_start < cur_xlim(2)
+           %Normally we check on the xlims to determine if we want to rerender
+           %or not. Thus we have this variable which says to rerender even
+           %though 
+           obj.force_rerender = true;
+           obj.callback_manager.throwCallbackOnEDT(); 
+        end
+    end
 end
 
 

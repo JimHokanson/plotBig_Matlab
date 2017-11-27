@@ -1,14 +1,19 @@
 function renderData(obj)
 %x   Draws all of the data.
 %
-%   MAIN FUNCTION for plotting data.
+%   MAIN FUNCTION for plotting/replotting data.
 %
 %   Forms
 %   -----
 %   obj.renderData()  %user mode
-%   obj.renderData(s) %timer only
 %
-%   timer at???
+%   Called by:
+%   big_plot.callback_manager
+%
+%   Important State Variables
+%   -------------------------
+%   - force_rerender - added to allow streaming data to get updated
+%   even if xlims don't change.
 %
 %   Inputs
 %   ------
@@ -23,13 +28,12 @@ perf_mon = obj.perf_mon;
 ri = obj.render_info;
 
 %Initial Checks
-%--------------------------------------------
-%This is currently high due to a timer. Ideally we can switch to callbacks
-%and reduce this ...
+%------------------------------------------------
 perf_mon.n_calls_all = perf_mon.n_calls_all + 1;
-if obj.render_in_progress
-    perf_mon.n_render_busy_calls = perf_mon.n_render_busy_calls + 1;
-    return
+
+if obj.force_rerender
+    %go ahead
+    obj.force_rerender = false;
 elseif ~ri.isChangedXLim()
     return
 end
@@ -39,6 +43,15 @@ t = tic;
 %Start rendering process
 %---------------------------------------------
 obj.render_in_progress = true;
+
+h_axes = obj.h_and_l.h_axes;
+if ~isempty(h_axes)
+    %We'll update these as soon as possible to block above
+    obj.callback_manager.last_processed_xlim = get(h_axes,'XLim');
+    ri.last_rendered_xlim = obj.callback_manager.last_processed_xlim;
+end
+
+
 ri.incrementRenderCount();
 
 if obj.render_info.n_render_calls == 1
@@ -50,11 +63,6 @@ else
 end
 
 perf_mon.logRenderPerformance(toc(t),type);
-
-%We place this locally in the callback to make it as quick as possible
-%to determine if we want to run a new callack or not (by checking if the
-%new xlim is the same as what we last rendered)
-obj.callback_manager.xlim = obj.render_info.last_rendered_xlim;
 
 if ~isempty(obj.post_render_callback)
     obj.post_render_callback();
