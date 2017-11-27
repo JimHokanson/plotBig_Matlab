@@ -50,5 +50,8 @@ The following is the time it took to render random data using 1) default Matlab,
 
 The speedups are perhaps a bit hard to really appreciate (for me at least). The main point of interest is that using this library render times are reasonable for a large number of points, rather than taking many seconds to render.
 
-<img src="/documentation/speed1_double.png" alt="speed1_double" height="300"/>
-<img src="/documentation/speed1_int16.png" alt="speed1_int16" height="300"/>
+<p align="center"><img src="/documentation/speed1_double.png" alt="speed1_double" width="600"/></p>
+
+The code also supports multiple data types. Smaller data types fit better into SIMD registers so you can get better speedups with smaller data types. This example shows int16 which could be useful for plotting DAQ data. (JAH TODO: Support scaling after down-sampling the data - i.e. determining what to plot based on int16 but plotting of scaled data)
+
+<p align="center"><img src="/documentation/speed1_int16.png" alt="speed1_int16" width="600"/></p>
