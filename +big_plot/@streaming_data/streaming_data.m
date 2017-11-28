@@ -134,6 +134,7 @@ classdef streaming_data < handle
     %}
     
     properties
+        name
         is_xy = true
         y
         y_small
@@ -158,7 +159,10 @@ classdef streaming_data < handle
         %Populated by big_plot
         %Should get updated so that when adding data we can force a redraw
         data_added_callback 
-        
+    end
+    
+    %---------  Debugging -------------
+    properties
         n_add_events = 0
         n_grow_events = 0
         
@@ -177,8 +181,9 @@ classdef streaming_data < handle
             %       Start time of the time-series
             %   initial_data : default []
             %       Data that has already been collected
-            %   dta
+            %   TODO: Finish documentation
             
+            in.name = '';
             in.t0 = 0;
             in.initial_data = [];
             in.data_type = 'double';
@@ -186,6 +191,7 @@ classdef streaming_data < handle
             in.downsample_amount = 200;
             in = big_plot.sl.in.processVarargin(in,varargin);
             
+            obj.name = in.name;
             obj.downsample_amount = in.downsample_amount;
             obj.dt = dt;
             %2 samples per downsample_amount so our dt is half as long as
