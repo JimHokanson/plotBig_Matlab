@@ -104,6 +104,10 @@ if n_y_samples < N_SAMPLES_JUST_PLOT
     s.plot_all = true;
     if isobject(y)
         y_reduced = y.getRawData();
+        %This was added to ensure a valid plot handle
+        if isempty(y_reduced)
+            y_reduced = NaN;
+        end
     else
         y_reduced = y;
     end
@@ -111,6 +115,10 @@ if n_y_samples < N_SAMPLES_JUST_PLOT
         x_reduced = x.getTimeArray;
         if size(x_reduced,1) == 1
             x_reduced = x_reduced';
+        elseif isempty(x_reduced)
+            %Not sure what to make this ...
+            %x_limits might be invalid (i.e. -inf inf)
+            x_reduced = 0;
         end
     else
         x_reduced = x;

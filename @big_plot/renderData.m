@@ -31,29 +31,37 @@ ri = obj.render_info;
 %------------------------------------------------
 perf_mon.n_calls_all = perf_mon.n_calls_all + 1;
 
+forced = false;
 if obj.force_rerender
     %go ahead
+    forced = true;
     obj.force_rerender = false;
 elseif ~ri.isChangedXLim()
     return
 end
 
 t = tic;
-
 %Start rendering process
-%---------------------------------------------
+%--------------------------------------------------------------------------
 obj.render_in_progress = true;
 
+%Update xlims to block any calls above
+%---------------------------------------------
+%- I don't think we can have any async access, but this updates the xlims
+%so that we don't get more callbacks thrown
 h_axes = obj.h_and_l.h_axes;
 if ~isempty(h_axes)
-    %We'll update these as soon as possible to block above
     obj.callback_manager.last_processed_xlim = get(h_axes,'XLim');
-    ri.last_rendered_xlim = obj.callback_manager.last_processed_xlim;
+    
+    %This needs to block above but must be different from
+    %last_rendered_xlim otherwise we don't get the correct behavior below
+    ri.last_xlim_processed = obj.callback_manager.last_processed_xlim;
 end
-
 
 ri.incrementRenderCount();
 
+%Call render handlers
+%----------------------------------------------
 if obj.render_info.n_render_calls == 1
     h__handleFirstPlotting(obj)
     type = 1;
@@ -62,7 +70,10 @@ else
     type = redraw_option+2;
 end
 
-perf_mon.logRenderPerformance(toc(t),type);
+%Log rendering
+%---------------------------
+xlim = ri.last_rendered_xlim;
+perf_mon.logRenderPerformance(toc(t),type,xlim,forced);
 
 if ~isempty(obj.post_render_callback)
     obj.post_render_callback();
@@ -181,7 +192,6 @@ group_x_min = zeros(1,n_plot_groups);
 group_x_max = zeros(1,n_plot_groups);
 
 for iG = 1:n_plot_groups
-    
     start_h = end_h + 1;
     end_h = start_h + size(obj.data.y{iG},2) - 1;
     temp_h_indices{iG} = start_h:end_h;
