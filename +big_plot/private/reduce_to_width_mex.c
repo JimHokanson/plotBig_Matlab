@@ -57,18 +57,18 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     if (pad_with_endpoints){                                    \
         for (mwSize iChan = 0; iChan < n_chans; iChan++){       \
             /*Store first data point to output*/                \
-            *p_output_data = *p_input_data;                     \
+            *p_output_data = 0 ; /**p_input_data; */                  \
                                                                 \
             /*Advance input and output pointers to end of column*/ \
             p_output_data += (n_outputs_per_chan-1);            \
-            p_input_data += (n_samples_data-1);                 \
+            /*p_input_data += (n_samples_data-1); */                \
                                                                 \
             /*Store last data point*/                           \
-            *p_output_data = *p_input_data;                     \
+            *p_output_data = 0;/**p_input_data;*/                     \
                                                                 \
             /*Roll over to the next channel*/                   \
             /*1st sample of next is 1 more than last sample of current*/ \
-            ++p_input_data;                                     \
+            /*++p_input_data;*/                                     \
             ++p_output_data;                                    \
         }                                                       \
                                                                 \

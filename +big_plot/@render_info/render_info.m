@@ -26,6 +26,11 @@ classdef render_info < handle
         last_y_r
         
         original_xlim
+        
+        %Think of these as start and end
+        %- one gets set in the beginning
+        %- one gets set at the end
+        last_xlim_processed
         last_rendered_xlim
         
         last_render_time = 0
@@ -52,7 +57,7 @@ classdef render_info < handle
                 %True before first render
                 mask = true;
             else
-                mask = ~isequal(obj.last_rendered_xlim,get(obj.ax_handle,'XLim'));
+                mask = ~isequal(obj.last_xlim_processed,get(obj.ax_handle,'XLim'));
             end
         end
         function logNoRenderCall(obj,x_limits)

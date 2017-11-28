@@ -18,6 +18,9 @@ classdef perf_mon < handle
         %2 - no change
         %3 - reset to global
         %4 - new render
+        xlim_min
+        xlim_max
+        xlim_forced
         
         %Reduce ...
         %------------------------
@@ -26,6 +29,8 @@ classdef perf_mon < handle
         reduce_fcn_times
         n_samples_reduce %array
         ms_reduce_per_million_samples %array
+        
+        
 
         n_render_busy_calls = 0 %If busy rendering, we increment this
         %   No plotting actually occurs ...
@@ -44,7 +49,7 @@ classdef perf_mon < handle
             obj.extendReduceArrays(100);
             obj.extendRenderArrays(100);
         end
-        function logRenderPerformance(obj,elapsed_time,render_type)
+        function logRenderPerformance(obj,elapsed_time,render_type,xlim,forced)
             obj.n_render_calls = obj.n_render_calls + 1;
             if obj.n_render_calls > length(obj.render_cb_times)
                 obj.extendRenderArrays(2*length(obj.render_cb_times));
@@ -52,6 +57,9 @@ classdef perf_mon < handle
             I = obj.n_render_calls;
             obj.render_cb_times(I) = elapsed_time;
             obj.render_types(I) = render_type;
+            obj.xlim_min(I) = xlim(1);
+            obj.xlim_max(I) = xlim(2);
+            obj.xlim_forced(I) = forced;
         end
         function logReducePerformance(obj,s,fcn_time)
             obj.n_reduce_calls = obj.n_reduce_calls + 1;
@@ -74,6 +82,10 @@ classdef perf_mon < handle
         function extendRenderArrays(obj,n_samples_add)
             obj.render_cb_times = [obj.render_cb_times zeros(1,n_samples_add)];
             obj.render_types = [obj.render_types zeros(1,n_samples_add)];
+            obj.xlim_min = [obj.xlim_min zeros(1,n_samples_add)];
+            obj.xlim_max = [obj.xlim_max zeros(1,n_samples_add)];
+            obj.xlim_forced = [obj.xlim_forced false(1,n_samples_add)];
+            
         end
         function truncate(obj)
             I = obj.n_reduce_calls + 1;
@@ -87,6 +99,9 @@ classdef perf_mon < handle
             obj.t_size2 = I;
             obj.render_cb_times(I:end) = [];
             obj.render_types(I:end) = [];
+            obj.xlim_min(I:end) = [];
+            obj.xlim_max(I:end) = [];
+            obj.xlim_forced(I:end) = [];
         end
     end
     

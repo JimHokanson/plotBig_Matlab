@@ -5,7 +5,7 @@ classdef streaming_data < handle
     %
     %   Improvements
     %   -------------
-    %   1) Send notification of added data back to parent (if not empty)
+    %   1) DONE Send notification of added data back to parent (if not empty)
     %   2) report what time is needed in order to use the small instead of
     %   the big data
     %   3) Add on animated line to the example
@@ -51,17 +51,20 @@ classdef streaming_data < handle
         xy.addData(y5);
         set(gca,'xlim',[0 10000])
     
-        %A new example
-        %-------------------
+        %====================================================
+        %A better example of streaming ...
+        %====================================================
         clf
+        %Options -------------
         fs = 10000;
         n_seconds_plot = 2000
         win_width_s = 200;
     
         dt = 1/fs;
     
-        %We need initial data due to a bug in the code
-        xy = big_plot.streaming_data(dt,1e6,'initial_data',0);
+        %was 1e6 and 20000
+        %xy = big_plot.streaming_data(dt,32000000);
+        xy = big_plot.streaming_data(dt,1e6);
         
         fh = @(t) 0.002.*t.*sin(0.2*t);
 
@@ -76,20 +79,48 @@ classdef streaming_data < handle
         %samples
         r = 0.1*rand(1,fs);
         t1 = tic;
-        
-        for i = 1:n_seconds_plot
-            t = i-1+dt:dt:i;
+        t_draw = 0;
+        for i = 0:n_seconds_plot-1
+            t3 = tic;
+            t = i:dt:(i+1-dt);
             
             y = fh(t)+r;
-            xy.addData(y);
+            xy.addData(y');
             if i > win_width_s
                 set(gca,'xlim',[i-win_width_s i])
             end
-            %pause(0.02)
+            h_tic2 = tic;
             drawnow
+            t_draw = t_draw + toc(h_tic2);
         end
         toc(t1)
     
+        %drawing is taking about 90% of the time
+    
+        clf
+        %Animated line requires preallocating everything
+        h = animatedline('MaximumNumPoints',n_seconds_plot*fs);
+    	set(gca,'ylim',[-5 5])
+        set(gca,'xlim',[0 win_width_s])
+    
+        t1 = tic;
+        t_add = 0;
+        t_draw = 0;
+        for i = 0:n_seconds_plot-1
+            t = i:dt:(i+1-dt);
+            
+            y = fh(t)+r;
+            addpoints(h,t,y);
+            if i > win_width_s
+                set(gca,'xlim',[i-win_width_s i])
+            end
+            h_tic2 = tic;
+            drawnow
+            t_draw = t_draw + toc(h_tic2);
+        end
+        toc(t1)
+    
+
         profile off
     
         profile viewer
@@ -102,9 +133,6 @@ classdef streaming_data < handle
         plot(xy.y_small(1:xy.I_small_all))
     %}
     
-    properties 
-        DOWNSAMPLE_AMOUNT = 1000
-    end
     properties
         is_xy = true
         y
@@ -112,6 +140,8 @@ classdef streaming_data < handle
         dt
         dt_small
         t0
+        downsample_amount
+        
         n_samples = 0
         
         growth_rate
@@ -128,23 +158,42 @@ classdef streaming_data < handle
         %Populated by big_plot
         %Should get updated so that when adding data we can force a redraw
         data_added_callback 
+        
+        n_add_events = 0
+        n_grow_events = 0
+        
+        t_add = 0
+        t_reduce = 0
     end
     
     methods
         function obj = streaming_data(dt,n_samples_init,varargin)
+            %
+            %   obj = big_plot.streaming_data(dt,n_samples_init,varargin)
+            %
+            %   Optional Inputs
+            %   ---------------
+            %   t0 : default 0
+            %       Start time of the time-series
+            %   initial_data : default []
+            %       Data that has already been collected
+            %   dta
+            
             in.t0 = 0;
             in.initial_data = [];
             in.data_type = 'double';
             in.growth_rate = 2;
+            in.downsample_amount = 200;
             in = big_plot.sl.in.processVarargin(in,varargin);
             
+            obj.downsample_amount = in.downsample_amount;
             obj.dt = dt;
-            %2 samples per DOWNSAMPLE_AMOUNT so our dt is half as long as
+            %2 samples per downsample_amount so our dt is half as long as
             %we think
             %x       x       x
             %min max min max min max
             
-            obj.dt_small = 0.5*dt*obj.DOWNSAMPLE_AMOUNT;
+            obj.dt_small = 0.5*dt*obj.downsample_amount;
             obj.t0 = in.t0;
             obj.growth_rate = in.growth_rate;
             
@@ -155,8 +204,11 @@ classdef streaming_data < handle
             %Initialize with NaN so that when the last sample is plotted
             %we don't constantly see it when streaming (NaNs are not
             %visible)
-            obj.y = NaN(n_samples_init,1,in.data_type);
-            obj.y_small = NaN(20000,1,in.data_type);
+            obj.y = zeros(n_samples_init,1,in.data_type);
+            
+            %TODO: Base this on above and downsampling ...
+            n_samples_small = ceil(n_samples_init/in.downsample_amount*2);
+            obj.y_small = zeros(n_samples_small,1,in.data_type);
             
             if ~isempty(in.initial_data)
                 n_samples = length(in.initial_data);
@@ -175,6 +227,7 @@ classdef streaming_data < handle
             %   This method is called by the renderer to get the data to
             %   actually plot.
             
+            h_tic = tic;
             t_end = obj.getTimesFromIndices(obj.n_samples);
             
             if isinf(x_limits)
@@ -223,20 +276,33 @@ classdef streaming_data < handle
             n_y_samples = end_I - start_I + 1;
             samples_per_chunk = ceil(n_y_samples/axis_width_in_pixels);    
             
-            t = tic;
+            h_tic2 = tic;
             y_reduced = big_plot.reduceToWidth_mex(data,samples_per_chunk,start_I,end_I);
-            mex_time = toc(t);
+            mex_time = toc(h_tic2);
             n_y_reduced = length(y_reduced);
             x_reduced = [0 linspace(t1,t2,n_y_reduced-2) t_end]';
             
             r = big_plot.xy_reduction;
-            r.y_reduced = y_reduced;
-            r.x_reduced = x_reduced;
+            r.y_reduced = y_reduced(2:end-1);
+            r.x_reduced = x_reduced(2:end-1);
             r.mex_time = mex_time;
+            
+            obj.t_reduce = obj.t_reduce + toc(h_tic);
             
         end
         function data = getRawData(obj)
             data = obj.y(1:obj.n_samples);
+        end
+        function min_time_duration = getMinDurationSmall(obj,axis_width_in_pixels)
+             %
+             %  TODO: Add documentation 
+             
+            if nargin == 1
+                axis_width_in_pixels = 4000;
+            end
+            
+            n_samples_small_min = 2*axis_width_in_pixels;
+            min_time_duration = n_samples_small_min*obj.dt_small;
         end
         function indices = getIndicesFromTimes(obj,times,use_small)
             if nargin == 2
@@ -271,6 +337,10 @@ classdef streaming_data < handle
             %   
             %   new_data
             
+            I = obj.n_add_events + 1;
+            obj.n_add_events = I;
+            h_tic = tic;
+            
             n_samples_new = length(new_data);
             n_samples_total = n_samples_new + obj.n_samples;
             
@@ -281,14 +351,21 @@ classdef streaming_data < handle
                 if length(obj.y) + n_samples_add < n_samples_total
                     n_samples_add = n_samples_total - length(obj.y);
                 end
-                obj.y = [obj.y; NaN(n_samples_add,1,class(obj.y))];
+                obj.y = [obj.y; zeros(n_samples_add,1,class(obj.y))];
+                obj.n_grow_events = obj.n_grow_events + 1;
             end
+            
+            
+            
             start_I = obj.n_samples+1;
             start_time = obj.getTimesFromIndices(start_I);
             end_I = n_samples_total;
-            obj.y(start_I:end_I) = new_data;
-            obj.n_samples = end_I;
             
+            obj.y(start_I:end_I) = new_data;
+            
+            
+            obj.n_samples = end_I;
+
             h__processSmall(obj)
             
             %The callback isn't valid until the data has
@@ -296,7 +373,7 @@ classdef streaming_data < handle
             if ~isempty(obj.data_added_callback)
                obj.data_added_callback(start_time); 
             end
-            
+            obj.t_add = obj.t_add + toc(h_tic);
         end
     end
 end
@@ -304,7 +381,7 @@ end
 function h__processSmall(obj)
 
     
-    n_samples_small_total = ceil(obj.n_samples/obj.DOWNSAMPLE_AMOUNT)*2;
+    n_samples_small_total = ceil(obj.n_samples/obj.downsample_amount)*2;
     
     %Resize if necessary ...
     %-----------------------------
@@ -313,17 +390,17 @@ function h__processSmall(obj)
         if length(obj.y_small) + n_samples_add < n_samples_small_total
             n_samples_add = n_samples_small_total - length(obj.y_small);
         end
-        obj.y_small = [obj.y_small; NaN(n_samples_add,1,class(obj.y_small))];
+        obj.y_small = [obj.y_small; zeros(n_samples_add,1,class(obj.y_small))];
     end
     
     %n_extra_process = obj.n_samples - obj.n_samples_processed;
     
     start_I = obj.n_samples_processed+1;
     end_I = obj.n_samples;
-    min_max_data = big_plot.reduceToWidth_mex(obj.y,obj.DOWNSAMPLE_AMOUNT,start_I,end_I);
+    min_max_data = big_plot.reduceToWidth_mex(obj.y,obj.downsample_amount,start_I,end_I);
     
     out_start_I = obj.I_small_complete + 1;    
-    out_end_I = ceil(end_I/obj.DOWNSAMPLE_AMOUNT)*2;
+    out_end_I = ceil(end_I/obj.downsample_amount)*2;
     
     %For right now anytime we get a subset of the data the mex code pads
     %with the first and the last sample. Thus we ignore those values
@@ -332,8 +409,8 @@ function h__processSmall(obj)
     
     obj.I_small_all = out_end_I;
     
-    obj.n_samples_processed = floor(obj.n_samples/obj.DOWNSAMPLE_AMOUNT)*obj.DOWNSAMPLE_AMOUNT;
-    obj.I_small_complete = 2*floor(obj.n_samples/obj.DOWNSAMPLE_AMOUNT);
+    obj.n_samples_processed = floor(obj.n_samples/obj.downsample_amount)*obj.downsample_amount;
+    obj.I_small_complete = 2*floor(obj.n_samples/obj.downsample_amount);
 
     %{
     subplot(1,2,1)
