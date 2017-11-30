@@ -161,6 +161,16 @@ classdef streaming_data < handle
         data_added_callback 
     end
     
+    properties (Dependent)
+       t_max 
+    end
+    
+    methods
+        function value = get.t_max(obj)
+           value = obj.getTimesFromIndices(obj.n_samples);
+        end
+    end
+    
     %---------  Debugging -------------
     properties
         n_add_events = 0
@@ -236,6 +246,8 @@ classdef streaming_data < handle
             h_tic = tic;
             t_end = obj.getTimesFromIndices(obj.n_samples);
             
+            
+            
             if isinf(x_limits)
                 x1 = 1;
                 x2 = obj.n_samples;
@@ -281,6 +293,8 @@ classdef streaming_data < handle
                             
             n_y_samples = end_I - start_I + 1;
             samples_per_chunk = ceil(n_y_samples/axis_width_in_pixels);    
+            
+            
             
             h_tic2 = tic;
             y_reduced = big_plot.reduceToWidth_mex(data,samples_per_chunk,start_I,end_I);
