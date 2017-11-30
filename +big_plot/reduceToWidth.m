@@ -123,7 +123,7 @@ if n_y_samples < N_SAMPLES_JUST_PLOT
     else
         x_reduced = x;
     end
-    s.range_I = [1 length(x)];
+    s.range_I = [1 n_y_samples];
     s.same_range = isequal(s.range_I,last_range_I);
     return
 end
