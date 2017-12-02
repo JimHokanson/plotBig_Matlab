@@ -8,21 +8,25 @@ classdef handles_and_listeners < handle
         
         h_figure  %Figure handle. Always singular.
         
-        h_axes %
+        h_axes %Currently must be singular.
         %
         %   The value is assigned either as an input to the constructor
         %   or during the first call to renderData()
         
-        h_plot %cell, {1 x n_groups} one for each group of x & y
+        h_line %cell, {1 x n_groups} one for each group of x & y
         %
         %   e.g. plot(x1,y1,x2,y2,x3,y3) produces 3 groups
         %
         %   This should really be h_line, to be more specific
         
-        axes_listeners %array
-        plot_listeners %cell, {1 x n_groups}{1 x n_lines}
-        n_active_lines %We decrement this until it gets to zero, then
-        %we clear the timer
+        
+        h_lines_array
+        listen_array
+        
+        n_plot_groups
+        
+        n_lines_active
+        
     end
     
     methods
@@ -53,92 +57,60 @@ classdef handles_and_listeners < handle
             end
         end
         function mask = getValidGroupMask(obj)
-            mask = cellfun(@(x) all(ishandle(x)),obj.h_plot);
+            mask = cellfun(@(x) all(ishandle(x)),obj.h_line);
         end
-        function initializePlotHandles(obj,n_plot_groups,temp_h_plot,temp_h_indices)
+        function initializePlotHandles(obj,n_plot_groups,temp_h_line,temp_h_indices)
             %
+            %   Break up plot handles to be the same as the inputs. When
+            %   plotting all objects are returned as an array.
             %
-            %   Inputs
-            %   ------
-            %   n_plot_groups :
-            %   temp_h_plot : 
-            %   temp_h_indices :
-            %
-            %
-            %Break up plot handles to be grouped the same as the inputs were
-            %---------------------------------------------------------------
-            %e.g.
-            %plot(x1,y1,x2,y2)
+            %   e.g.
+            %       plot(x1,y1,x2,y2)
             %
             %   This returns one array of handles, but we break it back up into
             %   handles for 1 and 2
             %
             %   {h1 h2} - where h1 is from x1,y1, h2 is from x2,y2
-            obj.h_plot = cell(1,n_plot_groups);
-            if ~isempty(temp_h_plot)
+            %
+            %   Inputs
+            %   ------
+            %   n_plot_groups :
+            %   temp_h_line : 
+            %   temp_h_indices :
+            
+            obj.h_lines_array = temp_h_line;
+            
+            obj.n_lines_active = length(temp_h_line);
+            
+            obj.n_plot_groups = n_plot_groups;
+            
+            obj.h_line = cell(1,n_plot_groups);
+            if ~isempty(temp_h_line)
                 for iG = 1:n_plot_groups
-                    obj.h_plot{iG} = temp_h_plot(temp_h_indices{iG});
+                    obj.h_line{iG} = temp_h_line(temp_h_indices{iG});
+                    temp = obj.h_line{iG};
+                    for i = 1:length(temp)
+                        
+                    end
                 end
             end
-        end
-        function intializeListeners(obj)
-            obj.axes_listeners = event.listener(obj.h_axes,'ObjectBeingDestroyed',@(~,~)obj.cleanup_figure());
             
-            n_groups = length(obj.h_plot);
-            
-            obj.plot_listeners = cell(1,n_groups);
-            
-            %What we really need is when the # of plots drops, we clear the timer ...
-            
-            %This needs to be fixed, I thought it was causing a problem 
-            %but it looks like it wasn't ...
-            
-            % % % % %Is this causing problems???
-            % % % % n_active_lines = 0;
-            % % % % for iG = 1:length(obj.h_plot)
-            % % % %     cur_group = obj.h_plot{iG};
-            % % % %
-            % % % %
-            % % % %     n_plots_in_group = length(cur_group);
-            % % % %     lhs = cell(1,n_plots_in_group);
-            % % % %     %TODO: Ask about this online ....
-            % % % %     for iLine = 1:1  %length(cur_group)
-            % % % %         cur_line_handle = cur_group(iLine);
-            % % % %         %this can fail if the line has already been deleted ...
-            % % % %         try
-            % % % %             %TODO: I'm not sure what we want to do if this happens
-            % % % %             %Why not add listeners to every line ????
-            % % % %             lhs{iG} = addlistener(cur_line_handle, 'ObjectBeingDestroyed',@(~,~)h__decrementPlotCount(obj,iG,iLine));
-            % % % %             n_active_lines = n_active_lines + 1;
-            % % % %         end
-            % % % %     end
-            % % % %     obj.plot_listeners{iG} = lhs;
-            % % % % end
-            % % % % obj.n_active_lines = n_active_lines;
-            % % % %
-            % % % % if n_active_lines == 0
-            % % % %    stop(t);
-            % % % %    delete(t);
-            % % % % end
-        end
-        function delete(obj)
-            delete(obj.axes_listeners);
-        end
-        function cleanup_figure(obj)
-            %This should be renamed to close figure callback ...
-            %or clear axes ...???
-
-            %TODO: Should really just ignore this, the try is a bit broad
-            %MATLAB:class:DestructorError
-            
-            try
-                t = obj.parent.timer;
-            
-                stop(t);
-                delete(t);
-            
-                obj.parent.timer = [];
+            obj.listen_array = cell(1,length(temp_h_line));
+            for i = 1:length(temp_h_line)
+                obj.listen_array{i} = addlistener(temp_h_line(i), 'ObjectBeingDestroyed',@(~,~) obj.clearLine(i));
             end
+        end
+        function clearLine(obj,line_I)
+            obj.n_lines_active = obj.n_lines_active - 1;
+            h_line2 = obj.h_lines_array(line_I);
+            temp = getappdata(h_line2,'BigDataPointer');
+            delete(temp);
+            delete(obj.listen_array{line_I});
+            
+            if obj.n_lines_active == 0
+                obj.parent.killAll()
+            end
+            
         end
     end
     

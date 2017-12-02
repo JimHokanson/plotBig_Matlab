@@ -53,6 +53,9 @@ classdef big_plot < handle
     %   --------
     %   plotBig
     
+    %   Code in other files
+    %   big_plot.renderData
+    
     %Classes
     %--------
     %big_plot.handles_and_listeners
@@ -180,6 +183,28 @@ classdef big_plot < handle
             %automatically with plotBig. It can also be done manually with
             %renderData()
         end
+        function h = getAllLineHandles(obj)
+             all_lines = obj.h_and_l.h_line;
+             h = vertcat(all_lines{:});
+        end
+    end
+    
+    methods (Hidden)
+        function killAll(obj)
+            obj.callback_manager.killCallbacks();
+            delete(obj.data)
+            delete(obj.h_and_l)
+            delete(obj.callback_manager);
+            delete(obj.render_info);
+            obj.data = [];
+            obj.h_and_l = [];
+            obj.render_info = [];
+            obj.callback_manager = [];
+            %disp('killing all')
+        end
+        function delete(obj)
+            %disp('delete running')
+        end
     end
 end
 
@@ -201,6 +226,13 @@ function h__dataAdded(obj,new_x_start)
     %   New Data                    x------x
     %
     %   i.e. from zooming in on the old data
+    %
+    %   Usage
+    %   -----
+    %   This callback is placed into streaming data objects to be called
+    %   if the user adds any data to the streaming data class. If this is
+    %   done the streaming data class should call this callback.
+    %   
     
     %handle might become invalid from user ...
     try %#ok<TRYNC>

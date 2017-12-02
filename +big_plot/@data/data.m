@@ -26,7 +26,9 @@ classdef data < handle
         %   x = {x1 x2}
         
         y %cell, same format as 'x'
-        % This could also be a data object with:
+        % - contains either column vector, matrix or data object
+        %   such as big_plot.streaming_data
+        
         
         y_object_present = false;
     end
@@ -47,6 +49,56 @@ classdef data < handle
             %Call into helper to reduce indentation ...
            h__init(obj, hl, varargin{:}); 
         end
+        function y_data = getYData(obj,xlim,group_I,line_I)
+            
+            
+            y_group = obj.y{group_I};
+            x_group = obj.x{group_I};
+            
+            if obj.y_object_present
+                %For y objects we currrently limit this to 1 object
+                y_data = y_group.getRawData(xlim);
+                return
+            end
+            
+            if ~isobject(x_group)
+                error('Unhandled case')
+            end
+            
+            
+            if ~isempty(xlim)
+                %TODO: We need to ensure that we are in range ...
+                I = x_group.getIndicesFromTimes(xlim);
+                if I(1) < 1
+                    I = 1;
+                end
+                if I(2) > x_group.n_samples
+                    I(2) = x_group.n_samples;
+                end
+                y_data = y_group(I(1):I(2),line_I);
+            else
+                y_data = y_group(:,line_I);
+            end 
+        end
+        function x_data = getXData(obj,xlim,group_I,line_I)
+            x_group = obj.x{group_I};
+            if ~isobject(x_group)
+                error('Unhandled case')
+            end
+            if ~isempty(xlim)
+                I = x_group.getIndicesFromTimes(xlim);
+                if I(1) < 1
+                    I = 1;
+                end
+                if I(2) > x_group.n_samples
+                    I(2) = x_group.n_samples;
+                end
+                x_data = x_group.getTimeArray('start_index',I(1),'end_index',I(2));
+            else
+                x_data = x_group.getTimeArray();
+            end
+        end
+        
     end
     
 end

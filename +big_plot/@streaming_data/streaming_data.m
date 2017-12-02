@@ -33,7 +33,7 @@ classdef streaming_data < handle
         init_buffer_size = 2*length(y);
         xy = big_plot.streaming_data(dt,init_buffer_size,'initial_data',y);
 
-        %Evaluate these manually 
+        %Evaluate these manually
         xy.addData(y2);
  
         xy.addData(y3);
@@ -74,7 +74,7 @@ classdef streaming_data < handle
         set(gca,'ylim',[-5 5])
         set(gca,'xlim',[0 win_width_s])
     
-        %Generating random data is slow so we'll add the same random data 
+        %Generating random data is slow so we'll add the same random data
         %to all chunks. This allows us to zoom in and see the individual
         %samples
         r = 0.1*rand(1,fs);
@@ -97,6 +97,8 @@ classdef streaming_data < handle
     
         %drawing is taking about 90% of the time
     
+        %Animated Line for comparison
+        %-----------------------------------
         clf
         %Animated line requires preallocating everything
         h = animatedline('MaximumNumPoints',n_seconds_plot*fs);
@@ -153,21 +155,21 @@ classdef streaming_data < handle
         
         %The # of small values that are set and that will not be
         %overwritten when we get more data
-        I_small_complete = 0        
+        I_small_complete = 0
         I_small_all
         
         %Populated by big_plot
         %Should get updated so that when adding data we can force a redraw
-        data_added_callback 
+        data_added_callback
     end
     
     properties (Dependent)
-       t_max 
+        t_max
     end
     
     methods
         function value = get.t_max(obj)
-           value = obj.getTimesFromIndices(obj.n_samples);
+            value = obj.getTimesFromIndices(obj.n_samples);
         end
     end
     
@@ -176,7 +178,8 @@ classdef streaming_data < handle
         n_add_events = 0
         n_grow_events = 0
         
-        t_add = 0
+        t_add = 0 %For some reason this can be really really high ...
+        
         t_reduce = 0
     end
     
@@ -287,12 +290,12 @@ classdef streaming_data < handle
                 start_I = x1;
                 end_I = x2;
                 data = obj.y;
-              	t1 = obj.getTimesFromIndices(x1);
+                t1 = obj.getTimesFromIndices(x1);
                 t2 = obj.getTimesFromIndices(x2);
             end
-                            
+            
             n_y_samples = end_I - start_I + 1;
-            samples_per_chunk = ceil(n_y_samples/axis_width_in_pixels);    
+            samples_per_chunk = ceil(n_y_samples/axis_width_in_pixels);
             
             
             
@@ -310,13 +313,27 @@ classdef streaming_data < handle
             obj.t_reduce = obj.t_reduce + toc(h_tic);
             
         end
-        function data = getRawData(obj)
-            data = obj.y(1:obj.n_samples);
+        function data = getRawData(obj,xlim)
+            %
+            %   xlim : [min_time max_time]
+            
+            if nargin == 1 || isempty(xlim)
+                data = obj.y(1:obj.n_samples);
+            else
+                I = obj.getIndicesFromTimes(xlim);
+                if I(1) < 1
+                    I = 1;
+                end
+                if I(2) > obj.n_samples
+                    I(2) = obj.n_samples;
+                end
+                data = obj.y(I(1):I(2));
+            end
         end
         function min_time_duration = getMinDurationSmall(obj,axis_width_in_pixels)
-             %
-             %  TODO: Add documentation 
-             
+            %
+            %  TODO: Add documentation
+            
             if nargin == 1
                 axis_width_in_pixels = 4000;
             end
@@ -344,17 +361,25 @@ classdef streaming_data < handle
             else
                 times = (indices-1)*obj.dt;
             end
-
+            
         end
-        function time_array = getTimeArray(obj)
-            time_array = ((0:obj.n_samples-1)*obj.dt)';
+        function time_array = getTimeArray(obj,varargin)
+            
+            in.start_index = 1;
+            in.end_index = obj.n_samples;
+            in = big_plot.sl.in.processVarargin(in,varargin);
+            
+            I1 = in.start_index - 1;
+            I2 = in.end_index - 1;
+            
+            time_array = ((I1:I2)*obj.dt)';
             %time_array = h__getTimeScaled(obj,time_array);
         end
         function addData(obj,new_data)
             %
             %   addData(obj,new_data)
-            %   
-            %   
+            %
+            %
             %   new_data
             
             I = obj.n_add_events + 1;
@@ -375,23 +400,20 @@ classdef streaming_data < handle
                 obj.n_grow_events = obj.n_grow_events + 1;
             end
             
-            
-            
             start_I = obj.n_samples+1;
             start_time = obj.getTimesFromIndices(start_I);
             end_I = n_samples_total;
             
             obj.y(start_I:end_I) = new_data;
             
-            
             obj.n_samples = end_I;
-
+            
             h__processSmall(obj)
             
             %The callback isn't valid until the data has
             %been added to the big_plot class.
             if ~isempty(obj.data_added_callback)
-               obj.data_added_callback(start_time); 
+                obj.data_added_callback(start_time);
             end
             obj.t_add = obj.t_add + toc(h_tic);
         end
@@ -400,45 +422,45 @@ end
 
 function h__processSmall(obj)
 
-    
-    n_samples_small_total = ceil(obj.n_samples/obj.downsample_amount)*2;
-    
-    %Resize if necessary ...
-    %-----------------------------
-    if n_samples_small_total > length(obj.y_small)
-        n_samples_add = ceil((obj.growth_rate-1)*length(obj.y_small));
-        if length(obj.y_small) + n_samples_add < n_samples_small_total
-            n_samples_add = n_samples_small_total - length(obj.y_small);
-        end
-        obj.y_small = [obj.y_small; zeros(n_samples_add,1,class(obj.y_small))];
-    end
-    
-    %n_extra_process = obj.n_samples - obj.n_samples_processed;
-    
-    start_I = obj.n_samples_processed+1;
-    end_I = obj.n_samples;
-    min_max_data = big_plot.reduceToWidth_mex(obj.y,obj.downsample_amount,start_I,end_I);
-    
-    out_start_I = obj.I_small_complete + 1;    
-    out_end_I = ceil(end_I/obj.downsample_amount)*2;
-    
-    %For right now anytime we get a subset of the data the mex code pads
-    %with the first and the last sample. Thus we ignore those values
-    %when doing the assigment.
-    obj.y_small(out_start_I:out_end_I) = min_max_data(2:end-1); 
-    
-    obj.I_small_all = out_end_I;
-    
-    obj.n_samples_processed = floor(obj.n_samples/obj.downsample_amount)*obj.downsample_amount;
-    obj.I_small_complete = 2*floor(obj.n_samples/obj.downsample_amount);
 
-    %{
+n_samples_small_total = ceil(obj.n_samples/obj.downsample_amount)*2;
+
+%Resize if necessary ...
+%-----------------------------
+if n_samples_small_total > length(obj.y_small)
+    n_samples_add = ceil((obj.growth_rate-1)*length(obj.y_small));
+    if length(obj.y_small) + n_samples_add < n_samples_small_total
+        n_samples_add = n_samples_small_total - length(obj.y_small);
+    end
+    obj.y_small = [obj.y_small; zeros(n_samples_add,1,class(obj.y_small))];
+end
+
+%n_extra_process = obj.n_samples - obj.n_samples_processed;
+
+start_I = obj.n_samples_processed+1;
+end_I = obj.n_samples;
+min_max_data = big_plot.reduceToWidth_mex(obj.y,obj.downsample_amount,start_I,end_I);
+
+out_start_I = obj.I_small_complete + 1;
+out_end_I = ceil(end_I/obj.downsample_amount)*2;
+
+%For right now anytime we get a subset of the data the mex code pads
+%with the first and the last sample. Thus we ignore those values
+%when doing the assigment.
+obj.y_small(out_start_I:out_end_I) = min_max_data(2:end-1);
+
+obj.I_small_all = out_end_I;
+
+obj.n_samples_processed = floor(obj.n_samples/obj.downsample_amount)*obj.downsample_amount;
+obj.I_small_complete = 2*floor(obj.n_samples/obj.downsample_amount);
+
+%{
     subplot(1,2,1)
     plot(obj.y(1:obj.n_samples))
     subplot(1,2,2)
     plot(obj.y_small(1:out_end_I))
     
-    %}
-    
+%}
+
 end
 

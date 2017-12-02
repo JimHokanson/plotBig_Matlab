@@ -22,6 +22,8 @@ classdef callback_manager < handle
         %This gets update ASAP when entering rendering
         last_processed_xlim
         perf_mon
+        
+        kill_run = false
     end
     
 
@@ -36,7 +38,8 @@ classdef callback_manager < handle
             %
             %   This gets initialized in the first call to
             %   big_plot.renderData
-                        
+                
+            
             [obj.j_comp, temp] = javacomponent('javax.swing.JButton',[],obj.fig_handle);
             obj.h_container = handle(temp);
             set(obj.h_container,'BusyAction','queue','Interruptible','off');
@@ -46,6 +49,7 @@ classdef callback_manager < handle
             obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.cleanListen);
 
             set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
+            
         end
         function cleanListen(obj)
             
@@ -96,21 +100,26 @@ classdef callback_manager < handle
             end
         end
         function killCallbacks(obj)
-            try %#ok<TRYNC>
-                delete(obj.j_comp);
-            end
-            try %#ok<TRYNC>
-                delete(obj.h_container);
-            end
-            try %#ok<TRYNC>
-               delete(obj.L3) 
+            
+            %set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
+            
+            if obj.kill_run
+                return
+            else
+                obj.kill_run = true;
             end
             
-%             t = obj.timer_h;
-%             try %#ok<TRYNC>
-%                 stop(t)
-%                 delete(t)
-%             end
+            obj.parent = [];
+            
+            try %#ok<TRYNC>
+            delete(obj.h_container);
+            end
+            %delete(obj.j_comp);
+            
+            try %#ok<TRYNC>
+            delete(obj.L3)
+            end
+
         end
         function delete(obj)
             obj.killCallbacks();

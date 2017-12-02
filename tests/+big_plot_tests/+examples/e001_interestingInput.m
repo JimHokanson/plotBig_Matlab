@@ -135,8 +135,7 @@ switch in.type
         
         temp = plotBig(y,'dt',t(2)-t(1),'obj',true);
         s.obj = temp;
-        all_lines = temp.h_and_l.h_plot;
-        h = vertcat(all_lines{:});
+        h = temp.getAllLineHandles();
     case 1
         h = reduce_plot(t,y);
     case 2

@@ -119,32 +119,26 @@ plot_args = obj.h_and_l.initializeAxes();
 %- no data (non-dynamic)
 %- no data but streaming
 %??? - what do we want to do here
-temp_h_plot = obj.data.plot_fcn(plot_args{:});
+temp_h_line = obj.data.plot_fcn(plot_args{:});
 
-obj.h_and_l.initializePlotHandles(obj.data.n_plot_groups,temp_h_plot,temp_h_indices);
+obj.h_and_l.initializePlotHandles(obj.data.n_plot_groups,temp_h_line,temp_h_indices);
 
 obj.render_info.ax_handle = obj.h_and_l.h_axes;
 
-%This needs to be fixed
-%The idea is to be able to fetch the raw data from the line itself
-%In general my concern is avoiding dangling references
-%
-%--------------------------------------------------------------------------
-% % % % %TODO: Make sure this is exposed in the documentation
-% % % % %sl.plot.big_data.line_plot_reducer.line_data_pointer
-% % % % for iG = 1:obj.n_plot_groups
-% % % %     cur_group_h = obj.h_plot{iG};
-% % % %     for iH = 1:length(cur_group_h)
-% % % %         cur_h = cur_group_h(iH);
-% % % %         temp_obj = big_plot.line_data_pointer(obj,iG,iH);
-% % % %         setappdata(cur_h,'BigDataPointer',temp_obj);
-% % % %     end
-% % % % end
+%Place ability to fetch raw data in the line object
+%--------------------------------------------------
+h_and_l = obj.h_and_l;
+for iG = 1:h_and_l.n_plot_groups
+    cur_group_h = h_and_l.h_line{iG};
+    for iH = 1:length(cur_group_h)
+        cur_h = cur_group_h(iH);
+        temp_obj = big_plot.line_data_pointer(obj,iG,iH);
+        setappdata(cur_h,'BigDataPointer',temp_obj);
+    end
+end
 
-%Setup callbacks and timers
+%Setup callbacks
 %-------------------------------
-obj.h_and_l.intializeListeners();
-
 obj.callback_manager.initialize(obj.h_and_l.h_axes);
 
 end
@@ -250,6 +244,8 @@ end
 
 end
 
+
+%==========================================================================
 %--------------------------------------------------------------------------
 %---------------------          Replotting      ---------------------------
 %--------------------------------------------------------------------------
@@ -268,7 +264,6 @@ function redraw_option = h__replotData(obj)
 
 ax = obj.h_and_l.h_axes;
 
-%TODO: Verify all lines are good ...
 is_valid_group_mask = obj.h_and_l.getValidGroupMask();
 if ~any(is_valid_group_mask)
     obj.callback_manager.killCallbacks();
@@ -325,11 +320,11 @@ for iG = find(is_valid_group_mask)
         end
         
     else
-        t = tic;
+        h_tic = tic;
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
         [x_r, y_r, s] = big_plot.reduceToWidth(...
                 x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
-        perf_mon.logReducePerformance(s,toc(t));
+        perf_mon.logReducePerformance(s,toc(h_tic));
         range_I = s.range_I;
         
         if s.same_range
@@ -340,7 +335,7 @@ for iG = find(is_valid_group_mask)
     
     obj.render_info.logRenderCall(iG,x_r,y_r,range_I,use_original,new_x_limits);
     
-    local_h = obj.h_and_l.h_plot{iG};
+    local_h = obj.h_and_l.h_line{iG};
     
     %Update the plot.
     %---------------------------------------
@@ -354,21 +349,6 @@ for iG = find(is_valid_group_mask)
         end
     end
     
-end
-
-end
-
-%--------------------------------------------------------------------------
-%---------------------- Cleanup -------------------------------------------
-%1) Not currently used ...
-function h__decrementPlotCount(obj,iGroup,iLine)
-
-obj.n_active_lines = obj.n_active_lines - 1;
-delete(obj.plot_listeners{iGroup}{iLine});
-
-if obj.n_active_lines <= 0
-    %I don't like this name, I might change it ...
-    obj.cleanup_figure();
 end
 
 end
