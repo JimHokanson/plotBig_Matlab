@@ -138,6 +138,8 @@ classdef streaming_data < handle
     properties
         name
         is_xy = true
+        m
+        b
         y
         y_small
         dt
@@ -196,6 +198,8 @@ classdef streaming_data < handle
             %       Data that has already been collected
             %   TODO: Finish documentation
             
+            in.m = [];
+            in.b = [];
             in.name = '';
             in.t0 = 0;
             in.initial_data = [];
@@ -239,6 +243,9 @@ classdef streaming_data < handle
                 h__processSmall(obj)
             end
         end
+        function setCalibration(obj,m,b)
+            
+        end
         function r = getDataReduction(obj,x_limits,axis_width_in_pixels)
             %
             %   r = getDataReduction(obj,x_limits,axis_width_in_pixels)
@@ -248,8 +255,6 @@ classdef streaming_data < handle
             
             h_tic = tic;
             t_end = obj.getTimesFromIndices(obj.n_samples);
-            
-            
             
             if isinf(x_limits)
                 x1 = 1;
@@ -302,6 +307,11 @@ classdef streaming_data < handle
             h_tic2 = tic;
             y_reduced = big_plot.reduceToWidth_mex(data,samples_per_chunk,start_I,end_I);
             mex_time = toc(h_tic2);
+            
+            if ~isempty(obj.m)
+                y_reduced = double(y_reduced).*obj.m + obj.b;
+            end
+            
             n_y_reduced = length(y_reduced);
             x_reduced = [0 linspace(t1,t2,n_y_reduced-2) t_end]';
             
