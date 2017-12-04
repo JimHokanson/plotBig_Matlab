@@ -2,10 +2,10 @@ classdef data < handle
     %
     %   Class:
     %   big_plot.data
-    
-    %TODO: This should really be consider plotting instructions not data
-    
+        
     properties
+        parent
+        
         plot_fcn %e.g. @plot
         
         linespecs %cell
@@ -45,60 +45,77 @@ classdef data < handle
     end
     
     methods
-        function obj = data(hl, varargin)
+        function obj = data(parent, hl, varargin)
             %Call into helper to reduce indentation ...
+            obj.parent = parent;
            h__init(obj, hl, varargin{:}); 
         end
-        function y_data = getYData(obj,xlim,group_I,line_I)
+        function initRawDataPointers(obj,parent,h_and_l)
+            %Place ability to fetch raw data in the line object
+            %--------------------------------------------------
             
+            for iG = 1:h_and_l.n_plot_groups
+                cur_group_h = h_and_l.h_line{iG};
+                for iH = 1:length(cur_group_h)
+                    cur_h = cur_group_h(iH);
+                    temp_obj = big_plot.line_data_pointer(parent,iG,iH);
+                    setappdata(cur_h,'BigDataPointer',temp_obj);
+                end
+            end
+        end
+        function setCalibration(obj,calibration,group_I,line_I)
+            %setCalibration
+            y_group = obj.y{group_I};
+            x_group = obj.x{group_I};
+            if obj.y_object_present
+                %For y objects we currrently limit this to 1 object
+                y_group.setCalibration(calibration);
+                return
+            end
+            %1) It would be great if we could avoid any data copying ...
+            y_group(:,line_I) = y_group(:,line_I)*calibration.m + calibration.b;
+            obj.y{group_I} = y_group;
+            obj.parent.calibrationUpdated();
+        end
+        function s = getRawLineData(obj,group_I,line_I,in)
+            %
+            %   Outputs
+            %   -------
+            %   s : big_plot.raw_line_data
             
             y_group = obj.y{group_I};
             x_group = obj.x{group_I};
             
             if obj.y_object_present
                 %For y objects we currrently limit this to 1 object
-                y_data = y_group.getRawData(xlim);
+                s = y_group.getRawLineData(xlim);
                 return
             end
             
+            s = big_plot.raw_line_data;
+            
             if ~isobject(x_group)
                 error('Unhandled case')
             end
             
-            
-            if ~isempty(xlim)
-                %TODO: We need to ensure that we are in range ...
-                I = x_group.getIndicesFromTimes(xlim);
+            if ~isempty(in.xlim)
+                I = x_group.getIndicesFromTimes(in.xlim);
                 if I(1) < 1
                     I = 1;
                 end
                 if I(2) > x_group.n_samples
                     I(2) = x_group.n_samples;
                 end
-                y_data = y_group(I(1):I(2),line_I);
+                %We'll assume we are not calibrated
+                s.y_raw = y_group(I(1):I(2),line_I);
+                s.x = x_group.getTimeArray('start_index',I(1),'end_index',I(2));
             else
-                y_data = y_group(:,line_I);
+                s.y_raw = y_group(:,line_I);
+                s.x = x_group.getTimeArray();
             end 
+            s.y_final = s.y_raw;
+            
         end
-        function x_data = getXData(obj,xlim,group_I,line_I)
-            x_group = obj.x{group_I};
-            if ~isobject(x_group)
-                error('Unhandled case')
-            end
-            if ~isempty(xlim)
-                I = x_group.getIndicesFromTimes(xlim);
-                if I(1) < 1
-                    I = 1;
-                end
-                if I(2) > x_group.n_samples
-                    I(2) = x_group.n_samples;
-                end
-                x_data = x_group.getTimeArray('start_index',I(1),'end_index',I(2));
-            else
-                x_data = x_group.getTimeArray();
-            end
-        end
-        
     end
     
 end

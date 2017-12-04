@@ -35,7 +35,8 @@ forced = false;
 if obj.force_rerender
     %go ahead
     forced = true;
-    obj.force_rerender = false;
+    %This needs to go deeper - for calibration
+    %obj.force_rerender = false;
 elseif ~ri.isChangedXLim()
     return
 end
@@ -69,6 +70,8 @@ else
     redraw_option = h__replotData(obj);
     type = redraw_option+2;
 end
+
+obj.force_rerender = false;
 
 %Log rendering
 %---------------------------
@@ -125,20 +128,10 @@ obj.h_and_l.initializePlotHandles(obj.data.n_plot_groups,temp_h_line,temp_h_indi
 
 obj.render_info.ax_handle = obj.h_and_l.h_axes;
 
-%Place ability to fetch raw data in the line object
-%--------------------------------------------------
-h_and_l = obj.h_and_l;
-for iG = 1:h_and_l.n_plot_groups
-    cur_group_h = h_and_l.h_line{iG};
-    for iH = 1:length(cur_group_h)
-        cur_h = cur_group_h(iH);
-        temp_obj = big_plot.line_data_pointer(obj,iG,iH);
-        setappdata(cur_h,'BigDataPointer',temp_obj);
-    end
-end
+%This allows us to get the raw data from the Matlab line handle
+obj.data.initRawDataPointers(obj,obj.h_and_l);
 
-%Setup callbacks
-%-------------------------------
+%Init callbacks for replotting when zooming
 obj.callback_manager.initialize(obj.h_and_l.h_axes);
 
 end
@@ -274,7 +267,7 @@ new_x_limits = get(ax,'XLim');
 perf_mon = obj.perf_mon;
 ri = obj.render_info;
 
-if obj.data.y_object_present
+if obj.data.y_object_present || obj.force_rerender
     redraw_option = ri.RECOMPUTE_DATA_FOR_PLOTTING;
 else
     redraw_option = ri.determineRedrawCase(new_x_limits);
@@ -314,13 +307,18 @@ for iG = find(is_valid_group_mask)
             range_I = [1 length(x_input)];
         end
         
-        if isequal(last_I,range_I)
+        if isequal(last_I,range_I) && ~obj.force_rerender
             obj.render_info.logNoRenderCall(new_x_limits);
             continue
         end
         
     else
         h_tic = tic;
+        
+        if obj.force_rerender
+            last_I = [];
+        end
+            
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
         [x_r, y_r, s] = big_plot.reduceToWidth(...
                 x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);

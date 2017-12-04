@@ -163,15 +163,20 @@ classdef streaming_data < handle
         %Populated by big_plot
         %Should get updated so that when adding data we can force a redraw
         data_added_callback
+        calibration_callback
     end
     
     properties (Dependent)
         t_max
+        calibrated_available
     end
     
     methods
         function value = get.t_max(obj)
             value = obj.getTimesFromIndices(obj.n_samples);
+        end
+        function value = get.calibrated_available(obj)
+            value = ~isempty(obj.m);
         end
     end
     
@@ -243,8 +248,10 @@ classdef streaming_data < handle
                 h__processSmall(obj)
             end
         end
-        function setCalibration(obj,m,b)
-            
+        function setCalibration(obj,calibration)
+            obj.m = calibration.m;
+            obj.b = calibration.b;
+            obj.calibration_callback();
         end
         function r = getDataReduction(obj,x_limits,axis_width_in_pixels)
             %
@@ -256,6 +263,8 @@ classdef streaming_data < handle
             h_tic = tic;
             t_end = obj.getTimesFromIndices(obj.n_samples);
             
+            %Get x indices
+            %-----------------------------------------
             if isinf(x_limits)
                 x1 = 1;
                 x2 = obj.n_samples;
@@ -283,6 +292,8 @@ classdef streaming_data < handle
                 
             end
             
+            %Get data and times
+            %----------------------------------------------------
             if x2_small - x1_small > 2*axis_width_in_pixels
                 start_I = x1_small;
                 end_I = x2_small;
@@ -299,22 +310,24 @@ classdef streaming_data < handle
                 t2 = obj.getTimesFromIndices(x2);
             end
             
+            %Data reduction
+            %-------------------------------------------------------
             n_y_samples = end_I - start_I + 1;
             samples_per_chunk = ceil(n_y_samples/axis_width_in_pixels);
-            
-            
             
             h_tic2 = tic;
             y_reduced = big_plot.reduceToWidth_mex(data,samples_per_chunk,start_I,end_I);
             mex_time = toc(h_tic2);
             
             if ~isempty(obj.m)
-                y_reduced = double(y_reduced).*obj.m + obj.b;
+                y_reduced = h__calibrateData(y_reduced,obj);
             end
             
             n_y_reduced = length(y_reduced);
             x_reduced = [0 linspace(t1,t2,n_y_reduced-2) t_end]';
             
+            %Population of the output
+            %--------------------------------------------------------
             r = big_plot.xy_reduction;
             r.y_reduced = y_reduced(2:end-1);
             r.x_reduced = x_reduced(2:end-1);
@@ -323,12 +336,28 @@ classdef streaming_data < handle
             obj.t_reduce = obj.t_reduce + toc(h_tic);
             
         end
-        function data = getRawData(obj,xlim)
+        function [data,info] = getRawData(obj,varargin)
+            %
+            %   [data,info] = getRawData(obj,varargin)
             %
             %   xlim : [min_time max_time]
+            %
+            %   Outputs
+            %   -------
+            %   data :
+            %   info : struct
+            %       .x1
+            %       .x2
+            %       .is_calibrated
+            %       .calibrated_available
             
-            if nargin == 1 || isempty(xlim)
+            in.xlim = [];
+            in.get_calibrated = true;
+            in = big_plot.sl.in.processVarargin(in,varargin);
+            
+            if isempty(in.xlim)
                 data = obj.y(1:obj.n_samples);
+                I = [1 obj.n_samples];
             else
                 I = obj.getIndicesFromTimes(xlim);
                 if I(1) < 1
@@ -338,6 +367,21 @@ classdef streaming_data < handle
                     I(2) = obj.n_samples;
                 end
                 data = obj.y(I(1):I(2));
+            end
+            
+            if obj.calibrated_available && in.get_calibrated
+            	used_calibrated = true;
+             	data = h__calibrateData(data,obj);
+            else
+                used_calibrated = false;
+            end
+            
+            if nargout == 2
+               info = struct;
+               info.x1 = I(1);
+               info.x2 = I(2);
+               info.is_calibrated = used_calibrated;
+               info.calibrated_available = obj.calibrated_available;
             end
         end
         function min_time_duration = getMinDurationSmall(obj,axis_width_in_pixels)
@@ -372,6 +416,17 @@ classdef streaming_data < handle
                 times = (indices-1)*obj.dt;
             end
             
+        end
+        function s = getRawLineData(obj,in)
+            %
+            %   s = getRawLineData(obj)
+            %
+            %   Outputs
+            %   -------
+            %   s : big_plot.raw_line_data
+            
+            s = big_plot.raw_line_data.fromStreamingData(obj,in);
+
         end
         function time_array = getTimeArray(obj,varargin)
             
@@ -428,6 +483,10 @@ classdef streaming_data < handle
             obj.t_add = obj.t_add + toc(h_tic);
         end
     end
+end
+
+function calibrated_data = h__calibrateData(data,obj)
+    calibrated_data = double(data).*obj.m + obj.b;
 end
 
 function h__processSmall(obj)

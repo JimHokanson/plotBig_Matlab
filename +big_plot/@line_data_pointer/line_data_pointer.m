@@ -31,15 +31,18 @@ classdef (Hidden) line_data_pointer < handle
             obj.group_I = group_I;
             obj.line_I = line_I;
         end
-        function y_data = getYData(obj,xlim)
-            %
-            %
-                        
-            y_data = obj.big_plot_ref.data.getYData(xlim,obj.group_I,obj.line_I);
-            
+        function setCalibration(obj,calibration)
+            data = obj.big_plot_ref.data;
+            data.setCalibration(calibration,obj.group_I,obj.line_I)
         end
-        function x_data = getXData(obj,xlim)
-            x_data = obj.big_plot_ref.data.getXData(xlim,obj.group_I,obj.line_I);
+        function s = getRawLineData(obj,in)    
+            %
+            %   Output
+            %   ------
+            %   s : big_plot.raw_line_data
+            
+            data = obj.big_plot_ref.data;
+            s = data.getRawLineData(obj.group_I,obj.line_I,in);
         end
     end
     

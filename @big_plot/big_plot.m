@@ -26,7 +26,7 @@ classdef big_plot < handle
     %   Usage
     %   -----
     %   1) Call plotBig
-    %   
+    %
     %   Examples
     %   --------
     %   b = big_plot(t, y)
@@ -47,7 +47,7 @@ classdef big_plot < handle
     %         which samples should procssed based on a time vector,
     %         resulting in much faster processing
     %       - multi-thread processing
-    %       
+    %
     %
     %   See Also
     %   --------
@@ -60,7 +60,7 @@ classdef big_plot < handle
     %--------
     %big_plot.handles_and_listeners
     
-        
+    
     %{
     Other functions for comparison:
         http://www.mathworks.com/matlabcentral/fileexchange/15850-dsplot-downsampled-plot
@@ -88,7 +88,7 @@ classdef big_plot < handle
         n_samples_to_plot = 4000;
         
         %NYI
-        %- when 
+        %- when
         rerender_on_adding_in_bounds_data = true
         %1 - if new data is within the current limits
         %    i.e. if we are plotting 0 to 200 and we just added data
@@ -96,7 +96,7 @@ classdef big_plot < handle
         
         %Won't implement this, need something else to handle this logic
         %expand_to_new_data
-                
+        
         post_render_callback = [] %This can be set to render
         %something after the data has been drawn .... Any inputs
         %should be done by binding to the anonymous function.
@@ -132,7 +132,7 @@ classdef big_plot < handle
     
     %---------------------    Internal    -----------------------------
     properties
-       force_rerender = false; 
+        force_rerender = false;
     end
     
     %Constructor
@@ -160,7 +160,7 @@ classdef big_plot < handle
             %Population of the input data and plotting instructions ...
             %We might update the axes, so we pass in h_and_l
             t = tic;
-            obj.data = big_plot.data(obj.h_and_l,varargin{:});
+            obj.data = big_plot.data(obj,obj.h_and_l,varargin{:});
             obj.perf_mon.init_data = toc(t);
             
             t = tic;
@@ -170,26 +170,33 @@ classdef big_plot < handle
             obj.callback_manager = big_plot.callback_manager(obj);
             
             if obj.data.y_object_present
-               %Add callback 
-               if length(obj.data.y) > 1
-                   error('Case not yet handled')
-               else
-                  obj.data.y{1}.data_added_callback = @(new_x_start) h__dataAdded(obj,new_x_start); 
-               end
+                %Add callback
+                if length(obj.data.y) > 1
+                    error('Case not yet handled')
+                else
+                    obj.data.y{1}.calibration_callback = @calibrationUpdated;
+                    obj.data.y{1}.data_added_callback = @(new_x_start) h__dataAdded(obj,new_x_start);
+                end
             end
             
-            %At this point nothing has been rendered. We wait until 
+            %At this point nothing has been rendered. We wait until
             %the user chooses to render the class. This is done
             %automatically with plotBig. It can also be done manually with
             %renderData()
         end
         function h = getAllLineHandles(obj)
-             all_lines = obj.h_and_l.h_line;
-             h = vertcat(all_lines{:});
+            all_lines = obj.h_and_l.h_line;
+            h = vertcat(all_lines{:});
         end
     end
     
     methods (Hidden)
+        function calibrationUpdated(obj)
+            try %#ok<TRYNC>
+                obj.force_rerender = true;
+                obj.callback_manager.throwCallbackOnEDT();
+            end
+        end
         function killAll(obj)
             obj.callback_manager.killCallbacks();
             delete(obj.data)
@@ -208,43 +215,44 @@ classdef big_plot < handle
     end
 end
 
+
 function h__dataAdded(obj,new_x_start)
-    %For adding data we'll assume we're adding onto the right end
-    %
-    %   Thus we might want to rerendering if we have something like the
-    %   following.
-    %
-    %   Axes     x------------------------------x
-    %   Old Data x---------x
-    %   New Data           x------x
-    %
-    %   We want to rerender to force visualization of the new data
-    %
-    %   We don't necessarily want to rerender if we have:
-    %   Axes     x---------------x
-    %   Old Data x------------------x
-    %   New Data                    x------x
-    %
-    %   i.e. from zooming in on the old data
-    %
-    %   Usage
-    %   -----
-    %   This callback is placed into streaming data objects to be called
-    %   if the user adds any data to the streaming data class. If this is
-    %   done the streaming data class should call this callback.
-    %   
-    
-    %handle might become invalid from user ...
-    try %#ok<TRYNC>
-        cur_xlim = get(obj.h_and_l.h_axes,'XLim');
-        if obj.rerender_on_adding_in_bounds_data && new_x_start < cur_xlim(2)
-           %Normally we check on the xlims to determine if we want to rerender
-           %or not. Thus we have this variable which says to rerender even
-           %though 
-           obj.force_rerender = true;
-           obj.callback_manager.throwCallbackOnEDT(); 
-        end
+%For adding data we'll assume we're adding onto the right end
+%
+%   Thus we might want to rerendering if we have something like the
+%   following.
+%
+%   Axes     x------------------------------x
+%   Old Data x---------x
+%   New Data           x------x
+%
+%   We want to rerender to force visualization of the new data
+%
+%   We don't necessarily want to rerender if we have:
+%   Axes     x---------------x
+%   Old Data x------------------x
+%   New Data                    x------x
+%
+%   i.e. from zooming in on the old data
+%
+%   Usage
+%   -----
+%   This callback is placed into streaming data objects to be called
+%   if the user adds any data to the streaming data class. If this is
+%   done the streaming data class should call this callback.
+%
+
+%handle might become invalid from user ...
+try %#ok<TRYNC>
+    cur_xlim = get(obj.h_and_l.h_axes,'XLim');
+    if obj.rerender_on_adding_in_bounds_data && new_x_start < cur_xlim(2)
+        %Normally we check on the xlims to determine if we want to rerender
+        %or not. Thus we have this variable which says to rerender even
+        %though
+        obj.force_rerender = true;
+        obj.callback_manager.throwCallbackOnEDT();
     end
+end
 end
 
 

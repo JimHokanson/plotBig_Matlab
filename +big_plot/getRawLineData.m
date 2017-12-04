@@ -23,29 +23,24 @@ function s = getRawLineData(h_plot,varargin)
 
 in.get_x_data = true;
 in.xlim = [];
+in.get_calibrated = true;
+in.get_raw = false;
 in = big_plot.sl.in.processVarargin(in,varargin);
 
+%Note we might want both raw and calibrated so get_raw is not
+%~in.get_calibrated
+if ~in.get_calibrated
+    in.get_raw = true;
+end
 
+%This is populated during line creation. It is a bit awkward which is why
+%this function was created.
 ptr = getappdata(h_plot,'BigDataPointer');
 
 if isempty(ptr)
-    s.y = h_plot.YData;
-    if in.get_x_data
-        s.x = h_plot.XData;
-    end
-    I1 = find(s.x >= in.xlim(1),1);
-    I2 = find(s.x <= in.xlim(2),1,'last');
-    
-    if ~isempty(in.xlim)
-        s.x = s.x(I1:I2);
-        s.y = s.y(I1:I2);
-    end
+    s = big_plot.raw_line_data.fromStandardLine(h_plot,in);
 else
-    %big_plot.line_data_pointer
-    s.y = ptr.getYData(in.xlim);
-    if in.get_x_data
-        s.x = ptr.getXData(in.xlim);
-    end
+    s = ptr.getRawLineData(in);
 end
 
 
