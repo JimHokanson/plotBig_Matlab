@@ -9,22 +9,25 @@ function s = getRawLineData(h_plot,varargin)
 %   Optional Inputs
 %   ---------------
 %   get_x_data : default true
-%   xlim : [min_time  max_time]
+%       If false, the corresponding x-data are not returned. This can
+%       save on memory if it isn't needed.
+%   xlim : [min_time  max_time] (default [])
+%       When empty all data are returned.
+%   get_calibrated : default true
+%       If true, calibration data is returned when available.
+%   get_raw : default false
+%       If true, raw data is returned. Both raw and calibrated data can be
+%       returned.
 %
 %   Outputs
 %   -------
-%   s : 
-%       .x
-%       .y
+%   s : big_plot.raw_line_data
 %
 %   Improvements
 %   ------------
 %   - Allow processing of a vector of handles ...
 
-in.get_x_data = true;
-in.xlim = [];
-in.get_calibrated = true;
-in.get_raw = false;
+in = big_plot.raw_line_data_options;
 in = big_plot.sl.in.processVarargin(in,varargin);
 
 %Note we might want both raw and calibrated so get_raw is not

@@ -3,12 +3,12 @@ classdef streaming_data < handle
     %   Class:
     %   big_plot.streaming_data
     %
-    %   Improvements
-    %   -------------
-    %   1) DONE Send notification of added data back to parent (if not empty)
-    %   2) report what time is needed in order to use the small instead of
-    %   the big data
-    %   3) Add on animated line to the example
+    %   Public Functions
+    %   -------------------------
+    %   setCalibration(calibration)
+    %   addData(new_data)
+    %   getRawLineData()
+    
     
     
     %{
@@ -137,14 +137,25 @@ classdef streaming_data < handle
     
     properties
         name
+        
+        %This is a property that any class wishing to contain both x and y
+        %data for big_plot should have.
         is_xy = true
+        
+        %Values for calibration - output = m*input + b
         m
         b
-        y
-        y_small
-        dt
-        dt_small
-        t0
+        
+        
+        y %raw data, overallocated
+        dt %dt of the raw data
+        
+        y_small %downsampled data, also overallocated
+        %Data is downsampled by taking min and max of a chunk of data
+        dt_small %dt of the downsampled data
+        
+        t0 %start time
+        
         downsample_amount
         
         n_samples = 0
@@ -152,18 +163,22 @@ classdef streaming_data < handle
         growth_rate
         
         %This is the # of samples in complete chunks. Anything not complete
-        %will be reprocessed.
+        %will be reprocessed. This is the # of samples in the raw data.
         n_samples_processed = 0
         
         %The # of small values that are set and that will not be
         %overwritten when we get more data
         I_small_complete = 0
+        
+        %This is the # of small values that have been populated. It is
+        %either I_small_complete or 2 greater (when an incomplete chunk 
+        %has been processed)
         I_small_all
         
-        %Populated by big_plot
-        %Should get updated so that when adding data we can force a redraw
-        data_added_callback
-        calibration_callback
+        %Populated by big_plot.
+        %These callbacks get called by this class when:
+        data_added_callback %data has been added to this class
+        calibration_callback %the data has been calibrated
     end
     
     properties (Dependent)
@@ -197,11 +212,29 @@ classdef streaming_data < handle
             %
             %   Optional Inputs
             %   ---------------
+            %   m :
+            %       Slope for calibration
+            %   b :
+            %       Offset for calibration
             %   t0 : default 0
             %       Start time of the time-series
             %   initial_data : default []
-            %       Data that has already been collected
-            %   TODO: Finish documentation
+            %       Data that has already been collected.
+            %   data_type : default 'double'
+            %       If initial_data is passed in, then the data type
+            %       is based on the initial data. Otherwise this can be
+            %       used to preallocate data of the correct type.
+            %   growth_rate : default 2
+            %   downsample_amount : default 200
+            %       Number of samples to use when generating a pair of
+            %       min-max values in the "small" dataset. In other words
+            %       the default value means that every 200 samples we
+            %       generate a single min-max pair.
+            %
+            %   Examples
+            %   --------
+            %   xy = big_plot.streaming_data(1/1000,1e6);
+            %   plotBig(xy)
             
             in.m = [];
             in.b = [];
@@ -229,9 +262,6 @@ classdef streaming_data < handle
                 in.data_type = class(in.initial_data);
             end
             
-            %Initialize with NaN so that when the last sample is plotted
-            %we don't constantly see it when streaming (NaNs are not
-            %visible)
             obj.y = zeros(n_samples_init,1,in.data_type);
             
             %TODO: Base this on above and downsampling ...
@@ -248,11 +278,96 @@ classdef streaming_data < handle
                 h__processSmall(obj)
             end
         end
+    end
+    
+    %----------------------------------------------------------------------
+    %                       Public methods for users
+    %----------------------------------------------------------------------
+    methods
         function setCalibration(obj,calibration)
+            %
+            %   Inputs
+            %   ------
+            %   calibration : struct or object with fields:
+            %       - m
+            %       - b
+            
             obj.m = calibration.m;
             obj.b = calibration.b;
+            
+            %Notify the renderer that the data has been calibrated.
             obj.calibration_callback();
         end
+        function s = getRawLineData(obj,varargin)
+            %
+            %   s = getRawLineData(obj,varargin)
+            %
+            %   Optional Inputs
+            %   ---------------
+            %   Fields from big_plot.raw_line_data_options
+            %       .
+            %   Outputs
+            %   -------
+            %   s : big_plot.raw_line_data
+            %
+            %   See Also
+            %   --------
+            %   big_plot.getRawLineData
+            %
+            %   Example
+            %   -------
+            %   %Get the raw data from 10 to 20 seconds
+            %   s = obj.getRawLineData('xlim',[10 20])
+            
+            %Push creation to the raw_line_data class
+            s = big_plot.raw_line_data.fromStreamingData(obj,varargin{:});
+        end
+        function addData(obj,new_data)
+            %
+            %   addData(obj,new_data)
+            %
+            
+            I = obj.n_add_events + 1;
+            obj.n_add_events = I;
+            h_tic = tic;
+            
+            n_samples_new = length(new_data);
+            n_samples_total = n_samples_new + obj.n_samples;
+            
+            %Resize if necessary ...
+            %-----------------------------
+            if n_samples_total > length(obj.y)
+                n_samples_add = ceil((obj.growth_rate-1)*length(obj.y));
+                if length(obj.y) + n_samples_add < n_samples_total
+                    n_samples_add = n_samples_total - length(obj.y);
+                end
+                obj.y = [obj.y; zeros(n_samples_add,1,class(obj.y))];
+                obj.n_grow_events = obj.n_grow_events + 1;
+            end
+            
+            start_I = obj.n_samples+1;
+            start_time = obj.getTimesFromIndices(start_I);
+            end_I = n_samples_total;
+            
+            obj.y(start_I:end_I) = new_data;
+            
+            obj.n_samples = end_I;
+            
+            h__processSmall(obj)
+            
+            %The callback isn't valid until the data has
+            %been added to the big_plot class.
+            if ~isempty(obj.data_added_callback)
+                obj.data_added_callback(start_time);
+            end
+            obj.t_add = obj.t_add + toc(h_tic);
+        end
+    end
+    
+    %----------------------------------------------------------------------
+    %              Methods called by other parts of the package
+    %----------------------------------------------------------------------
+    methods
         function r = getDataReduction(obj,x_limits,axis_width_in_pixels)
             %
             %   r = getDataReduction(obj,x_limits,axis_width_in_pixels)
@@ -265,34 +380,39 @@ classdef streaming_data < handle
             
             %Get x indices
             %-----------------------------------------
-            if isinf(x_limits)
+            if any(isinf(x_limits))
                 x1 = 1;
                 x2 = obj.n_samples;
                 x1_small = 1;
                 x2_small = obj.I_small_all;
             else
+                %Get samples from times ------------
                 t1 = x_limits(1);
                 t2 = x_limits(2);
                 x1 = obj.getIndicesFromTimes(t1);
+                x2 = obj.getIndicesFromTimes(t2);
+                
+                %Limit samples based on the data --------------
                 if x1 < 1
                     x1 = 1;
                 end
-                x2 = obj.getIndicesFromTimes(t2);
                 if x2 > obj.n_samples
                     x2 = obj.n_samples;
                 end
+                
+                %Get the corresonding small samples ---------------
                 x1_small = obj.getIndicesFromTimes(t1,true);
+                x2_small = obj.getIndicesFromTimes(t2,true);
+                
                 if x1_small < 1
                     x1_small = 1;
                 end
-                x2_small = obj.getIndicesFromTimes(t2,true);
                 if x2_small > obj.I_small_all
                     x2_small = obj.I_small_all;
                 end
-                
             end
             
-            %Get data and times
+            %Get info for data retrieval
             %----------------------------------------------------
             if x2_small - x1_small > 2*axis_width_in_pixels
                 start_I = x1_small;
@@ -310,7 +430,7 @@ classdef streaming_data < handle
                 t2 = obj.getTimesFromIndices(x2);
             end
             
-            %Data reduction
+            %The actual data reduction
             %-------------------------------------------------------
             n_y_samples = end_I - start_I + 1;
             samples_per_chunk = ceil(n_y_samples/axis_width_in_pixels);
@@ -340,7 +460,13 @@ classdef streaming_data < handle
             %
             %   [data,info] = getRawData(obj,varargin)
             %
+            %   Optional Inputs
+            %   ---------------
             %   xlim : [min_time max_time]
+            %   get_calibrated : logical (default true)
+            %       If true, returns calibrated data when available. The 
+            %       raw data are returned when false or when no calibration
+            %       has been set.
             %
             %   Outputs
             %   -------
@@ -386,6 +512,8 @@ classdef streaming_data < handle
         end
         function min_time_duration = getMinDurationSmall(obj,axis_width_in_pixels)
             %
+            %   min_time_duration = getMinDurationSmall(obj,axis_width_in_pixels)
+            %
             %  TODO: Add documentation
             
             if nargin == 1
@@ -417,17 +545,6 @@ classdef streaming_data < handle
             end
             
         end
-        function s = getRawLineData(obj,in)
-            %
-            %   s = getRawLineData(obj)
-            %
-            %   Outputs
-            %   -------
-            %   s : big_plot.raw_line_data
-            
-            s = big_plot.raw_line_data.fromStreamingData(obj,in);
-
-        end
         function time_array = getTimeArray(obj,varargin)
             
             in.start_index = 1;
@@ -440,48 +557,7 @@ classdef streaming_data < handle
             time_array = ((I1:I2)*obj.dt)';
             %time_array = h__getTimeScaled(obj,time_array);
         end
-        function addData(obj,new_data)
-            %
-            %   addData(obj,new_data)
-            %
-            %
-            %   new_data
-            
-            I = obj.n_add_events + 1;
-            obj.n_add_events = I;
-            h_tic = tic;
-            
-            n_samples_new = length(new_data);
-            n_samples_total = n_samples_new + obj.n_samples;
-            
-            %Resize if necessary ...
-            %-----------------------------
-            if n_samples_total > length(obj.y)
-                n_samples_add = ceil((obj.growth_rate-1)*length(obj.y));
-                if length(obj.y) + n_samples_add < n_samples_total
-                    n_samples_add = n_samples_total - length(obj.y);
-                end
-                obj.y = [obj.y; zeros(n_samples_add,1,class(obj.y))];
-                obj.n_grow_events = obj.n_grow_events + 1;
-            end
-            
-            start_I = obj.n_samples+1;
-            start_time = obj.getTimesFromIndices(start_I);
-            end_I = n_samples_total;
-            
-            obj.y(start_I:end_I) = new_data;
-            
-            obj.n_samples = end_I;
-            
-            h__processSmall(obj)
-            
-            %The callback isn't valid until the data has
-            %been added to the big_plot class.
-            if ~isempty(obj.data_added_callback)
-                obj.data_added_callback(start_time);
-            end
-            obj.t_add = obj.t_add + toc(h_tic);
-        end
+        
     end
 end
 
