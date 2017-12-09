@@ -33,11 +33,12 @@ classdef raw_line_data < handle
             if in.get_x_data
                 obj.x = h_plot.XData;
             end
-            I1 = find(obj.x >= in.xlim(1),1);
-            I2 = find(obj.x <= in.xlim(2),1,'last');
+            
 
             %If we want a subset, get it now
             if ~isempty(in.xlim)
+                I1 = find(obj.x >= in.xlim(1),1);
+                I2 = find(obj.x <= in.xlim(2),1,'last');
                 if in.get_x_data
                     obj.x = obj.x(I1:I2);
                 end
