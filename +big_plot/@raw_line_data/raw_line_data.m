@@ -55,7 +55,7 @@ classdef raw_line_data < handle
             %   data_obj : big_plot.streaming_data
             
             in = big_plot.raw_line_data_options();
-            in = big_plot.sl.in.processVarargin(in,varargin);
+            in = big_plot.sl.in.processVarargin(in,varargin{:});
             
             obj = big_plot.raw_line_data();
                         
@@ -78,7 +78,7 @@ classdef raw_line_data < handle
             end
 
             if in.get_x_data
-                obj.x = data_obj.getTimeArray(obj,'start_index',info.x1,...
+                obj.x = data_obj.getTimeArray('start_index',info.x1,...
                     'end_index',info.x2);
             end
         end

@@ -141,11 +141,11 @@ end
 if isempty(v)
     %do nothing
     parse_input = false;
-elseif isstruct(v)
+elseif isstruct(v) || isobject(v)
     %This case should generally not happen
     %It will if varargin is not used in the calling function
     parse_input = true;
-elseif isstruct(v{1}) && length(v) == 1
+elseif (isstruct(v{1}) || isobject(v{1})) && length(v) == 1
     %Single structure was passed in as sole argument for varargin
     v = v{1};
     parse_input = true;

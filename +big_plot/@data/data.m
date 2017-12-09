@@ -88,7 +88,7 @@ classdef data < handle
             
             if obj.y_object_present
                 %For y objects we currrently limit this to 1 object
-                s = y_group.getRawLineData(xlim);
+                s = y_group.getRawLineData(in);
                 return
             end
             
