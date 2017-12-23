@@ -1,10 +1,12 @@
-classdef render_info < handle
+classdef (Hidden) render_info < handle
     %
     %   Class:
     %   big_plot.render_info
     %
     %   This just got complicated because now I'm allowing the underlying
     %   data to change (y must be an object)
+    %
+    %   This class gets ignored a bit when using streaming data.
     
     properties (Hidden)
         n_groups

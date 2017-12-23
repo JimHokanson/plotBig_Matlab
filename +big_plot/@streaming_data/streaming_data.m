@@ -451,6 +451,9 @@ classdef streaming_data < handle
             r = big_plot.xy_reduction;
             r.y_reduced = y_reduced(2:end-1);
             r.x_reduced = x_reduced(2:end-1);
+            
+            %This is needed for performance monitoring
+            r.range_I  = [x1 x2];
             r.mex_time = mex_time;
             
             obj.t_reduce = obj.t_reduce + toc(h_tic);

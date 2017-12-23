@@ -6,8 +6,8 @@ function s = getRawLineData(h_plot,varargin)
 %   ------
 %   h_plot
 %
-%   Optional Inputs
-%   ---------------
+%   Optional Inputs (see big_plot.raw_line_data_options)
+%   -----------------------------------------------------------
 %   get_x_data : default true
 %       If false, the corresponding x-data are not returned. This can
 %       save on memory if it isn't needed.

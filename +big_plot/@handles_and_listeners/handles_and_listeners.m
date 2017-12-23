@@ -1,4 +1,4 @@
-classdef handles_and_listeners < handle
+classdef (Hidden) handles_and_listeners < handle
     %
     %   Class:
     %   big_plot.handles_and_listeners

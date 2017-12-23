@@ -90,8 +90,8 @@ if direct_inputs_to_big_plot
     temp = big_plot(varargin{:});
     temp.renderData();
     if nargout
-        all_lines = temp.h_and_l.h_plot;
-        varargout{1} = vertcat(all_lines{:});
+        varargout{1} = temp.h_and_l.h_lines_array;
+        %varargout{1} = vertcat(all_lines{:});
     end
     return
 end

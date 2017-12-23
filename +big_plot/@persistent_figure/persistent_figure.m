@@ -1,4 +1,4 @@
-classdef persistent_figure
+classdef (Hidden) persistent_figure
     %
     %   big_plot.persistent_figure.getFigure()
     

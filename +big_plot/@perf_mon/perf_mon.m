@@ -1,7 +1,14 @@
-classdef perf_mon < handle
+classdef (Hidden) perf_mon < handle
     %
     %   Class:
     %   big_plot.perf_mon
+    %
+    %   See Also:
+    %   big_plot>renderData
+    %
+    %   We time two types of things here:
+    %   1) Renders - calls to rerender the data
+    %   2) Reductions - subsampling of the data
     
     properties
         init_h_and_l
@@ -12,7 +19,10 @@ classdef perf_mon < handle
         %we rerender.
         
         n_render_calls = 0 %# of times the figure detected a resize
+        
+        %Time spent in renderData
         render_cb_times %array
+        
         render_types %array
         %1 - init
         %2 - no change
@@ -28,6 +38,8 @@ classdef perf_mon < handle
         reduce_mex_times %array
         reduce_fcn_times
         n_samples_reduce %array
+        
+        %This is mex specific, normalized
         ms_reduce_per_million_samples %array
         
         
@@ -102,6 +114,34 @@ classdef perf_mon < handle
             obj.xlim_min(I:end) = [];
             obj.xlim_max(I:end) = [];
             obj.xlim_forced(I:end) = [];
+        end
+        function plot(obj)
+            %1) boxplot of various times
+            
+            %render_cb_times
+            %reduce_mex_times
+            %reduce_fcn_times
+            %ms_reduce_per_million_samples
+            
+            x_temp = cell(1,4);
+            g_temp = cell(1,4);
+            x_temp{1} = 1000*obj.render_cb_times(1:obj.n_render_calls);
+            g_temp{1} = ones(1,length(x_temp{1}));
+            x_temp{2} = 1000*obj.reduce_mex_times(1:obj.n_reduce_calls);
+            g_temp{2} = 3*ones(1,length(x_temp{2}));
+            x_temp{3} = 1000*obj.reduce_fcn_times(1:obj.n_reduce_calls);
+            g_temp{3} = 2*ones(1,length(x_temp{2}));
+            x_temp{4} = obj.ms_reduce_per_million_samples(1:obj.n_reduce_calls);
+            g_temp{4} = 4*ones(1,length(x_temp{2}));
+            
+            x = [x_temp{:}]';
+            g = [g_temp{:}]';
+            
+            figure
+            boxplot(x,g);
+            set(gca,'FontSize',16);
+            ylabel('Elapsed time (ms)')
+            set(gca,'XTickLabel',{'Render','Reduce','Reduce-Mex portion','Mex per million samples'})
         end
     end
     

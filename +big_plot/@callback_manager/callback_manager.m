@@ -1,22 +1,27 @@
-classdef callback_manager < handle
+classdef (Hidden) callback_manager < handle
     %
     %   Class:
     %   big_plot.callback_manager
     %
-    %   TODO: Switch to use Java callbacks ...
+    %   Handles code related to triggering replot callbacks.
+    %
+    %   Currently the code replots when the XRuler is updated.
+    %
+    %
     %   https://www.mathworks.com/matlabcentral/answers/368964-queue-addlistener-events-or-place-event-on-edt
     
     properties
         parent
         fig_handle
         axes_handle
-        ax_hidden
-        timer_h
+
         j_comp
         h_container
+        
+        %This gets toggled between 1 and 2 to force a change that throws
+        %an event on the EDT
         last_string_index = 1;
-        L1
-        L2
+
         L3
         
         %This gets update ASAP when entering rendering
@@ -24,6 +29,9 @@ classdef callback_manager < handle
         perf_mon
         
         kill_run = false
+        
+        n_edt = 0
+        t_edt = 0
     end
     
 
@@ -38,6 +46,9 @@ classdef callback_manager < handle
             %
             %   This gets initialized in the first call to
             %   big_plot.renderData
+            %
+            %   For some details:
+            %   https://www.mathworks.com/matlabcentral/answers/368964-queue-addlistener-events-or-place-event-on-edt
                 
             
             [obj.j_comp, temp] = javacomponent('javax.swing.JButton',[],obj.fig_handle);
@@ -46,12 +57,12 @@ classdef callback_manager < handle
 
             obj.axes_handle = axes_handle;
 
-            obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.cleanListen);
+            obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.xrulerMarkedClean);
 
             set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
             
         end
-        function cleanListen(obj)
+        function xrulerMarkedClean(obj)
             
             %No need to render if the xlim hasn't changed from what we last
             %rendered
@@ -64,20 +75,29 @@ classdef callback_manager < handle
             %This should trigger a EDT callback from the listener
             %
             %By doing this we queue the callbacks.
-                        
+            %
+            %This appears to be a bit slow - roughly 10 ms on my machine
+            %- I'm not sure if another Java approach would be faster ...
+            
+            obj.n_edt = obj.n_edt + 1;
+            
+            h_tic = tic;
             %This can become invalid with user interaction
             try %#ok<TRYNC>
                 %fprintf('1 %s\n',mat2str(get(obj.axes_handle,'xlim')));
                 
                 if obj.last_string_index == 1
                     obj.last_string_index = 2;
-                    obj.j_comp.setText('a');
+                    setText(obj.j_comp,'a');
+                    %obj.j_comp.setText('a');
                 else
                     obj.last_string_index = 1;
-                    obj.j_comp.setText('b');
+                    setText(obj.j_comp,'b');
+                    %obj.j_comp.setText('b');
                 end
                 %fprintf('2 %s\n',mat2str(get(obj.axes_handle,'xlim')));
             end
+            obj.t_edt = obj.t_edt + toc(h_tic);
         end
         function renderDataCallback(obj)
             %I generally expect failures to occur when the axes object

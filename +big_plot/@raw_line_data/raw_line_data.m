@@ -1,4 +1,4 @@
-classdef raw_line_data < handle
+classdef (Hidden) raw_line_data < handle
     %
     %   Class:
     %   big_plot.raw_line_data

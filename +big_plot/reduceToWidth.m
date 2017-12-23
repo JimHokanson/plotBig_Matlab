@@ -132,7 +132,7 @@ if isobject(y)
    r = y.getDataReduction(x_limits,axis_width_in_pixels);
    x_reduced = r.x_reduced;
    y_reduced = r.y_reduced;
-   s.range_I = [NaN NaN];
+   s.range_I = r.range_I;
    s.same_range = false;
    s.mex_time = r.mex_time;
    return

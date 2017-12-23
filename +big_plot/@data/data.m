@@ -1,4 +1,4 @@
-classdef data < handle
+classdef (Hidden) data < handle
     %
     %   Class:
     %   big_plot.data

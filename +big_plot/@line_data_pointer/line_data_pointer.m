@@ -9,7 +9,7 @@ classdef (Hidden) line_data_pointer < handle
     %   get it from the figure directly, but in that case only a subset
     %   would be available (the min/max data plotted).
     %
-    %   This class is returned from
+    %   This class is returned from ...
     
     properties
         big_plot_ref %big_plot

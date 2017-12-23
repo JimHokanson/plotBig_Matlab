@@ -10,6 +10,7 @@ classdef xy_reduction
         x_reduced
         y_reduced
         mex_time
+        range_I
     end
     
     methods
