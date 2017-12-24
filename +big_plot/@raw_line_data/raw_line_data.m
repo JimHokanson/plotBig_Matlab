@@ -30,11 +30,11 @@ classdef (Hidden) raw_line_data < handle
             
             obj = big_plot.raw_line_data();
             obj.y_raw = h_plot.YData;
-            if in.get_x_data
+            
+            if in.get_x_data || ~isempty(in.xlim)
                 obj.x = h_plot.XData;
             end
             
-
             %If we want a subset, get it now
             if ~isempty(in.xlim)
                 I1 = find(obj.x >= in.xlim(1),1);
