@@ -2,6 +2,10 @@ function s = getRawLineData(h_plot,varargin)
 %
 %   s = big_plot.getRawLineData(h_plot,varargin)
 %
+%   This method allows retrieval of the underlying line data. This is
+%   needed because big_plot may only render a small percentage of the data,
+%   so queries of the 
+%
 %   Inputs
 %   ------
 %   h_plot

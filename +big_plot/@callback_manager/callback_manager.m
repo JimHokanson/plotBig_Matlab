@@ -14,27 +14,27 @@ classdef (Hidden) callback_manager < handle
         parent
         fig_handle
         axes_handle
-
+        
         j_comp
         h_container
         
         %This gets toggled between 1 and 2 to force a change that throws
         %an event on the EDT
         last_string_index = 1;
-
+        
         L3
         
         %This gets update ASAP when entering rendering
         last_processed_xlim
         perf_mon
         
-        kill_run = false
+        kill_already_run = false
         
         n_edt = 0
         t_edt = 0
     end
     
-
+    
     
     methods
         function obj = callback_manager(parent)
@@ -49,16 +49,16 @@ classdef (Hidden) callback_manager < handle
             %
             %   For some details:
             %   https://www.mathworks.com/matlabcentral/answers/368964-queue-addlistener-events-or-place-event-on-edt
-                
+            
             
             [obj.j_comp, temp] = javacomponent('javax.swing.JButton',[],obj.fig_handle);
             obj.h_container = handle(temp);
             set(obj.h_container,'BusyAction','queue','Interruptible','off');
-
+            
             obj.axes_handle = axes_handle;
-
+            
             obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.xrulerMarkedClean);
-
+            
             set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
             
         end
@@ -120,26 +120,29 @@ classdef (Hidden) callback_manager < handle
             end
         end
         function killCallbacks(obj)
+            %
+            %   Who kills?
+            %   1) Delete method
+            %   2) big_plot>renderData - if none of the lines being 
+            %   monitored are valid
             
-            %set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
-            
-            if obj.kill_run
+            if obj.kill_already_run
                 return
             else
-                obj.kill_run = true;
+                obj.kill_already_run = true;
             end
             
             obj.parent = [];
             
             try %#ok<TRYNC>
-            delete(obj.h_container);
+                delete(obj.h_container);
             end
             %delete(obj.j_comp);
             
             try %#ok<TRYNC>
-            delete(obj.L3)
+                delete(obj.L3)
             end
-
+            
         end
         function delete(obj)
             obj.killCallbacks();
@@ -148,7 +151,7 @@ classdef (Hidden) callback_manager < handle
 end
 
 
-    %{
+%{
     [j,btn] = uicomponent('style','javax.swing.JButton');
 j.Interruptible = 'on';
 j.Interruptible = 'off';
@@ -179,4 +182,4 @@ set(gcf,'HandleVisibility','off','Visible','off')
     
     [comp, container] = javacomponent('javax.swing.JSpinner');
     
-    %}
+%}

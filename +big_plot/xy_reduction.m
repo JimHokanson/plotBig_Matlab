@@ -1,4 +1,4 @@
-classdef xy_reduction
+classdef (Hidden) xy_reduction
     %
     %   Class:
     %   big_plot.xy_reduction

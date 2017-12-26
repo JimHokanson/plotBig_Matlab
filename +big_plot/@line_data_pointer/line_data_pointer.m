@@ -9,10 +9,14 @@ classdef (Hidden) line_data_pointer < handle
     %   get it from the figure directly, but in that case only a subset
     %   would be available (the min/max data plotted).
     %
-    %   This class is returned from ...
+    %   The class constructor is called in big_plot.data during initial
+    %   rendering.
     
     properties
         big_plot_ref %big_plot
+        %This will most likely be kept in place as it allows us to 
+        %access everything about the plot, not just the data
+        
         group_I
         line_I
     end
