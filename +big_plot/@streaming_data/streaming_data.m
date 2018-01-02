@@ -341,7 +341,15 @@ classdef streaming_data < handle
                 if length(obj.y) + n_samples_add < n_samples_total
                     n_samples_add = n_samples_total - length(obj.y);
                 end
+                
+                %This might be better as two steps for timers ...
+                %temp = obj.y;
+                %obj.y = zeros()
+                %obj.y(1:length(temp)) = temp;
+                %clear(temp)
                 obj.y = [obj.y; zeros(n_samples_add,1,class(obj.y))];
+                
+                
                 obj.n_grow_events = obj.n_grow_events + 1;
             end
             
