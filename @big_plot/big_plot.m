@@ -174,7 +174,7 @@ classdef big_plot < handle
                 if length(obj.data.y) > 1
                     error('Case not yet handled')
                 else
-                    obj.data.y{1}.calibration_callback = @calibrationUpdated;
+                    obj.data.y{1}.calibration_callback = @obj.calibrationUpdated;
                     obj.data.y{1}.data_added_callback = @(new_x_start) h__dataAdded(obj,new_x_start);
                 end
             end
