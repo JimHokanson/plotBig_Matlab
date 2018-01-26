@@ -20,7 +20,7 @@ function varargout = e001_interestingInput(varargin)
 %   n: (default 5e7 + randi(1000))
 %       For 1e8 we run about 3.2GB given 3 signals and 1 time
 %   type:
-%       - 0 - plotBig
+%       - 0 - plotBig (this repo)
 %       - 1 - reduce_plot (FEX 40790) https://github.com/tuckermcclure/matlab-plot-big
 %       - 2 - plot() normal Matlab function ...
 %       - 3 - animatedline
