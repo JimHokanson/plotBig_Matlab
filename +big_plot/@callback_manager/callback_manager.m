@@ -51,7 +51,9 @@ classdef (Hidden) callback_manager < handle
             %   https://www.mathworks.com/matlabcentral/answers/368964-queue-addlistener-events-or-place-event-on-edt
             
             
-            [obj.j_comp, temp] = javacomponent('javax.swing.JButton',[],obj.fig_handle);
+            %[obj.j_comp, temp] = javacomponent('javax.swing.JButton',[],obj.fig_handle);
+            [obj.j_comp,temp] = javacomponent('javax.swing.JButton');
+            
             obj.h_container = handle(temp);
             set(obj.h_container,'BusyAction','queue','Interruptible','off');
             
@@ -59,7 +61,18 @@ classdef (Hidden) callback_manager < handle
             
             obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.xrulerMarkedClean);
             
-            set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
+            %set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
+            
+            %obj.j_comp.setActionCommand(@(~,~)obj.renderDataCallback());
+            
+            %set(obj.j_comp,'MouseClickedCallback',@(~,~)obj.renderDataCallback());
+            
+            %addActionListener
+            
+            %obj.j_comp.addActionListener(@(~,~)obj.renderDataCallback());
+            
+            set(obj.j_comp,'ActionPerformedCallback',@(~,~)obj.renderDataCallback());
+            
             
         end
         function xrulerMarkedClean(obj)
@@ -85,16 +98,16 @@ classdef (Hidden) callback_manager < handle
             %This can become invalid with user interaction
             try %#ok<TRYNC>
                 %fprintf('1 %s\n',mat2str(get(obj.axes_handle,'xlim')));
-                
-                if obj.last_string_index == 1
-                    obj.last_string_index = 2;
-                    setText(obj.j_comp,'a');
-                    %obj.j_comp.setText('a');
-                else
-                    obj.last_string_index = 1;
-                    setText(obj.j_comp,'b');
-                    %obj.j_comp.setText('b');
-                end
+                obj.j_comp.doClick();
+%                 if obj.last_string_index == 1
+%                     obj.last_string_index = 2;
+%                     setText(obj.j_comp,'a');
+%                     %obj.j_comp.setText('a');
+%                 else
+%                     obj.last_string_index = 1;
+%                     setText(obj.j_comp,'b');
+%                     %obj.j_comp.setText('b');
+%                 end
                 %fprintf('2 %s\n',mat2str(get(obj.axes_handle,'xlim')));
             end
             obj.t_edt = obj.t_edt + toc(h_tic);

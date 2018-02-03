@@ -496,7 +496,7 @@ classdef streaming_data < handle
                 data = obj.y(1:obj.n_samples);
                 I = [1 obj.n_samples];
             else
-                I = obj.getIndicesFromTimes(xlim);
+                I = obj.getIndicesFromTimes(in.xlim);
                 if I(1) < 1
                     I = 1;
                 end
@@ -543,7 +543,7 @@ classdef streaming_data < handle
             else
                 indices = times/obj.dt + 1;
             end
-            
+            indices = round(indices);
         end
         function times = getTimesFromIndices(obj,indices,use_small)
             if nargin == 2
