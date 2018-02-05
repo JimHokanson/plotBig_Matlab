@@ -16,6 +16,7 @@ classdef (Hidden) callback_manager < handle
         axes_handle
         
         j_comp
+        callback_obj
         h_container
         
         %This gets toggled between 1 and 2 to force a change that throws
@@ -51,17 +52,23 @@ classdef (Hidden) callback_manager < handle
             %   https://www.mathworks.com/matlabcentral/answers/368964-queue-addlistener-events-or-place-event-on-edt
             
             
-            %[obj.j_comp, temp] = javacomponent('javax.swing.JButton',[],obj.fig_handle);
-            [obj.j_comp,temp] = javacomponent('javax.swing.JButton');
+            %TODO: Break up by options ...
             
-            obj.h_container = handle(temp);
-            set(obj.h_container,'BusyAction','queue','Interruptible','off');
+            %[obj.j_comp, temp] = javacomponent('javax.swing.JButton',[],obj.fig_handle);
+            %obj.h_container = handle(temp);
+            %set(obj.h_container,'BusyAction','queue','Interruptible','off');
+            
+            
+            %Suggested solution, don't attach to figure
+            %- doesnt' work ges to wrong figure
+            %[obj.j_comp,temp] = javacomponent('javax.swing.JButton');
+            
+            
             
             obj.axes_handle = axes_handle;
             
             obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.xrulerMarkedClean);
             
-            %set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
             
             %obj.j_comp.setActionCommand(@(~,~)obj.renderDataCallback());
             
@@ -71,9 +78,16 @@ classdef (Hidden) callback_manager < handle
             
             %obj.j_comp.addActionListener(@(~,~)obj.renderDataCallback());
             
-            set(obj.j_comp,'ActionPerformedCallback',@(~,~)obj.renderDataCallback());
+            
+            %set(obj.j_comp,'PropertyChangeCallback',@(~,~)obj.renderDataCallback());
+
+            %set(obj.j_comp,'ActionPerformedCallback',@(~,~)obj.renderDataCallback());
             
             
+            obj.callback_obj = handle(com.mathworks.jmi.Callback,'callbackProperties');
+             
+            set(obj.callback_obj,'delayedCallback',@(~,~)obj.renderDataCallback());
+            %callbackObj.postCallback;
         end
         function xrulerMarkedClean(obj)
             
@@ -98,7 +112,15 @@ classdef (Hidden) callback_manager < handle
             %This can become invalid with user interaction
             try %#ok<TRYNC>
                 %fprintf('1 %s\n',mat2str(get(obj.axes_handle,'xlim')));
-                obj.j_comp.doClick();
+                
+                %OPTION 1
+                %------------------
+                %250 ms on my mac
+                %obj.j_comp.doClick();
+                
+                %OPTION 2
+                %-------------------
+                %150 ms on my mac
 %                 if obj.last_string_index == 1
 %                     obj.last_string_index = 2;
 %                     setText(obj.j_comp,'a');
@@ -108,6 +130,11 @@ classdef (Hidden) callback_manager < handle
 %                     setText(obj.j_comp,'b');
 %                     %obj.j_comp.setText('b');
 %                 end
+
+                %OPTION 3
+                %----------------------
+                obj.callback_obj.postCallback();
+                
                 %fprintf('2 %s\n',mat2str(get(obj.axes_handle,'xlim')));
             end
             obj.t_edt = obj.t_edt + toc(h_tic);

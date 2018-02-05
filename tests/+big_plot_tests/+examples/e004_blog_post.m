@@ -1,5 +1,52 @@
 function e004_blog_post()
 
+%{
+    big_plot_tests.examples.e004_blog_post();
+%}
+
+%Time testing
+%----------------
+data = rand(3e7,1);
+start_sample = 10;
+samples_per_chunk = 2000;
+n_chunks = 10000;
+
+tic
+min_max_data = zeros(n_chunks*2+2,1);
+% min_max_data(1) = data(1);
+% min_max_data(end) = data(end);
+I = 0;
+end_I = start_sample-1;
+
+for i = 1:n_chunks
+    start_I = end_I + 1;
+    end_I = start_I + samples_per_chunk - 1;
+    min_max_data(I+1) = max(data(start_I:end_I));
+    min_max_data(I+2) = min(data(start_I:end_I));
+    I = I + 2;
+end
+toc
+
+tic
+min_max_data2 = big_plot.reduceMex(data,samples_per_chunk,start_sample,end_I);
+toc
+
+tic
+for i = 1:10
+wtf = big_plot.reduceMex(data,7500);
+end
+toc 
+
+profile on
+tic
+plotBig(data);
+drawnow;
+toc
+profile off
+profile viewer
+
+keyboard
+
 %% Figure 1
 y = [1 2 3 4 5 6 7 8 9 8 7 6 7 6 5 4 3 2 4 8 9 7 4 5 6 7 7 7 7 7];
 subplot(1,2,1)
