@@ -6,10 +6,12 @@ function e004_blog_post()
 
 %Time testing
 %----------------
+n_samples = 5e7;
 data = rand(3e7,1);
-start_sample = 10;
-samples_per_chunk = 2000;
+start_sample = 1;
 n_chunks = 10000;
+samples_per_chunk = length(data)/n_chunks;
+
 
 tic
 min_max_data = zeros(n_chunks*2+2,1);
@@ -28,20 +30,27 @@ end
 toc
 
 tic
-min_max_data2 = big_plot.reduceMex(data,samples_per_chunk,start_sample,end_I);
+min_max_data2 = big_plot.reduceMex(data,samples_per_chunk);
 toc
 
-tic
-for i = 1:10
-wtf = big_plot.reduceMex(data,7500);
-end
-toc 
+% %Generall
+% tic
+% for i = 1:10
+% wtf = big_plot.reduceMex(data,7500);
+% end
+% toc 
 
+figure(1)
+cla
 profile on
 tic
+n_plots = 20;
+for i = 1:n_plots
+cla
 plotBig(data);
 drawnow;
-toc
+end
+fprintf('Average elapsed time: %g\n',toc/n_plots);
 profile off
 profile viewer
 
