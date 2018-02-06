@@ -22,6 +22,11 @@ function e004_blog_post()
 
 %Time Notes - for my other desktop
 %-----------------------------------
+%1) ML Loop         - 0.100
+%2) OpenMP and SIMD - 0.0140 - Ratio 7.19
+%3) SIMD Only       - 0.0220 - Ratio 4.54
+%4) OpenMP Only     - 0.0142 - Ratio 6.95
+%5) C Only          - 0.0295 - Ratio 3.37
 
 %Time testing
 %----------------
@@ -68,20 +73,20 @@ fprintf('Speed ratio %g\n',t1/t2);
 % end
 % toc 
 
-figure(1)
-cla
-profile on
-tic
-n_plots = 20;
-for i = 1:n_plots
-cla
-plotBig(data);
-drawnow;
-end
-t3 = toc;
-fprintf('Average elapsed time: %g\n',t3/n_plots);
-profile off
-profile viewer
+% figure(1)
+% cla
+% profile on
+% tic
+% n_plots = 20;
+% for i = 1:n_plots
+% cla
+% plotBig(data);
+% drawnow;
+% end
+% t3 = toc;
+% fprintf('Average elapsed time: %g\n',t3/n_plots);
+% profile off
+% profile viewer
 
 keyboard
 
