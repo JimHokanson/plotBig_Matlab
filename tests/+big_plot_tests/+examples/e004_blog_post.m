@@ -4,6 +4,15 @@ function e004_blog_post()
     big_plot_tests.examples.e004_blog_post();
 %}
 
+%Time Notes - for my macbook
+%--------------------------
+%1) ML Loop - 0.243
+%2) OpenMP and SIMD - 0.011  - Ratio 21.4
+%3) SIMD Only       - 0.0197 - Ratio 12.3
+%4) OpenMP Only     - 0.0351 - Ratio 6.86
+%5) C Only          - 0.0635 - Ratio 3.84
+
+
 %Time testing
 %----------------
 n_samples = 5e7;
@@ -11,9 +20,10 @@ data = rand(3e7,1);
 start_sample = 1;
 n_chunks = 10000;
 samples_per_chunk = length(data)/n_chunks;
-
+n_loops = 40;
 
 tic
+for j = 1:n_loops
 min_max_data = zeros(n_chunks*2+2,1);
 % min_max_data(1) = data(1);
 % min_max_data(end) = data(end);
@@ -27,11 +37,19 @@ for i = 1:n_chunks
     min_max_data(I+2) = min(data(start_I:end_I));
     I = I + 2;
 end
-toc
+end
+t1 = toc;
+fprintf('Average elapsed time (Matlab std): %g\n',t1/n_loops);
+
 
 tic
+for j = 1:n_loops
 min_max_data2 = big_plot.reduceMex(data,samples_per_chunk);
-toc
+end
+t2 = toc;
+fprintf('Average elapsed time (mex): %g\n',t2/n_loops);
+
+fprintf('Speed ratio %g\n',t1/t2);
 
 % %Generall
 % tic
@@ -50,7 +68,8 @@ cla
 plotBig(data);
 drawnow;
 end
-fprintf('Average elapsed time: %g\n',toc/n_plots);
+t3 = toc;
+fprintf('Average elapsed time: %g\n',t3/n_plots);
 profile off
 profile viewer
 

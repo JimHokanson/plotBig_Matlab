@@ -1,7 +1,17 @@
-function compile()
+function compile(varargin)
 %x This function compiles the code necessary for this repo.
 %
 %      big_plot.compile()
+
+%{
+big_plot.compile();
+big_plot.compile('use_simd',false)
+big_plot.compile('use_openmp',false)
+%}
+
+in.use_simd = true;
+in.use_openmp = true;
+in = big_plot.sl.in.processVarargin(in,varargin);
 
 %TODOs
 %-------------------------
@@ -20,6 +30,12 @@ c.build();
 
 c = mex.compilers.gcc('./private/reduce_to_width_mex.c','verbose',verbose);
 c.addCompileFlags('-mavx2');
+if in.use_simd
+    c.addCompileFlags('-DENABLE_SIMD');
+end
+if in.use_openmp
+    c.addCompileFlags('-DENABLE_OPENMP');
+end
 c.addLib('openmp');
 c.build();
 
