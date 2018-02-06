@@ -7,6 +7,7 @@ function compile(varargin)
 big_plot.compile();
 big_plot.compile('use_simd',false)
 big_plot.compile('use_openmp',false)
+big_plot.compile('use_openmp',false,'use_simd',false)
 %}
 
 in.use_simd = true;

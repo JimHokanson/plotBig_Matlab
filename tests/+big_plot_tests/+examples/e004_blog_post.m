@@ -6,12 +6,22 @@ function e004_blog_post()
 
 %Time Notes - for my macbook
 %--------------------------
-%1) ML Loop - 0.243
+%1) ML Loop         - 0.243
 %2) OpenMP and SIMD - 0.011  - Ratio 21.4
 %3) SIMD Only       - 0.0197 - Ratio 12.3
 %4) OpenMP Only     - 0.0351 - Ratio 6.86
 %5) C Only          - 0.0635 - Ratio 3.84
 
+%Time Notes - for my desktop
+%----------------------------
+%1) ML Loop         - 0.111
+%2) OpenMP and SIMD - 0.0133 - Ratio 8.4
+%3) SIMD Only       - 0.0156 - Ratio 6.9
+%4) OpenMP Only     - 0.0147 - Ratio 7.54
+%5) C Only          - 0.0279 - Ratio 3.92
+
+%Time Notes - for my other desktop
+%-----------------------------------
 
 %Time testing
 %----------------
