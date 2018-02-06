@@ -28,10 +28,16 @@ function e004_blog_post()
 %4) OpenMP Only     - 0.0142 - Ratio 6.95
 %5) C Only          - 0.0295 - Ratio 3.37
 
+
+%Single other desktop
+%- 0.076
+%- 0.0076 - 10.093
+%- 0.0080 - 9.35 SIMD only
+
 %Time testing
 %----------------
-n_samples = 5e7;
-data = rand(3e7,1);
+n_samples = 3e7;
+data = rand(n_samples,1);
 start_sample = 1;
 n_chunks = 10000;
 samples_per_chunk = length(data)/n_chunks;
