@@ -1,7 +1,7 @@
-function e004_blog_post()
+function s = e004_blog_post(varargin)
 
 %{
-    big_plot_tests.examples.e004_blog_post();
+    s = big_plot_tests.examples.e004_blog_post();
 %}
 
 %Time Notes - for my macbook
@@ -34,14 +34,26 @@ function e004_blog_post()
 %- 0.0076 - 10.093
 %- 0.0080 - 9.35 SIMD only
 
+in.data_type = 'double';
+in = big_plot.sl.in.processVarargin(in,varargin);
+
+
 %Time testing
 %----------------
-n_samples = 3e7;
-data = rand(n_samples,1);
+n_samples = 5e7;
+switch in.data_type
+    case {'double' 'single'}
+        data = rand(n_samples,1,in.data_type);
+    case {'int64' 'uint64'}
+        fh = str2func(in.data_type);
+        data = fh(randi(intmax('int32'),n_samples,1,'int32'));
+    otherwise
+        data = randi(intmax(in.data_type),n_samples,1,in.data_type);
+end
 start_sample = 1;
 n_chunks = 10000;
 samples_per_chunk = length(data)/n_chunks;
-n_loops = 40;
+n_loops = 20;
 
 tic
 for j = 1:n_loops
@@ -72,6 +84,11 @@ fprintf('Average elapsed time (mex): %g\n',t2/n_loops);
 
 fprintf('Speed ratio %g\n',t1/t2);
 
+s.n_samples = n_samples;
+s.t1 = t1;
+s.t2 = t2;
+s.ratio = t1/t2;
+
 % %Generall
 % tic
 % for i = 1:10
@@ -94,7 +111,7 @@ fprintf('Speed ratio %g\n',t1/t2);
 % profile off
 % profile viewer
 
-keyboard
+return
 
 %% Figure 1
 y = [1 2 3 4 5 6 7 8 9 8 7 6 7 6 5 4 3 2 4 8 9 7 4 5 6 7 7 7 7 7];
