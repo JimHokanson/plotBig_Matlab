@@ -2,21 +2,47 @@ function compile(varargin)
 %x This function compiles the code necessary for this repo.
 %
 %      big_plot.compile()
+%
+%   flags
+
+%Switching notes
+%- need to update Windows path to point to correct "bin" folder
+%where gcc
+
 
 %{
 big_plot.compile();
-big_plot.compile('use_simd',false)
-big_plot.compile('use_openmp',false)
-big_plot.compile('use_openmp',false,'use_simd',false)
+
+%SIMD with ...
+big_plot.compile('flags','simd openmp_simd')
+big_plot.compile('flags','simd openmp')
+%Individually ...
+big_plot.compile('flags','openmp_simd')
+big_plot.compile('flags','openmp')
+big_plot.compile('flags','simd')
+
+%No SIMD or OpenMP
+big_plot.compile('flags','base');
+
 %}
 
+in.verbose = true;
+in.flags = {};
 in.use_simd = true;
+in.use_openmp_with_simd = true;
 in.use_openmp = true;
 in = big_plot.sl.in.processVarargin(in,varargin);
 
+if ~isempty(in.flags)
+    in.flags = regexp(in.flags,'\s','split');
+    in.use_simd = any(strcmp(in.flags,'simd'));
+    in.use_openmp_with_simd = any(strcmp(in.flags,'openmp_simd'));
+    in.use_openmp = any(strcmp(in.flags,'openmp'));
+end
+
 %TODOs
 %-------------------------
-%1) Make verbose optional
+%1) DONE Make verbose optional
 %2) Support compiler switching
 %3) build in try/catch support
 %4) Finish mac support
@@ -24,22 +50,32 @@ in = big_plot.sl.in.processVarargin(in,varargin);
 
 %TODO: List supported compilers and try and acquire them
 
-%This code uses https://github.com/JimHokanson/mex_maker
-verbose = true;
-c = mex.compilers.gcc('./private/same_diff_mex.c','verbose',verbose);
-c.build();
+%{
+clear +big_plot\private\reduce_to_width_mex
 
-c = mex.compilers.gcc('./private/reduce_to_width_mex.c','verbose',verbose);
+
+%}
+
+clear +big_plot\private\reduce_to_width_mex
+
+%This code uses https://github.com/JimHokanson/mex_maker
+
+c = mex.compilers.gcc('./private/reduce_to_width_mex.c','verbose',in.verbose);
 c.addCompileFlags('-mavx2');
 if in.use_simd
     c.addCompileFlags('-DENABLE_SIMD');
 end
-if in.use_openmp
+if in.use_openmp_with_simd 
+    c.addCompileFlags('-DENABLE_OPNEMP_SIMD');
+elseif in.use_openmp
     c.addCompileFlags('-DENABLE_OPENMP');
 end
 c.addLib('openmp');
 c.build();
 
+
+c = mex.compilers.gcc('./private/same_diff_mex.c','verbose',in.verbose);
+c.build();
 
 
 end

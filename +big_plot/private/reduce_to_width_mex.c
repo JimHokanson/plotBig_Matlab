@@ -91,9 +91,12 @@ mwSize getScalarInput(const mxArray *input, int input_number){
             p_input_data = p_input_data + start_index;          \
         }                                                       \
     }
- 
-#ifdef ENABLE_OPENMP
-    
+
+//This splitting was added for testing ...
+//My preprocessor skills are not that great so I copy/pasted
+//everything. I'm not sure if I could reduce redundancy
+#ifdef ENABLE_OPNEMP_SIMD
+
 //OpenMP enabled
 //-----------------------------------------------------------------
 #define INIT_MAIN_LOOP(type)                            \
@@ -109,13 +112,28 @@ mwSize getScalarInput(const mxArray *input, int input_number){
             /*Pointer => start + column wrapping + offset (row into column) - 1*/   \
             /*  *2 since we store min and max in each chunk*/                       \
             type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk;
+    
+#elif ENABLE_OPENMP
+    
+//OpenMP enabled
+//-----------------------------------------------------------------
+#define INIT_MAIN_LOOP(type)                            \
+    _Pragma("omp parallel for collapse(2)")    \
+    for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
+        /*Note, we can't initialize anything before this loop, since we*/           \
+        /*are collapsing the first two loops. This allows us to parallelize*/       \
+        /*both of the first two loops, which is good when the # of channels*/       \
+        /*does not equal the # of threads.*/                                        \
+        for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){                       \
+            type *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk; \
+            /*Pointer => start + column wrapping + offset (row into column) - 1*/   \
+            /*  *2 since we store min and max in each chunk*/                       \
+            type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk;
 
 #else
 //OpenMP disabled version
 //-----------------------------------------------------------------
 #define INIT_MAIN_LOOP(type)                            \
-    /*#pragma omp parallel for simd collapse(2)*/       \
-    /*_Pragma("omp parallel for simd collapse(2)")*/    \
     for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
         /*Note, we can't initialize anything before this loop, since we*/           \
         /*are collapsing the first two loops. This allows us to parallelize*/       \
