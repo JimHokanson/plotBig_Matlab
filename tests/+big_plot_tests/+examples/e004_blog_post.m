@@ -151,4 +151,24 @@ plot(y,'-o','Linewidth',2)
 set(gca,'xlim',[-1e6 1e6],'FontSize',16)
 set(gcf,'position',[1,1,800,400]);
 
+
+%% Figure 4
+subplot(1,3,1)
+y = [0:0.1:1 0];
+x = [0:0.1:1 1e2];
+plot(x,y,'o-')
+set(gca,'xlim',[-0.1 5],'ylim',[-0.1 1.1]);
+subplot(1,3,2)
+plot(x,y,'o-')
+set(gca,'xlim',[-1e1 1e2],'ylim',[-0.1 1.1]);
+subplot(1,3,3)
+%max min max min
+y = [1 0 0 0];
+x = [0 1 1e2 1e2];
+plot(x,y,'o-')
+set(gca,'xlim',[-1e1 1e2],'ylim',[-0.1 1.1]);
+
+
+
+
 end
