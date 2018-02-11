@@ -168,7 +168,19 @@ x = [0 1 1e2 1e2];
 plot(x,y,'o-')
 set(gca,'xlim',[-1e1 1e2],'ylim',[-0.1 1.1]);
 
+%%Figure 5
+n = [10:200:5e6]; %This cold be done better
+%TODO: Initialize output
+for i = 1:5
+    for j = 1:length(n)
+        clear data
+        data = 1:n(j);
+        tic
+        m = max(data);
+        output(i,j) = toc;
+    end
+end
 
-
+plot(n,mean(output(1:4,:),1),'o-')
 
 end
