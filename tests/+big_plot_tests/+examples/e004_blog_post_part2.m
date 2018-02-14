@@ -31,15 +31,17 @@ types = {'double' 'single' 'int64' 'uint64' ...
 
 n_flags = length(flags);
 n_types = length(types);
-r = zeros(n_flags,n_types);
+r = zeros(n_flags,n_types,20);
 
+for k = 1:20
 for i = 1:n_flags
     fprintf('Running flag: %s\n',flags{i});
     big_plot.compile('flags',flags{i},'verbose',false);
     for j = 1:n_types
         s = big_plot_tests.examples.e004_blog_post('data_type',types{j});
-        r(i,j) = s.ratio;
+        r(i,j,k) = s.ratio;
     end
+end
 end
 
 keyboard
