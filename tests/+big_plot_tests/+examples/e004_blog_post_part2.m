@@ -44,6 +44,12 @@ for i = 1:n_flags
 end
 end
 
+%Reset
+big_plot.compile();
+
+r2 = r;
+r = mean(r2,3);
+
 keyboard
 
 plot(r','LineWidth',3)
@@ -51,6 +57,7 @@ set(gca,'FontSize',18,'xticklabels',types,'xtick',1:10);
 legend(flags, 'Interpreter', 'none','Location','northwest')
 xtickangle(60)
 set(gcf,'Position',[1 1 600 600])
+ylabel('Speedup Relative to Matlab')
 
 
 end
