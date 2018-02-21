@@ -144,19 +144,27 @@ classdef (Hidden) callback_manager < handle
             %is being deleted during the rendering process.
             try
                 obj.parent.renderData();
-            catch ME
-                obj.parent.last_render_error = ME;
-                is_valid_group_mask = obj.parent.h_and_l.getValidGroupMask();
-                if any(is_valid_group_mask)
-                    %We will only display an error if the lines are still
-                    %valid
-                    disp(ME)
-                    disp(ME.stack(1));
-                    disp(ME.stack(2));
-                    fprintf(2,'Killing timer, no more redraws of the current plot will occur\n');
+            catch ME 
+                %This could probably use a little bit of cleanup work
+                try
+                    obj.killCallbacks();
+                    obj.parent.last_render_error = ME;
+                    is_valid_group_mask = obj.parent.h_and_l.getValidGroupMask();
+                    if any(is_valid_group_mask)
+                        %We will only display an error if the lines are still
+                        %valid
+                        disp(ME)
+                        disp(ME.stack(1));
+                        disp(ME.stack(2));
+                        fprintf(2,'Killing timer, no more redraws of the current plot will occur\n');
+                    end
+                catch
+                    if strcmp(ME.identifier,'MATLAB:class:InvalidHandle')
+                        obj.killCallbacks();
+                    else
+                        disp(ME);
+                    end
                 end
-                obj.killCallbacks();
-                
             end
         end
         function killCallbacks(obj)
@@ -166,13 +174,15 @@ classdef (Hidden) callback_manager < handle
             %   2) big_plot>renderData - if none of the lines being 
             %   monitored are valid
             
-            if obj.kill_already_run
-                return
-            else
-                obj.kill_already_run = true;
+            try %#ok<TRYNC>
+                if obj.kill_already_run
+                    return
+                else
+                    obj.kill_already_run = true;
+                end
+
+                obj.parent = [];
             end
-            
-            obj.parent = [];
             
             try %#ok<TRYNC>
                 delete(obj.h_container);
