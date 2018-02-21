@@ -5,6 +5,8 @@
 //
 //  For compiling instructions, see big_plot.compile()
 //
+//  Flags:
+//  ENABLE_SIMD
 
 //Status
 //-----------
@@ -14,7 +16,11 @@
 //4) Most of SIMD is implemented ...
 
 
-
+#ifdef ENABLE_SIMD
+#define SIMD_ENABLED 1
+#else
+#define SIMD_ENABLED 0
+#endif
 
 
 mwSize getScalarInput(const mxArray *input, int input_number){
@@ -85,10 +91,34 @@ mwSize getScalarInput(const mxArray *input, int input_number){
             p_input_data = p_input_data + start_index;          \
         }                                                       \
     }
-    
+
+//This splitting was added for testing ...
+//My preprocessor skills are not that great so I copy/pasted
+//everything. I'm not sure if I could reduce redundancy
+#ifdef ENABLE_OPNEMP_SIMD
+
+//OpenMP enabled
+//-----------------------------------------------------------------
 #define INIT_MAIN_LOOP(type)                            \
     /*#pragma omp parallel for simd collapse(2)*/       \
-    _Pragma("omp parallel for simd collapse(2)")        \
+    _Pragma("omp parallel for simd collapse(2)")    \
+    for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
+        /*Note, we can't initialize anything before this loop, since we*/           \
+        /*are collapsing the first two loops. This allows us to parallelize*/       \
+        /*both of the first two loops, which is good when the # of channels*/       \
+        /*does not equal the # of threads.*/                                        \
+        for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){                       \
+            type *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk; \
+            /*Pointer => start + column wrapping + offset (row into column) - 1*/   \
+            /*  *2 since we store min and max in each chunk*/                       \
+            type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk;
+    
+#elif ENABLE_OPENMP
+    
+//OpenMP enabled
+//-----------------------------------------------------------------
+#define INIT_MAIN_LOOP(type)                            \
+    _Pragma("omp parallel for collapse(2)")    \
     for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
         /*Note, we can't initialize anything before this loop, since we*/           \
         /*are collapsing the first two loops. This allows us to parallelize*/       \
@@ -100,6 +130,23 @@ mwSize getScalarInput(const mxArray *input, int input_number){
             /*  *2 since we store min and max in each chunk*/                       \
             type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk;
 
+#else
+//OpenMP disabled version
+//-----------------------------------------------------------------
+#define INIT_MAIN_LOOP(type)                            \
+    for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
+        /*Note, we can't initialize anything before this loop, since we*/           \
+        /*are collapsing the first two loops. This allows us to parallelize*/       \
+        /*both of the first two loops, which is good when the # of channels*/       \
+        /*does not equal the # of threads.*/                                        \
+        for (mwSize iChunk = 0; iChunk < n_chunks; iChunk++){                       \
+            type *current_input_data_point = p_input_data + n_samples_data*iChan + iChunk*samples_per_chunk; \
+            /*Pointer => start + column wrapping + offset (row into column) - 1*/   \
+            /*  *2 since we store min and max in each chunk*/                       \
+            type *local_output_data = p_output_data + n_outputs_per_chan*iChan + 2*iChunk;            
+ 
+#endif            
+            
 #define END_MAIN_LOOP \
         } \
     }
@@ -522,7 +569,8 @@ S_PROCESS_DOUBLE:;
         //everyone to have AVX
         //- the OS_AVX is to be technically correct but I expect
         //all current OSs to have it enabled
-        if (s.HW_AVX && s.OS_AVX && samples_per_chunk > 4){
+        
+        if (SIMD_ENABLED && s.HW_AVX && s.OS_AVX && samples_per_chunk > 4){
             INIT_MAIN_LOOP(double)
                 getMinMaxDouble_SIMD_256(STD_INPUT_CALL);
             END_MAIN_LOOP
@@ -545,7 +593,7 @@ S_PROCESS_SINGLE:;
 
         GRAB_OUTSIDE_POINTS;
 
-        if (s.HW_AVX && s.OS_AVX && samples_per_chunk > 8){
+        if (SIMD_ENABLED && s.HW_AVX && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(float)
                 getMinMaxFloat_SIMD_256(STD_INPUT_CALL);
             END_MAIN_LOOP
@@ -586,12 +634,12 @@ S_PROCESS_UINT32:;
 
         GRAB_OUTSIDE_POINTS;
                     
-        if (s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 8){
+        if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(uint32_t)
                 getMinMaxUint32_SIMD_256(STD_INPUT_CALL);
             END_MAIN_LOOP
             p_type = 4;
-        }else if (s.HW_SSE41 && samples_per_chunk > 4){
+        }else if (SIMD_ENABLED && s.HW_SSE41 && samples_per_chunk > 4){
             INIT_MAIN_LOOP(uint32_t)
                 getMinMaxUint32_SIMD_128(STD_INPUT_CALL);
             END_MAIN_LOOP
@@ -614,12 +662,12 @@ S_PROCESS_UINT16:;
 
         GRAB_OUTSIDE_POINTS;
 
-        if (s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 16){
+        if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 16){
             INIT_MAIN_LOOP(uint16_t)
                 getMinMaxUint16_SIMD_256(STD_INPUT_CALL);
             END_MAIN_LOOP
             p_type = 4;
-        }else if (s.HW_SSE41 && samples_per_chunk > 8){
+        }else if (SIMD_ENABLED && s.HW_SSE41 && samples_per_chunk > 8){
             INIT_MAIN_LOOP(uint16_t)
                 getMinMaxUint16_SIMD_128(STD_INPUT_CALL);
             END_MAIN_LOOP
@@ -642,12 +690,12 @@ S_PROCESS_UINT8:;
 
         GRAB_OUTSIDE_POINTS;
 
-        if (s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 32){
+        if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 32){
             INIT_MAIN_LOOP(uint8_t)
                 getMinMaxUint8_SIMD_256(STD_INPUT_CALL);
             END_MAIN_LOOP
             p_type = 4;
-        }else if(s.HW_SSE2 && samples_per_chunk > 16){
+        }else if(SIMD_ENABLED && s.HW_SSE2 && samples_per_chunk > 16){
             INIT_MAIN_LOOP(uint8_t)
                 getMinMaxUint8_SIMD_128(STD_INPUT_CALL);
             END_MAIN_LOOP
@@ -686,12 +734,12 @@ S_PROCESS_INT32:;
 
         GRAB_OUTSIDE_POINTS;
 
-        if (s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 8){
+        if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(int32_t)
                 getMinMaxInt32_SIMD_256(STD_INPUT_CALL);
             END_MAIN_LOOP
             p_type = 4;
-        }else if (s.HW_SSE41 && samples_per_chunk > 4){
+        }else if (SIMD_ENABLED && s.HW_SSE41 && samples_per_chunk > 4){
             INIT_MAIN_LOOP(int32_t)
                 getMinMaxInt32_SIMD_128(STD_INPUT_CALL);
             END_MAIN_LOOP
@@ -714,12 +762,12 @@ S_PROCESS_INT16:;
 
         GRAB_OUTSIDE_POINTS;
 
-        if (s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 16){
+        if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 16){
             INIT_MAIN_LOOP(int16_t)
                 getMinMaxInt16_SIMD_256(STD_INPUT_CALL);
             END_MAIN_LOOP
             p_type = 4;
-        }else if (s.HW_SSE2 && samples_per_chunk > 8){
+        }else if (SIMD_ENABLED && s.HW_SSE2 && samples_per_chunk > 8){
             INIT_MAIN_LOOP(int16_t)
                 getMinMaxInt16_SIMD_128(STD_INPUT_CALL);
             END_MAIN_LOOP
@@ -742,12 +790,12 @@ S_PROCESS_INT8:;
 
         GRAB_OUTSIDE_POINTS;
 
-        if (s.HW_AVX2 && s.OS_AVX  && samples_per_chunk > 32){
+        if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX  && samples_per_chunk > 32){
             INIT_MAIN_LOOP(int8_t)
                 getMinMaxInt8_SIMD_256(STD_INPUT_CALL);
             END_MAIN_LOOP
             p_type = 4;
-        }else if (s.HW_SSE41 && samples_per_chunk > 16){
+        }else if (SIMD_ENABLED && s.HW_SSE41 && samples_per_chunk > 16){
             INIT_MAIN_LOOP(int8_t)
                 getMinMaxInt8_SIMD_128(STD_INPUT_CALL);
             END_MAIN_LOOP
