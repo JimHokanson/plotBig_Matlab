@@ -9,6 +9,10 @@ classdef (Hidden) callback_manager < handle
     %
     %
     %   https://www.mathworks.com/matlabcentral/answers/368964-queue-addlistener-events-or-place-event-on-edt
+    %
+    %   JAH Status: This class needs significant cleanup work. It has
+    %   undergone a lot of changes as I tried to figure out what 
+    %   call methods would yield the behavior that I wanted.
     
     properties
         parent
@@ -146,6 +150,11 @@ classdef (Hidden) callback_manager < handle
                 obj.parent.renderData();
             catch ME 
                 %This could probably use a little bit of cleanup work
+                %
+                %Basically, some of the properties in this class can
+                %become invalid which triggers an error in the catch
+                %which is not what we want - we never want an error thrown
+                %in the catch
                 try
                     obj.killCallbacks();
                     obj.parent.last_render_error = ME;
@@ -165,6 +174,7 @@ classdef (Hidden) callback_manager < handle
                         disp(ME);
                     end
                 end
+                obj.killCallbacks();
             end
         end
         function killCallbacks(obj)
@@ -180,7 +190,9 @@ classdef (Hidden) callback_manager < handle
                 else
                     obj.kill_already_run = true;
                 end
-
+            end
+            
+            try %#ok<TRYNC>
                 obj.parent = [];
             end
             
