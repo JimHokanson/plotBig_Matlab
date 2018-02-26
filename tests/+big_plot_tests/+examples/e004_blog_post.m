@@ -35,6 +35,7 @@ function s = e004_blog_post(varargin)
 %- 0.0080 - 9.35 SIMD only
 
 in.data_type = 'double';
+in.n_loops = 5;
 in = big_plot.sl.in.processVarargin(in,varargin);
 
 
@@ -53,7 +54,7 @@ end
 start_sample = 1;
 n_chunks = 10000;
 samples_per_chunk = length(data)/n_chunks;
-n_loops = 20;
+n_loops = in.n_loops;
 
 tic
 for j = 1:n_loops
