@@ -62,6 +62,17 @@ clear +big_plot\private\reduce_to_width_mex
 
 c = mex.compilers.gcc('./private/reduce_to_width_mex.c','verbose',in.verbose);
 c.addCompileFlags('-mavx2');
+
+
+
+%Needed for mingw64
+%TDM-GCC seems to do this by default
+%https://stackoverflow.com/questions/13768515/how-to-do-static-linking-of-libwinpthread-1-dll-in-mingw
+if strcmp(c.gcc_type,'mingw64')
+    c.addStaticLibs({'pthread'})
+end
+
+
 if in.use_simd
     c.addCompileFlags('-DENABLE_SIMD');
 end
