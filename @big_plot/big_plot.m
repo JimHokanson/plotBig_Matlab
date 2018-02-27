@@ -82,21 +82,10 @@ classdef big_plot < handle
         %These are not currently being used
         d0 = '------- User options --------'
         
-        %- This could be less, but requires extra processing
-        %- This is actually 1/2 the # of plotted values, since the current
-        %  processor returns min/max for each "sample to plot"
-        n_samples_to_plot = 4000;
-        
-        %NYI
-        %- when
-        rerender_on_adding_in_bounds_data = true
-        %1 - if new data is within the current limits
-        %    i.e. if we are plotting 0 to 200 and we just added data
-        %    from 150 to 250
-        
-        %Won't implement this, need something else to handle this logic
-        %expand_to_new_data
-        
+        %This value doesn't appear to be critical although it should be
+        %larger than the # of pixels on the screen
+        n_min_max_pairs = 4000;
+
         post_render_callback = [] %This can be set to render
         %something after the data has been drawn .... Any inputs
         %should be done by binding to the anonymous function.
@@ -107,6 +96,7 @@ classdef big_plot < handle
     end
     
     properties
+        d1 = '-------- Internal Properties --------'
         id %A unique id that can be used to identify the plotter
         %when working with callback optimization, i.e. to identify which
         %object is throwing the callback (debugging)
@@ -169,6 +159,9 @@ classdef big_plot < handle
             
             obj.callback_manager = big_plot.callback_manager(obj);
             
+            %If our data contains an object, then update that object
+            %with the appropriate callbacks
+            %--------------------------------------------------------------
             if obj.data.y_object_present
                 %Add callback
                 if length(obj.data.y) > 1
@@ -179,10 +172,11 @@ classdef big_plot < handle
                 end
             end
             
-            %At this point nothing has been rendered. We wait until
-            %the user chooses to render the class. This is done
-            %automatically with plotBig. It can also be done manually with
-            %renderData()
+            %At this point nothing has been rendered. 
+            
+            %We wait until the user chooses to render the class. This is
+            %done automatically with plotBig. It can also be done manually
+            %with renderData()
         end
         function h = getAllLineHandles(obj)
             all_lines = obj.h_and_l.h_line;
@@ -192,6 +186,9 @@ classdef big_plot < handle
     
     methods (Hidden)
         function calibrationUpdated(obj)
+            %
+            %   TODO: Who calls this? Interactive plot? Streaming Data
+            
             try %#ok<TRYNC>
                 obj.force_rerender = true;
                 obj.callback_manager.throwCallbackOnEDT();

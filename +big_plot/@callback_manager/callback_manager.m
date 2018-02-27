@@ -16,7 +16,7 @@ classdef (Hidden) callback_manager < handle
     
     properties
         parent
-        fig_handle
+        %fig_handle
         axes_handle
         
         j_comp
@@ -45,7 +45,7 @@ classdef (Hidden) callback_manager < handle
         function obj = callback_manager(parent)
             obj.parent = parent;
             obj.perf_mon = parent.perf_mon;
-            obj.fig_handle = big_plot.persistent_figure.getFigure();
+            %obj.fig_handle = big_plot.persistent_figure.getFigure();
         end
         function initialize(obj,axes_handle)
             %
@@ -71,8 +71,16 @@ classdef (Hidden) callback_manager < handle
             
             obj.axes_handle = axes_handle;
             
+            %Fails for old graphics :/
             obj.L3 = addlistener(axes_handle.XRuler,'MarkedClean',@(~,~) obj.xrulerMarkedClean);
             
+            %Current callback approach
+            %------------------------------
+            obj.callback_obj = handle(com.mathworks.jmi.Callback,'callbackProperties');
+            set(obj.callback_obj,'delayedCallback',@(~,~)obj.renderDataCallback());
+            
+            %Old approaches
+            %---------------------------
             
             %obj.j_comp.setActionCommand(@(~,~)obj.renderDataCallback());
             
@@ -88,9 +96,7 @@ classdef (Hidden) callback_manager < handle
             %set(obj.j_comp,'ActionPerformedCallback',@(~,~)obj.renderDataCallback());
             
             
-            obj.callback_obj = handle(com.mathworks.jmi.Callback,'callbackProperties');
-             
-            set(obj.callback_obj,'delayedCallback',@(~,~)obj.renderDataCallback());
+            
             %callbackObj.postCallback;
         end
         function xrulerMarkedClean(obj)

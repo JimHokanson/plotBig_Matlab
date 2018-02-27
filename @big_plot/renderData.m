@@ -33,15 +33,16 @@ perf_mon.n_calls_all = perf_mon.n_calls_all + 1;
 
 forced = false;
 if obj.force_rerender
-    %go ahead
+    %This was created for calibration, where it doesn't seem like we should
+    %need to rerender, but we need to because the data has changed, even
+    %if the limits haven't.
+    
     forced = true;
-    %This needs to go deeper - for calibration
-    %obj.force_rerender = false;
 elseif ~ri.isChangedXLim()
     return
 end
 
-t = tic;
+h_tic = tic;
 %Start rendering process
 %--------------------------------------------------------------------------
 obj.render_in_progress = true;
@@ -49,13 +50,18 @@ obj.render_in_progress = true;
 %Update xlims to block any calls above
 %---------------------------------------------
 %- I don't think we can have any async access, but this updates the xlims
-%so that we don't get more callbacks thrown
+%to minimize callbacks from the callback_manager.
 h_axes = obj.h_and_l.h_axes;
 if ~isempty(h_axes)
     obj.callback_manager.last_processed_xlim = get(h_axes,'XLim');
     
-    %This needs to block above but must be different from
-    %last_rendered_xlim otherwise we don't get the correct behavior below
+    %- We need to block reentry, thus updating the callback_manager
+    %with the updated limits.
+    %- However, we can't update the rendering info with these new limits
+    %otherwise we won't render since checks below will think we've already
+    %rendered these limits
+    %- 'last_xlim_processed' - a different property for logging as opposed
+    %to 'last_rendered_xlim'
     ri.last_xlim_processed = obj.callback_manager.last_processed_xlim;
 end
 
@@ -76,7 +82,7 @@ obj.force_rerender = false;
 %Log rendering
 %---------------------------
 xlim = ri.last_rendered_xlim;
-perf_mon.logRenderPerformance(toc(t),type,xlim,forced);
+perf_mon.logRenderPerformance(toc(h_tic),type,xlim,forced);
 
 if ~isempty(obj.post_render_callback)
     obj.post_render_callback();
@@ -91,7 +97,7 @@ end
 %--------------------------------------------------------------------------
 %-----------------           Initialization                ----------------
 %--------------------------------------------------------------------------
-%1) Main function for plotting
+%1) Main function for initializing plotting
 function h__handleFirstPlotting(obj)
 %
 %
@@ -102,8 +108,9 @@ plot_args = obj.h_and_l.initializeAxes();
 [plot_args,temp_h_indices] = h__setupInitialPlotArgs(obj,plot_args);
 
 %Do the plotting
-%----------------------------------------
-%NOTE: We plot everything at once, as failing to do so can cause lines to be dropped.
+%--------------------------------------------------------------------------
+%NOTE: We plot everything at once, as failing to do so can cause lines to
+%be dropped.
 %
 %e.g. we do:
 %   plot(x1,y1,x2,y2)
@@ -118,12 +125,15 @@ plot_args = obj.h_and_l.initializeAxes();
 %- This doesn't support stairs or plotyy
 %- The data has been reduced at this point
 
-%We might not get any handles
+%We might not get any handles  (??? - what do we want to do here)
 %- no data (non-dynamic)
 %- no data but streaming
-%??? - what do we want to do here
+
+%**** The actual plotting ****
 temp_h_line = obj.data.plot_fcn(plot_args{:});
 
+%Logging information and class info setup
+%--------------------------------------------------
 obj.h_and_l.initializePlotHandles(obj.data.n_plot_groups,temp_h_line,temp_h_indices);
 
 obj.render_info.ax_handle = obj.h_and_l.h_axes;
@@ -136,7 +146,7 @@ obj.callback_manager.initialize(obj.h_and_l.h_axes);
 
 end
 
-%1.2) Setup of plotting arguments
+%1.2) Setup of plotting arguments (for initial plotting)
 function [plot_args,temp_h_indices] = h__setupInitialPlotArgs(obj,plot_args)
 %
 %   This function computes the values that will be used for plotting
@@ -167,7 +177,7 @@ function [plot_args,temp_h_indices] = h__setupInitialPlotArgs(obj,plot_args)
 
 %This width is a holdover from when I varied this depending on the width of
 %the screen. For now I've not just hardcoded a "large" screen size.
-n_samples_plot = obj.n_samples_to_plot;
+n_min_max_pairs = obj.n_min_max_pairs;
 
 %h - handles
 end_h = 0;
@@ -192,7 +202,7 @@ for iG = 1:n_plot_groups
     %----------------------------------------
     t = tic;
     [x_r, y_r, s] = big_plot.reduceToWidth(...
-                obj.data.x{iG}, obj.data.y{iG}, n_samples_plot, [-Inf Inf]);
+                obj.data.x{iG}, obj.data.y{iG}, n_min_max_pairs, [-Inf Inf]);
     perf_mon.logReducePerformance(s,toc(t));
             
             
@@ -256,24 +266,33 @@ function redraw_option = h__replotData(obj)
 %
 
 ax = obj.h_and_l.h_axes;
+ri = obj.render_info;
 
+%As lines are deleted groups of lines may be come invalid
+%---------------------------------------------------------
+%- If we don't have any valid lines, we kill the callback handler
+%- Possible early exit
 is_valid_group_mask = obj.h_and_l.getValidGroupMask();
 if ~any(is_valid_group_mask)
     obj.callback_manager.killCallbacks();
+    redraw_option = ri.NO_CHANGE;
+    return
 end
 
 new_x_limits = get(ax,'XLim');
 
-perf_mon = obj.perf_mon;
-ri = obj.render_info;
-
+%Determine redraw option
+%------------------------------------
 if obj.data.y_object_present || obj.force_rerender
     redraw_option = ri.RECOMPUTE_DATA_FOR_PLOTTING;
 else
     redraw_option = ri.determineRedrawCase(new_x_limits);
 end
 
+%log accordingly
+%------------------------
 use_original = false;
+perf_mon = obj.perf_mon;
 switch redraw_option
     case ri.NO_CHANGE
         %no change needed
@@ -290,6 +309,9 @@ switch redraw_option
         error('Uh oh, Jim broke the code')
 end
 
+
+%Recompute data for plotting
+%------------------------------------------------
 for iG = find(is_valid_group_mask)
         
     last_I = obj.render_info.last_I{iG};
@@ -321,7 +343,7 @@ for iG = find(is_valid_group_mask)
             
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
         [x_r, y_r, s] = big_plot.reduceToWidth(...
-                x_input, obj.data.y{iG}, obj.n_samples_to_plot, new_x_limits, last_I);
+                x_input, obj.data.y{iG}, obj.n_min_max_pairs, new_x_limits, last_I);
         perf_mon.logReducePerformance(s,toc(h_tic));
         range_I = s.range_I;
         

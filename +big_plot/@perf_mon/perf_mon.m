@@ -11,17 +11,27 @@ classdef (Hidden) perf_mon < handle
     %   2) Reductions - subsampling of the data
     
     properties
+        log_performance %logical
+        %Used to specify whethere or not this class actually logs
+        %performance. By default logging is disabled.
+        
+        %Elapsed time initializing differenct classes
+        %--------------------------------------------
+        %- See big_plot constructor
         init_h_and_l
         init_data
         init_render
         
         n_calls_all = 0 %This will be the highest. Incremented every time
-        %we rerender.
+        %we rerender. See in big_plot>renderData
         
+        %Render performance data
+        %--------------------------------------
+        d1 = '--------  Render performance  -------'
         n_render_calls = 0 %# of times the figure detected a resize
         
-        %Time spent in renderData
         render_cb_times %array
+        %Time spent in renderData
         
         render_types %array
         %1 - init
@@ -32,8 +42,9 @@ classdef (Hidden) perf_mon < handle
         xlim_max
         xlim_forced
         
-        %Reduce ...
-        %------------------------
+        %Reduce performance data
+        %--------------------------------------
+        d2 = '-------- Reduce performance ---------'
         n_reduce_calls = 0 %Calls to reduceToWidth ...
         reduce_mex_times %array
         reduce_fcn_times
@@ -41,49 +52,74 @@ classdef (Hidden) perf_mon < handle
         
         %This is mex specific, normalized
         ms_reduce_per_million_samples %array
+        %--------------------------------------
         
-        
-
-        n_render_busy_calls = 0 %If busy rendering, we increment this
-        %   No plotting actually occurs ...
-        
+        d3 = '-------- Other Props --------'
         n_render_no_ops = 0 %No change needed since limits have expanded
-        %not contracts
+        %not contracted
         n_render_resets = 0 %Reset to original data
-        
-        t_size1
-        t_size2
     end
     
     methods
-        function obj = perf_mon()
+        function obj = perf_mon(log_performance)
+            %
+            %   obj = perf_mon(*log_performance)
+            
+            %TODO: I haven't exposed enabling logging to the user
+            %now that I've disabled it by default
+            
+            if nargin == 0
+                obj.log_performance = false;
+            else
+                obj.log_performance = log_performance;
+            end
+            
             %TODO: We might want to eventually not allow any growing ...
-            obj.extendReduceArrays(100);
-            obj.extendRenderArrays(100);
+            if obj.log_performance
+                obj.extendReduceArrays(100);
+                obj.extendRenderArrays(100);
+            end
         end
         function logRenderPerformance(obj,elapsed_time,render_type,xlim,forced)
-            obj.n_render_calls = obj.n_render_calls + 1;
-            if obj.n_render_calls > length(obj.render_cb_times)
-                obj.extendRenderArrays(2*length(obj.render_cb_times));
+            %
+            %   logRenderPerformance(obj,elapsed_time,render_type,xlim,forced)
+            %
+            %   Inputs
+            %   ------
+            %   elapsed_time :
+            %   render_type :
+            %   xlim :
+            %   forced : 
+            %
+            %   See Also
+            %   --------
+            %   big_plot>renderData
+            
+            if obj.log_performance
+                obj.n_render_calls = obj.n_render_calls + 1;
+                if obj.n_render_calls > length(obj.render_cb_times)
+                    obj.extendRenderArrays(2*length(obj.render_cb_times));
+                end
+                I = obj.n_render_calls;
+                obj.render_cb_times(I) = elapsed_time;
+                obj.render_types(I) = render_type;
+                obj.xlim_min(I) = xlim(1);
+                obj.xlim_max(I) = xlim(2);
+                obj.xlim_forced(I) = forced;
             end
-            I = obj.n_render_calls;
-            obj.render_cb_times(I) = elapsed_time;
-            obj.render_types(I) = render_type;
-            obj.xlim_min(I) = xlim(1);
-            obj.xlim_max(I) = xlim(2);
-            obj.xlim_forced(I) = forced;
         end
         function logReducePerformance(obj,s,fcn_time)
-            obj.n_reduce_calls = obj.n_reduce_calls + 1;
-            if obj.n_reduce_calls > length(obj.reduce_mex_times)
-                obj.extendReduceArrays(2*length(obj.reduce_mex_times));
+            if obj.log_performance
+                obj.n_reduce_calls = obj.n_reduce_calls + 1;
+                if obj.n_reduce_calls > length(obj.reduce_mex_times)
+                    obj.extendReduceArrays(2*length(obj.reduce_mex_times));
+                end
+                I = obj.n_reduce_calls;
+                obj.reduce_fcn_times(I) = fcn_time;
+                obj.reduce_mex_times(I) = s.mex_time;
+                obj.n_samples_reduce(I) = s.range_I(2) - s.range_I(1);
+                obj.ms_reduce_per_million_samples(I) = obj.reduce_mex_times(I)*1000/(obj.n_samples_reduce(I)/1e6);
             end
-            I = obj.n_reduce_calls;
-            obj.reduce_fcn_times(I) = fcn_time;
-            obj.reduce_mex_times(I) = s.mex_time;
-            obj.n_samples_reduce(I) = s.range_I(2) - s.range_I(1);
-            obj.ms_reduce_per_million_samples(I) = obj.reduce_mex_times(I)*1000/(obj.n_samples_reduce(I)/1e6);
-            
         end
         function extendReduceArrays(obj,n_samples_add)
             obj.reduce_mex_times = [obj.reduce_mex_times zeros(1,n_samples_add)];
@@ -101,14 +137,12 @@ classdef (Hidden) perf_mon < handle
         end
         function truncate(obj)
             I = obj.n_reduce_calls + 1;
-            obj.t_size1 = I;
             obj.reduce_mex_times(I:end) = [];
             obj.reduce_fcn_times(I:end) = [];
             obj.n_samples_reduce(I:end) = [];
             obj.ms_reduce_per_million_samples(I:end) = [];
             
             I = obj.n_render_calls + 1;
-            obj.t_size2 = I;
             obj.render_cb_times(I:end) = [];
             obj.render_types(I:end) = [];
             obj.xlim_min(I:end) = [];
