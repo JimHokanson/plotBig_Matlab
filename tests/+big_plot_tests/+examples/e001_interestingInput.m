@@ -14,6 +14,7 @@ function varargout = e001_interestingInput(varargin)
 %       .t [1 x n] time array
 %       .obj big_plot
 %       .h - output from the plot
+%       .elapsed_time
 %
 %   Optional Inputs
 %   ---------------
@@ -24,6 +25,11 @@ function varargout = e001_interestingInput(varargin)
 %       - 1 - reduce_plot (FEX 40790) https://github.com/tuckermcclure/matlab-plot-big
 %       - 2 - plot() normal Matlab function ...
 %       - 3 - animatedline
+%   data_type : default 'double'
+%   y
+%   t
+%   get_data_only : default false
+
 %
 
 %{
@@ -39,8 +45,10 @@ function varargout = e001_interestingInput(varargin)
 in.n = 5e7 + randi(1000);
 in.type = 0;
 in.data_type = 'double';
+in.single_channel = false;
 in.y = [];
 in.t = [];
+in.single_plot = false;
 in.get_data_only = false;
 in = big_plot.sl.in.processVarargin(in,varargin);
 
@@ -53,15 +61,20 @@ if in.type == 1
 end
 
 
-fprintf('Initializing data with %d samples\n',n);
+
 if ~isempty(in.y) && ~isempty(in.t)
     y = in.y;
     t = in.t;
 else
+    fprintf('Initializing data with %d samples\n',n);
     t = linspace(0,100,n);
-    y = [(sin(0.10 * t) + 0.05 * randn(1, n))', ...
-        (cos(0.43 * t) + 0.001 * t .* randn(1, n))', ...
-        round(mod(t/10, 5))'];
+    if in.single_channel
+        y = (sin(0.10 * t) + 0.05 * randn(1, n))';
+    else
+        y = [(sin(0.10 * t) + 0.05 * randn(1, n))', ...
+            (cos(0.43 * t) + 0.001 * t .* randn(1, n))', ...
+            round(mod(t/10, 5))'];
+    end
     y(t > 40 & t < 50,:) = 0;                      % Drop a section of data.
     y(randi(numel(y), 1, 20)) = randn(1, 20);       % Emulate spikes.
     switch in.data_type
@@ -80,8 +93,9 @@ else
         otherwise
             %get data type min and max
     end
+    fprintf('Done initializing data\n');
 end
-fprintf('Done initializing data\n');
+
 
 s = struct;
 s.y = y;
@@ -106,7 +120,7 @@ end
 %reduce_plot(t,y);
 clf
 ax(1) = subplot(2,1,1);
-tic
+h_tic = tic;
 switch in.type
     case 0
         plotBig(y,'dt',t(2)-t(1));
@@ -115,13 +129,15 @@ switch in.type
     case 2
         plot(t,y)
     case 3
-        for i = 1:3
+        for i = 1:size(y,2)
             animatedline(t,y(:,i),'MaximumNumPoints',size(y,1));
         end
 end
 drawnow
-fprintf('test001: time to process and plot (single subplot) was: %0.3f seconds\n',toc);
+s.elapsed_time = toc(h_tic);
+fprintf('test001: time to process and plot (single subplot) was: %0.3f seconds\n',s.elapsed_time );
 
+if ~in.single_plot
 ax(2) = subplot(2,1,2);
 switch in.type
     case 0
@@ -141,11 +157,14 @@ switch in.type
     case 2
         h = plot(t,y);
     case 3
-        for i = 1:3
+        for i = 1:size(y,2)
             h = animatedline(t,y(:,i),'MaximumNumPoints',size(y,1));
         end
 end
+%TODO: This would be better in the first plot
 s.h = h;
+end
+
 s.ax = ax;
 linkaxes(ax);
 
