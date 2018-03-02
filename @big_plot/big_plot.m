@@ -81,11 +81,11 @@ classdef big_plot < handle
     properties
         %These are not currently being used
         d0 = '------- User options --------'
-        
+                
         %This value doesn't appear to be critical although it should be
         %larger than the # of pixels on the screen
         n_min_max_pairs = 4000;
-
+        
         post_render_callback = [] %This can be set to render
         %something after the data has been drawn .... Any inputs
         %should be done by binding to the anonymous function.
@@ -123,6 +123,119 @@ classdef big_plot < handle
     %---------------------    Internal    -----------------------------
     properties
         force_rerender = false;
+    end
+    
+    %Public/Static Methods
+    %--------------------------------------------------------
+    methods (Static)
+        function ptr = getRawDataPointer(h_line)
+            %
+            %   ptr = big_plot.getRawDataPointer(h_line)
+            %
+            %   Inputs
+            %   ------
+            %   h_line : Matlab line handle
+            %
+            %   Outputs
+            %   -------
+            %   ptr : [] OR big_plot.line_data_pointer
+            %
+            
+            ptr = getappdata(h_line,'BigDataPointer');
+            
+        end
+        function s = getRawLineData(h_line,varargin)
+            %
+            %   s = big_plot.getRawLineData(h_plot,varargin)
+            %
+            %   This method allows retrieval of the underlying line data. This is
+            %   needed because big_plot may only render a small percentage of the data,
+            %   so queries of the
+            %
+            %   Inputs
+            %   ------
+            %   h_line
+            %
+            %   Optional Inputs (see big_plot.raw_line_data_options)
+            %   -----------------------------------------------------------
+            %   get_x_data : default true
+            %       If false, the corresponding x-data are not returned. 
+            %       This can save on memory if it isn't needed.
+            %   xlim : [min_time  max_time] (default [])
+            %       When empty all data are returned.
+            %   get_calibrated : default true
+            %       If true, calibration data is returned when available.
+            %   get_raw : default false
+            %       If true, raw data is returned. Both raw and calibrated 
+            %       data can be returned.
+            %
+            %   Outputs
+            %   -------
+            %   s : big_plot.raw_line_data
+            %
+            %   Improvements
+            %   ------------
+            %   - Allow processing of a vector of handles ...
+            
+            in = big_plot.raw_line_data_options;
+            in = big_plot.sl.in.processVarargin(in,varargin);
+            
+            %Note we might want both raw and calibrated so get_raw is not
+            %~in.get_calibrated
+            if ~in.get_calibrated
+                in.get_raw = true;
+            end
+            
+            %This is populated during line creation. It is a bit awkward which is why
+            %this function was created.
+            ptr = big_plot.getRawDataPointer(h_line);
+            
+            if isempty(ptr)
+                s = big_plot.raw_line_data.fromStandardLine(h_line,in);
+            else
+                s = ptr.getRawLineData(in);
+            end
+            
+            
+        end
+        function forceRender(line_handles)
+            %
+            %   big_plot.forceRender(line_handles)
+            
+            for i = 1:length(line_handles)
+                ptr = big_plot.getRawDataPointer(line_handles(i));
+                if ~isempty(ptr)
+                   ptr.forceRerender(); 
+                end
+            end
+        end
+        function setCalibration(h_line,calibration)
+            %
+            %
+            %   big_plot.setCalibration(h_plot,calibration)
+            %
+            %   Inputs
+            %   ------
+            %   h_line :
+            %   calibration :
+            %
+            %   Written for use with interactive_plot
+            %
+            %   See Also
+            %   --------
+            %   interactive_plot.data_interface
+            
+            ptr = big_plot.getRawDataPointer(h_line);
+            
+            if isempty(ptr)
+                %Then we just have raw data, nothing fancy
+                y = get(h_line,'YData');
+                y2 = y*calibration.m + calibration.b;
+                set(h_line,'YData',y2);
+            else
+                ptr.setCalibration(calibration);
+            end
+        end
     end
     
     %Constructor
@@ -172,7 +285,7 @@ classdef big_plot < handle
                 end
             end
             
-            %At this point nothing has been rendered. 
+            %At this point nothing has been rendered.
             
             %We wait until the user chooses to render the class. This is
             %done automatically with plotBig. It can also be done manually
@@ -188,7 +301,14 @@ classdef big_plot < handle
         function calibrationUpdated(obj)
             %
             %   TODO: Who calls this? Interactive plot? Streaming Data
+            %
+            %   See Also
+            %   --------
+            %   big_plot.setCalibration
             
+            obj.forceRerender();
+        end
+        function forceRerender(obj)
             try %#ok<TRYNC>
                 obj.force_rerender = true;
                 obj.callback_manager.throwCallbackOnEDT();
@@ -242,12 +362,12 @@ function h__dataAdded(obj,new_x_start)
 %handle might become invalid from user ...
 try %#ok<TRYNC>
     cur_xlim = get(obj.h_and_l.h_axes,'XLim');
-    if obj.rerender_on_adding_in_bounds_data && new_x_start < cur_xlim(2)
+    %if obj.rerender_on_adding_in_bounds_data && new_x_start <= cur_xlim(2)
+  	if new_x_start <= cur_xlim(2)
         %Normally we check on the xlims to determine if we want to rerender
         %or not. Thus we have this variable which says to rerender even
-        %though
-        obj.force_rerender = true;
-        obj.callback_manager.throwCallbackOnEDT();
+        %though the xlims haven't changed
+        obj.forceRerender();
     end
 end
 end

@@ -1,4 +1,7 @@
 function robo_test()
+%
+%
+%   This code is old and out of date.
 
 %TODO: Create a figure and maximize it
 
