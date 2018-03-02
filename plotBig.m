@@ -188,7 +188,7 @@ if nargout
     if in.obj
         varargout{1} = temp;
     else
-        all_lines = temp.h_and_l.h_plot;
+        all_lines = temp.h_and_l.h_line;
         varargout{1} = vertcat(all_lines{:});
     end
 end

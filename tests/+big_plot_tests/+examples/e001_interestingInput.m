@@ -123,7 +123,8 @@ ax(1) = subplot(2,1,1);
 h_tic = tic;
 switch in.type
     case 0
-        plotBig(y,'dt',t(2)-t(1));
+        temp = plotBig(y,'dt',t(2)-t(1),'obj',true);
+        s.obj = temp;
     case 1
         reduce_plot(t,y);
     case 2
