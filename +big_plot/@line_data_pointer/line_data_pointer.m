@@ -11,6 +11,10 @@ classdef (Hidden) line_data_pointer < handle
     %
     %   The class constructor is called in big_plot.data during initial
     %   rendering.
+    %
+    %   See Also
+    %   --------
+    %   big_plot.data.initRawDataPointers
     
     properties
         big_plot_ref %big_plot
@@ -19,6 +23,14 @@ classdef (Hidden) line_data_pointer < handle
         
         group_I
         line_I
+    end
+    
+    methods (Static)
+        function ptr = retrieveFromLineHandle(h_line)
+            %
+            %   ptr = big_plot.line_data_pointer.retrieveFromLineHandle(h_line);
+            ptr = getappdata(h_line,'big_plot__data_pointer');
+        end
     end
     
     methods
@@ -47,6 +59,9 @@ classdef (Hidden) line_data_pointer < handle
             
             data = obj.big_plot_ref.data;
             s = data.getRawLineData(obj.group_I,obj.line_I,in);
+        end
+        function storeObjectInLineHandle(obj,h_line)
+            setappdata(h_line,'big_plot__data_pointer',obj);
         end
     end
     

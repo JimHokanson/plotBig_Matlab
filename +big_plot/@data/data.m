@@ -2,7 +2,7 @@ classdef (Hidden) data < handle
     %
     %   Class:
     %   big_plot.data
-        
+    
     properties
         parent
         
@@ -48,22 +48,30 @@ classdef (Hidden) data < handle
         function obj = data(parent, hl, varargin)
             %Call into helper to reduce indentation ...
             obj.parent = parent;
-           h__init(obj, hl, varargin{:}); 
+            h__init(obj, hl, varargin{:});
         end
         function initRawDataPointers(obj,parent,h_and_l)
-            %Place ability to fetch raw data in the line object
-            %--------------------------------------------------
+            %
+            %   This function gives the user the ability to get the raw
+            %   data if they have the standard Matlab line handle.
+            %
+            %   See Also
+            %   --------
+            %   big_plot.line_data_pointer
             
             for iG = 1:h_and_l.n_plot_groups
                 cur_group_h = h_and_l.h_line{iG};
                 for iH = 1:length(cur_group_h)
-                    cur_h = cur_group_h(iH);
+                    h_line = cur_group_h(iH);
                     temp_obj = big_plot.line_data_pointer(parent,iG,iH);
-                    setappdata(cur_h,'BigDataPointer',temp_obj);
+                    temp_obj.storeObjectInLineHandle(h_line);
                 end
             end
         end
         function setCalibration(obj,calibration,group_I,line_I)
+            %
+            %   setCalibration(obj,calibration,group_I,line_I)
+            
             %setCalibration
             y_group = obj.y{group_I};
             x_group = obj.x{group_I};
@@ -112,7 +120,7 @@ classdef (Hidden) data < handle
             else
                 s.y_raw = y_group(:,line_I);
                 s.x = x_group.getTimeArray();
-            end 
+            end
             s.y_final = s.y_raw;
             
         end
@@ -129,9 +137,9 @@ function h__init(obj,hl,varargin)
 %   ------
 %   hl: big_plot.handles_and_listeners
 %       hl is short for handles and listeners.
-%   varargin: cell 
+%   varargin: cell
 %       Inputs from the user to this "plot" function
-%   
+%
 %   See Also:
 %   line_plot_reducer.renderData
 
@@ -154,12 +162,12 @@ end
 %---------------------------------------
 %If not, handle on first renderData ...
 if isscalar(varargin{cur_I}) && ...
-   ishandle(varargin{cur_I}) && ...
-   strcmp(get(varargin{cur_I}, 'Type'), 'axes')
+        ishandle(varargin{cur_I}) && ...
+        strcmp(get(varargin{cur_I}, 'Type'), 'axes')
     
     hl.h_axes   = varargin{cur_I};
     hl.h_figure = get(hl.h_axes, 'Parent');
-
+    
     cur_I = cur_I + 1;
 end
 
@@ -178,8 +186,8 @@ function h__parseDataAndLinespecs(obj,varargin)
 %   ---------------------
 %   x :
 %   y :
-%   linespecs : 
-%   extra_plot_options : 
+%   linespecs :
+%   extra_plot_options :
 
 NON_LINE_SPEC_PATTERN = '[^rgbcmykw\-\:\.\+o\*xsd\^v\>\<ph]';
 
@@ -195,7 +203,7 @@ temp_y = {};
 %case : flipping plot(x,y) with plot(y,x) where x is an object
 % Loop through all of the inputs.
 %--------------------------------------------------------------------------
-previous_type = 's'; 
+previous_type = 's';
 %s - start
 %x - x value specification
 %y - y value specification
@@ -204,7 +212,7 @@ n_inputs      = length(varargin);
 for k = 1:n_inputs
     current_argument = varargin{k};
     %TODO: Anything that acts like a time object would be fine here ...
-    if isnumeric(current_argument) || isobject(current_argument) 
+    if isnumeric(current_argument) || isobject(current_argument)
         %%isa(current_argument,'sci.time_series.time') || isa(current_argument,'big_plot.time')
         
         % If we already have an x, then this must be y.
@@ -222,7 +230,7 @@ for k = 1:n_inputs
             if isobject(xm)
                 %Assume of type sci.time_series.time for now
                 if size(ym,1) ~= xm.n_samples
-                   ym = ym'; 
+                    ym = ym';
                 end
             else
                 if size(xm, 1) == 1
@@ -254,7 +262,7 @@ for k = 1:n_inputs
             temp_y{end+1} = xy; %#ok<AGROW>
             n_groups = n_groups + 1;
             previous_type = 'y';
-        else %Assume x object for now    
+        else %Assume x object for now
             previous_type = 'x';
         end
     elseif is_line_spec_fh(varargin{k})
@@ -297,7 +305,7 @@ elseif previous_type == 'y'
 end
 
 if n_groups == 0
-   error('Unable to find any plot groups') 
+    error('Unable to find any plot groups')
 end
 
 obj.x = temp_x;
@@ -308,7 +316,7 @@ end
 
 function x_data_out = h__simplifyX(x_data)
 %
-%   Changes a vector x into a time series specification if the data are 
+%   Changes a vector x into a time series specification if the data are
 %   evenly sampled.
 %
 

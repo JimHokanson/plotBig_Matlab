@@ -12,8 +12,9 @@ function renderData(obj)
 %
 %   Important State Variables
 %   -------------------------
-%   - force_rerender - added to allow streaming data to get updated
-%   even if xlims don't change.
+%   force_rerender : Added to allow streaming data to get updated
+%           even if xlims don't change. This is needed for calibration
+%           that changes the scale of the data but not the time.
 %
 %   Inputs
 %   ------
@@ -128,6 +129,10 @@ plot_args = obj.h_and_l.initializeAxes();
 %We might not get any handles  (??? - what do we want to do here)
 %- no data (non-dynamic)
 %- no data but streaming
+%
+%2018/03 - JAH: Made no y-data equal to plot(0,NaN)
+%        - we might want to eventually support no plotting if no data
+%        exists
 
 %**** The actual plotting ****
 temp_h_line = obj.data.plot_fcn(plot_args{:});

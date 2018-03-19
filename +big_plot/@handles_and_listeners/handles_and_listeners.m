@@ -103,8 +103,8 @@ classdef (Hidden) handles_and_listeners < handle
         function clearLine(obj,line_I)
             obj.n_lines_active = obj.n_lines_active - 1;
             h_line2 = obj.h_lines_array(line_I);
-            temp = getappdata(h_line2,'BigDataPointer');
-            delete(temp);
+            ptr = big_plot.line_data_pointer.retrieveFromLineHandle(h_line2);
+            delete(ptr);
             delete(obj.listen_array{line_I});
             
             if obj.n_lines_active == 0

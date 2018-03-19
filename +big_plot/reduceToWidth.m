@@ -64,7 +64,12 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y, axis_width_in_pixels, x
 %   hold off
 %
 
-s = struct('range_I',[NaN NaN],'same_range',false,'mex_time',0,'plot_all',false,'show_everything',false);
+s = struct(...
+    'range_I',[NaN NaN],...
+    'same_range',false,...
+    'mex_time',0,...
+    'plot_all',false,...
+    'show_everything',false);
 % s.range_I = [];
 % s.same_range = [];
 
@@ -108,6 +113,8 @@ if n_y_samples < N_SAMPLES_JUST_PLOT
         if isempty(y_reduced)
             y_reduced = NaN;
         end
+    elseif isempty(y)
+        y_reduced = NaN;
     else
         y_reduced = y;
     end

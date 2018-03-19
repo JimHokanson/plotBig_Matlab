@@ -58,7 +58,9 @@ classdef big_plot < handle
     
     %Classes
     %--------
+    %big_plot.data
     %big_plot.handles_and_listeners
+    %big_plot.render_info
     
     
     %{
@@ -68,15 +70,7 @@ classdef big_plot < handle
         http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-/
         http://www.mathworks.com/matlabcentral/fileexchange/42191-jplot
     %}
-    
-    %{
-    Relevant post:
-    http://blogs.mathworks.com/loren/2015/12/14/axes-limits-scream-louder-i-cant-hear-you/
-    Basically this says that you might not always get an event when the
-    x-limit changes. Instead I've decided to use a timer ...
-    
-    %}
-    
+        
     %------------           User Options         --------------------
     properties
         %These are not currently being used
@@ -125,9 +119,22 @@ classdef big_plot < handle
         force_rerender = false;
     end
     
-    %Public/Static Methods
+    %--------------------------------------------------------
+    %               Public/Static Methods
     %--------------------------------------------------------
     methods (Static)
+        function setAxisAbsoluteStartTime(h_axes,start_time)
+            %
+            %   big_plot.setAxisAbsoluteStartTime(h_axes,start_time)
+            
+             big_plot.axis_time.setStartTime(h_axes,start_time)
+        end
+        function start_time = getAxisAbsoluteStartTime(h_axes)
+            %
+            %  start_time = big_plot.getAxisAbsoluteStartTime(h_axes)
+            
+             start_time = big_plot.axis_time.getStartTime(h_axes);
+        end
         function ptr = getRawDataPointer(h_line)
             %
             %   ptr = big_plot.getRawDataPointer(h_line)
@@ -141,7 +148,9 @@ classdef big_plot < handle
             %   ptr : [] OR big_plot.line_data_pointer
             %
             
-            ptr = getappdata(h_line,'BigDataPointer');
+            
+            ptr = big_plot.line_data_pointer.retrieveFromLineHandle(h_line);
+            
             
         end
         function s = getRawLineData(h_line,varargin)
@@ -186,8 +195,8 @@ classdef big_plot < handle
                 in.get_raw = true;
             end
             
-            %This is populated during line creation. It is a bit awkward which is why
-            %this function was created.
+            %This is populated during line creation. It is a bit awkward
+            %which is why this function was created.
             ptr = big_plot.getRawDataPointer(h_line);
             
             if isempty(ptr)
