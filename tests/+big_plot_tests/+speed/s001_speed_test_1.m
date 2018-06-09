@@ -23,7 +23,10 @@ s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8
 
 
 s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8 3e8]);
+
+%Let's not wait forever ...
 s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8]);
+
 s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8],'data_type','single');
 s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8],'data_type','uint8');
 %}
@@ -58,7 +61,14 @@ s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8
         fprintf('Starting rep %d ----------------\n',iRep);
         for iSamples = 1:length(n_samples)
             cur_n_samples = n_samples(iSamples);
-            fprintf('Plotting %d samples\n',cur_n_samples);
+            s1 = sprintf('Plotting %d samples',cur_n_samples);
+            fprintf('%s\n',s1);
+            
+            clf
+            gca;
+            title(sprintf('Creating %d samples in memory',cur_n_samples));
+            drawnow
+            
             %data = 1:cur_n_samples;
             
             %TODO: Support int
@@ -81,11 +91,14 @@ s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8
                 case 'int8'
                     data = randi(intmax('int8'),1,cur_n_samples,'int8');    
                 otherwise
+                    error('Unrecognized data type')
                     %get data type min and max
             end
 
             clf
             gca;
+            title(sprintf('%s using Matlab, rep %d',s1,iRep));
+            drawnow
             t1 = tic;
             plot(data);
             drawnow %Seems to block execution until the rendering has finished
@@ -94,6 +107,8 @@ s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8
             if use_tm
                 clf
                 gca;
+                title(sprintf('%s using tm code, rep %d',s1,iRep));
+                drawnow
                 t1 = tic;
                 reduce_plot(data);
                 drawnow
@@ -102,6 +117,8 @@ s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8
             
             clf
             gca;
+            title(sprintf('%s using this library, rep %d',s1,iRep));
+            drawnow
             t1 = tic;
             plotBig(data);
             toc(t1)
