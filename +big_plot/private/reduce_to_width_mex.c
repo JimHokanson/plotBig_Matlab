@@ -22,6 +22,11 @@
 #define SIMD_ENABLED 0
 #endif
 
+#ifdef _MSC_VER
+#define PRAGMA __pragma
+#else
+#define PRAGMA _Pragma
+#endif
 
 mwSize getScalarInput(const mxArray *input, int input_number){
     //
@@ -102,7 +107,8 @@ mwSize getScalarInput(const mxArray *input, int input_number){
 //-----------------------------------------------------------------
 #define INIT_MAIN_LOOP(type)                            \
     /*#pragma omp parallel for simd collapse(2)*/       \
-    _Pragma("omp parallel for simd collapse(2)")    \
+        
+    PRAGMA("omp parallel for simd collapse(2)")    \
     for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
         /*Note, we can't initialize anything before this loop, since we*/           \
         /*are collapsing the first two loops. This allows us to parallelize*/       \
@@ -119,7 +125,7 @@ mwSize getScalarInput(const mxArray *input, int input_number){
 //OpenMP enabled
 //-----------------------------------------------------------------
 #define INIT_MAIN_LOOP(type)                            \
-    _Pragma("omp parallel for collapse(2)")    \
+    PRAGMA("omp parallel for collapse(2)")             \
     for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
         /*Note, we can't initialize anything before this loop, since we*/           \
         /*are collapsing the first two loops. This allows us to parallelize*/       \
@@ -170,7 +176,7 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     /*           Processing last part that didn't fit into a chunk         */ \
     /*---------------------------------------------------------------------*/ \
     if (n_samples_not_in_chunk){                            \
-        _Pragma("omp parallel for simd")                    \
+        PRAGMA("omp parallel for simd")                    \
         for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
                                                             \
             type *current_input_data_point = p_input_data + n_samples_data*iChan + n_chunks*samples_per_chunk; \

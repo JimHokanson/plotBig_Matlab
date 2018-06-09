@@ -30,7 +30,16 @@ OPENMP_SIMD = '-DENABLE_OPNEMP_SIMD';
 
 F1 = 'reduce_to_width_mex.c';
 
+%Note regarding architecture flags
+%Setting the architecture flag lets the compiler choose
+%its approach but doesn't mean that the custom SIMD code
+%will be enabled. In general the compiler is not smart
+%enough to generate the SIMD code from the naive loop
+
 if ismac
+    %This currently assumes XCode even though I had been
+    %using GCC for its superior OpenMP support
+    
     %To resolve library dependencies
     %-------------------------------
     %otool -L reduce_to_width_mex.mexmaci64
@@ -51,8 +60,16 @@ if ismac
         };    
     end
 elseif ispc
-    
-    
+    %Currently assuming VSs
+    if USE_OPENMP
+    options = {
+        'CFLAGS="$CFLAGS /arch:AVX2 /arch:AVX2"'
+        };
+    else
+    options = {
+        'CFLAGS="$CFLAGS /arch:AVX2"'
+        };    
+    end
 else
     
     
