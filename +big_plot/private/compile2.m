@@ -9,13 +9,18 @@
 %  1) Change directory to this folder
 %  2) Change flags as desired
 %  3) Select all code and evaluate
+%
+%   Improvements
+%   -------------
+%   1) Switch on selected compiler ...
+%       cc = mex.getCompilerConfigurations
 
 %------ EDIT THESE AS DESIRED ------
 %- Both can be true
 %- Due to memory bandwidth it may not be beneficial.
 %- I tend to prefer max speed within a thread and leaving 
 %   the other threads on my computer to do whatever they want.
-USE_OPENMP = 0; %use multiple threads
+USE_OPENMP = 1; %use multiple threads
 USE_SIMD = 1;   %make parallel within thread
 %-------------------------
 
@@ -30,11 +35,21 @@ if ismac
     %-------------------------------
     %otool -L reduce_to_width_mex.mexmaci64
     
-    %This works for XCode
-    
+    %This is designed for XCode
+    %---------------------------
+    %- This post describes how to point to openmp
+    %- NYI
+    %https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
+    if USE_OPENMP
+        error('This isn''t working yet ...')
     options = {
-        'CFLAGS=$CFLAGS -march=native'
+        'CFLAGS="$CFLAGS -march=native -fopenmp"'
         };
+    else
+    options = {
+        'CFLAGS="$CFLAGS -march=native"'
+        };    
+    end
 elseif ispc
     
     
