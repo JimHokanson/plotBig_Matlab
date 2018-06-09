@@ -1,13 +1,34 @@
 function compile(varargin)
 %x This function compiles the code necessary for this repo.
 %
+%   For people that are not Jim is probably best to run the script
+%   'compile2.m' in the private folder.
+%
 %      big_plot.compile()
 %
-%   flags
+%   Flags (space delimited)
+%   -----
+%   'simd' :
+%       Allows within thread parallel execution
+%   'openmp' : 
+%       Enables parallel code across threads
+%   'openmp_simd' :
+%       This allows openmp to try and use simd constructs inside. It
+%       isn't necessary for explicit SIMD calls in openmp.
+%
+%   Examples
+%   -----------
+%   big_plot.compile('flags','simd openmp')
+
+
+if ~exist('mex.compilers.gcc') %#ok<EXIST>
+    fprintf(2,'This is a bit experimental, it might be better to use compile2.m\n')
+    error('Mex maker library missing')
+end
 
 %Switching notes
 %- need to update Windows path to point to correct "bin" folder
-%where gcc
+%   where gcc
 
 
 %{
@@ -57,6 +78,10 @@ clear +big_plot\private\reduce_to_width_mex
 %}
 
 clear +big_plot\private\reduce_to_width_mex
+
+%Step 1
+%---------------------------------
+
 
 %This code uses https://github.com/JimHokanson/mex_maker
 

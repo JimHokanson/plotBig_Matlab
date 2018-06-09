@@ -54,6 +54,7 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     /*Initialize the first and last values of the output - not class specific*/ \
     /*---------------------------------------------------------------------*/   \
     /*We keep the first and last values if we are not plotting everything*/     \
+    /* - If we don't do this Matlab can mess with the x-axes limits*/           \
     /*We need to loop through each channel and assign:*/                        \
     /*  1) The first data point in each channel to the first output value*/     \
     /*  2) The last data point in each channel to the last output value*/       \
