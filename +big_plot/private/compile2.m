@@ -30,6 +30,10 @@ OPENMP_SIMD = '-DENABLE_OPNEMP_SIMD';
 
 F1 = 'reduce_to_width_mex.c';
 
+if ~exist('reduce_to_width_mex.c') %#ok<EXIST>
+    error('Code must be run from the same directory as this file, change path to this directory')
+end
+
 %Note regarding architecture flags
 %Setting the architecture flag lets the compiler choose
 %its approach but doesn't mean that the custom SIMD code
@@ -71,7 +75,16 @@ elseif ispc
         };    
     end
 else
-    
+    if USE_OPENMP
+    options = {
+        'CFLAGS="$CFLAGS -std=c11 -mavx2 -fopenmp"'
+        'LDFLAGS="$LDFLAGS -fopenmp"'
+        };
+    else
+    options = {
+        'CFLAGS="$CFLAGS -std=c11 -mavx2"'
+        };    
+    end    
     
 end
 
