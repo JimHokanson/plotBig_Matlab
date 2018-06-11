@@ -102,6 +102,12 @@ mex(options{:})
 
 %Now for the simple files
 %------------------------
-mex same_diff_mex.c
+if ismac || isunix
+    %To try and handle my // comments
+    mex CFLAGS="$CFLAGS -std=c11" same_diff_mex.c
+else
+    mex same_diff_mex.c
+end
+
 mex simd_check.c
 
