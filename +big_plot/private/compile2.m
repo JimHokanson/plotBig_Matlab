@@ -12,13 +12,11 @@
 %
 %   Improvements
 %   -------------
-%   1) Switch on selected compiler ...
-%       cc = mex.getCompilerConfigurations
 
 %------ EDIT THESE AS DESIRED ------
 %- Both can be true
 %- Due to memory bandwidth it may not be beneficial.
-%- I tend to prefer max speed within a thread and leaving 
+%- I tend to prefer max speed within a thread and leaving
 %   the other threads on my computer to do whatever they want.
 USE_OPENMP = 1; %use multiple threads
 USE_SIMD = 1;   %make parallel within thread
@@ -34,62 +32,76 @@ if ~exist('reduce_to_width_mex.c') %#ok<EXIST>
     error('Code must be run from the same directory as this file, change path to this directory')
 end
 
-%Note regarding architecture flags
-%Setting the architecture flag lets the compiler choose
-%its approach but doesn't mean that the custom SIMD code
-%will be enabled. In general the compiler is not smart
-%enough to generate the SIMD code from the naive loop
+cc = mex.getCompilerConfigurations('C','Selected');
 
-if ismac
-    %This currently assumes XCode even though I had been
-    %using GCC for its superior OpenMP support
-    
-    %To resolve library dependencies
-    %-------------------------------
-    %otool -L reduce_to_width_mex.mexmaci64
-    
-    %This is designed for XCode
-    %---------------------------
-    %- This post describes how to point to openmp
-    %- NYI
-    %https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
-    if USE_OPENMP
-        error('This isn''t working yet ...')
-    options = {
-        'CFLAGS="$CFLAGS -march=native -fopenmp"'
-        };
-    else
-    options = {
-        'CFLAGS="$CFLAGS -march=native"'
-        };    
-    end
-elseif ispc
-    %Currently assuming VSs
-    if USE_OPENMP
-    options = {
-        'CFLAGS="$CFLAGS /arch:AVX2 /arch:AVX2"'
-        };
-    else
-    options = {
-        'CFLAGS="$CFLAGS /arch:AVX2"'
-        };    
-    end
-else
-    if USE_OPENMP
-    options = {
-        'CFLAGS="$CFLAGS -std=c11 -mavx2 -fopenmp"'
-        'LDFLAGS="$LDFLAGS -fopenmp"'
-        };
-    else
-    options = {
-        'CFLAGS="$CFLAGS -std=c11 -mavx2"'
-        };    
-    end    
-    
+switch cc.ShortName
+    %------------------------------------------
+    case 'gcc'
+        if USE_OPENMP
+            options = {
+                'CFLAGS="$CFLAGS -std=c11 -mavx2 -fopenmp"'
+                'LDFLAGS="$LDFLAGS -fopenmp"'
+                };
+        else
+            options = {
+                'CFLAGS="$CFLAGS -std=c11 -mavx2"'
+                };
+        end
+    %------------------------------------------    
+    case 'Clang'
+        %TODO: Switch on Apple vs other ...
+        %This currently assumes XCode even though I had been
+        %using GCC for its superior OpenMP support
+        
+        %To resolve library dependencies
+        %-------------------------------
+        %otool -L reduce_to_width_mex.mexmaci64
+        
+        %This is designed for XCode
+        %---------------------------
+        %- This post describes how to point to openmp
+        %- NYI
+        %https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
+        if USE_OPENMP
+            error('OpenMP with XCode not working yet ...')
+            options = {
+                'CFLAGS="$CFLAGS -march=native -fopenmp"'
+                };
+        else
+            options = {
+                'CFLAGS="$CFLAGS -march=native"'
+                };
+        end
+    %------------------------------------------    
+    case 'mingw64'
+        if USE_OPENMP
+            options = {
+                'CFLAGS="$CFLAGS -std=c11 -mavx2 -fopenmp"'
+                'LDFLAGS="$LDFLAGS -fopenmp"'
+                };
+        else
+            options = {
+                'CFLAGS="$CFLAGS -std=c11 -mavx2"'
+                };
+        end
+    %------------------------------------------
+    case {'MSVC140' 'MSVC150'}
+        %Note VS uses a really old OpenMP implementation ...
+        if USE_OPENMP
+            options = {
+                'COMPFLAGS="$COMPFLAGS /openmp /arch:AVX2"'
+                };
+        else
+            options = {
+                'COMPFLAGS="$COMPFLAGS /arch:AVX2"'
+                };
+        end
+    otherwise
+        error('Unsupported compiler')
 end
 
 if USE_OPENMP
-    options = [options; OPENMP]; %#ok<UNRCH>
+    options = [options; OPENMP];
 end
 if USE_SIMD
     options = [options; SIMD];

@@ -28,6 +28,9 @@
 #define PRAGMA _Pragma
 #endif
 
+//200203 - VS2017
+
+
 mwSize getScalarInput(const mxArray *input, int input_number){
     //
     //  Inputs
@@ -107,7 +110,6 @@ mwSize getScalarInput(const mxArray *input, int input_number){
 //-----------------------------------------------------------------
 #define INIT_MAIN_LOOP(type)                            \
     /*#pragma omp parallel for simd collapse(2)*/       \
-        
     PRAGMA("omp parallel for simd collapse(2)")    \
     for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
         /*Note, we can't initialize anything before this loop, since we*/           \
@@ -417,6 +419,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         cpu_x86__detect_host(&s);
         hw_struct_initialized = 1;
     }
+    
+//     #ifdef _OPENMP
+//         mexPrintf("OpenMP version: %d\n",_OPENMP);
+//     #endif
     
     bool process_subset;
     double p_type = 0;
