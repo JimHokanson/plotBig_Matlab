@@ -18,6 +18,7 @@
 %- Due to memory bandwidth it may not be beneficial.
 %- I tend to prefer max speed within a thread and leaving
 %   the other threads on my computer to do whatever they want.
+%   (i.e. USE_SIMD=1,USE_OPENMP=0)
 USE_OPENMP = 1; %use multiple threads
 USE_SIMD = 1;   %make parallel within thread
 %-------------------------
@@ -88,13 +89,11 @@ switch cc.ShortName
     case {'MSVC140' 'MSVC150'}
         %Note VS uses a really old OpenMP implementation ...
         if USE_OPENMP
-            options = {
-                'COMPFLAGS="$COMPFLAGS /openmp /arch:AVX2"'
+          	options = {
+                'COMPFLAGS="$COMPFLAGS /openmp"'
                 };
         else
-            options = {
-                'COMPFLAGS="$COMPFLAGS /arch:AVX2"'
-                };
+            options = {};
         end
     otherwise
         error('Unsupported compiler')
