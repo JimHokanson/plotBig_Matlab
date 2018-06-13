@@ -23,7 +23,12 @@ Speedups specific to this code:
 3) The code uses OpenMP to run across multiple processors.
 4) The code used SIMD intrinsics to further speedup computing within the processor.
 
+A detailed examination of the speed of plotting for this code can be found at:
+https://jimhokanson.github.io/2018/01/29/plotBig_Matlab.html
+
 # Example Code
+
+`plotBig` is the main access function. It should largely work the same as plot, but make plotting faster. Plotting with points instead of lines however will look funny.
 
 ```Matlab
 n = 1e8;
@@ -33,17 +38,44 @@ y = sin(25*(2*pi).*t) + t.*rand(1,n);
 y = y';
 
 %Normal plotting, try resizing ...
+tic
 plot(t,y)
+drawnow
+toc
 
-%This code
+%This code, zoom in until the random data points are visible
+tic
 plotBig(t,y)
+drawnow
+toc
 
-%Even better
+%Even better, in this case we don't even need the time array
+%- this saves on memory!
+%dt : time between samples
+%t0 : start time
+%NOTE: This version currently requires a column vector (i.e. samples per row)
 plotBig(y,'dt',t(2)-t(1),'t0',0);
+
+%Plotting with options
+plotBig(t,y,'r','Linewidth',2);
+
+%This currently doesn't work :/
+plotBig(y,'dt',t(2)-t(1),'t0',0,'Color','r');
+
+%Abstract time
+dt = t(2)-t(1);
+n_samples = n;
+x = big_plot.time(dt,n_samples);
+
+%Plotting but with abstract time
+plotBig(x,y,'Color','r');
+
 ```
 # Streaming Data
 
-TODO: Add documentation
+This library also supports the ability to add on data for plotting, such as from a DAQ.
+
+TODO: Finish documentation
 
 
 # Current Limitations

@@ -101,7 +101,7 @@ end
 varargin(delete_mask) = [];
 
 %I don't know when we will have 2+ elemements
-%and not have a numeric #2 but I'll leve this in place for now
+%and not have a numeric #2 but I'll leave this in place for now
 if length(varargin) > 1 && isnumeric(varargin{2})
     x_temp = varargin{1};
     y = varargin{2};

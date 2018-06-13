@@ -2,6 +2,10 @@ function varargout = e001_interestingInput(varargin)
 %
 %   s = big_plot_tests.examples.e001_interestingInput(varargin)
 %
+%   Plots the same data on two subplots. Single point wide artifacts are
+%   added which can be zoomed into to see how the library reacts to
+%   manipulations.
+%
 %   Most of the execution time comes from data initialization.
 %
 %   This code is based on:
@@ -29,6 +33,20 @@ function varargout = e001_interestingInput(varargin)
 %   y
 %   t
 %   get_data_only : default false
+%
+%   Examples
+%   ---------
+%   %Evaluate using this repo
+%   s = big_plot_tests.examples.e001_interestingInput('type',0);
+%
+%   %Evalute using TM option
+%   s = big_plot_tests.examples.e001_interestingInput('type',1);
+%
+%   %Evalute using Matlab
+%   s = big_plot_tests.examples.e001_interestingInput('type',2);
+%
+%   %Evaluate with single data type
+%   s = big_plot_tests.examples.e001_interestingInput('data_type','single');
 
 %
 
@@ -36,9 +54,7 @@ function varargout = e001_interestingInput(varargin)
     s = big_plot_tests.examples.e001_interestingInput('type',0);
     s = big_plot_tests.examples.e001_interestingInput('type',1);
     s = big_plot_tests.examples.e001_interestingInput('type',2);
-
     s = big_plot_tests.examples.e001_interestingInput('type',0,'data_type','single');
-
 %}
 
 %50 million samples
@@ -91,7 +107,7 @@ else
             y = bsxfun(@rdivide,y,max(y,[],1));
             y = uint16(y*double(intmax('uint16')));            
         otherwise
-            %get data type min and max
+            error('Data type specified is not supported')
     end
     fprintf('Done initializing data\n');
 end
