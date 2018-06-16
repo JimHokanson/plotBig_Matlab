@@ -8,82 +8,212 @@ classdef streaming_data < handle
     %   setCalibration(calibration)
     %   addData(new_data)
     %   getRawLineData()
+    %
+    %   Purpose
+    %   -------
+    %   This class facilitates fast plotting of line data where the number
+    %   of samples increases over time. This case was specifically written
+    %   to handle plotting of DAQ data as it is acquired over time. 
+    %
+    %   Features
+    %   --------
+    %   1) Preallocated memory to avoid memory reallocation when acquiring
+    %   more data.
+    %   2) Data are downsampled on acquisition for faster plotting of large
+    %   regions of data, particularly when scrolling.
+    %   3) Optional calibration for scaling of acquired data when plotting.
+    %     
+    %   Constructor Info
+    %   ---------------------------
+    %
+    %     Calling Form
+    %     ------------
+    %
+    %     obj = big_plot.streaming_data(dt,n_samples_init,varargin)
+    %
+    %     Inputs
+    %     ------
+    %     dt : scalar
+    %         Time between samples, inverse of the sampling rate.
+    %     n_samples_init : 
+    %         Number of samples to initialize. This should generally be a 
+    %         reasonable estimate of the number of samples that will be
+    %         collected. Every time the length of data acquired is exceeded
+    %         the array is resized.
+    %         
+    %   
+    %     Optional Inputs
+    %     ---------------
+    %     m : scalar
+    %         Slope for calibration
+    %     b :
+    %         Offset for calibration
+    %     t0 : default 0
+    %       Start time of the time-series
+    %     initial_data : default []
+    %         Data that has already been collected.
+    %     data_type : default 'double'
+    %         If initial_data is passed in, then the data type
+    %         is based on the initial data. Otherwise this can be
+    %         used to preallocate data of the correct type.
+    %     growth_rate : default 2
+    %         When we run out of space for new samples this is specifies
+    %         how many more samples we preallocate. '2' means that we
+    %         double the amount of preallocated memory.
+    %         TODO: Describe behavior when amount to add exceeds size
+    %         following growth
+    %     downsample_amount : default 200
+    %         Number of samples to use when generating a pair of
+    %         min-max values in the "small" dataset. In other words
+    %         the default value means that every 200 samples we
+    %         generate a single min-max pair. This is used to 
+    %
+    %   Example %TODO: Reference READ ME and move code thre
+    %   ------------
+    %   %- might also consider a notebook
+    %   sin_freq = 1/60; %1 minute repeat
+    %   fs = 100000; %100 kHz sampling rate
+    %   dt = 1/fs;
+    %   %This is data that is received dynamically. In this case we
+    %   %just allocate it all at once and then "stream" it to our
+    %   %plotter
+    %
+    %   n_seconds_max = 900; %15 minutes of data
+    %   
+    %   %The following is just creating something that looks sort of
+    %   %interesting. It isn't important to understand this part.
+    %   %----------------------------------------------
+    %   n_samples = n_seconds_max*fs + 1
+    %   %This can change but animated line wants double :/
+    %   source_data = zeros(n_samples,1,'double');
+    %   noise_scale = 1/n_samples;
+    %   r = rand(1,1e5,'double'); %Our noise will repeat, this is just 
+    %   %to show that the line has dense data points when zooming in.
+    %
+    %   %Loops saves memory since Matlab is poor at minimizing intermediate
+    %   %memory usage for vectors
+    %   c = 2*pi*sin_freq;
+    %   for i = 1:n_samples
+    %       t = dt*(i-1);
+    %       noise_scale2 = noise_scale*i;
+    %       I = mod(i,1e5) + 1;
+    %       r2 = r(I);
+    %       source_data(i) = sin(c*t) + noise_scale2*r2;
+    %   end
+    %
+    %   %This is low, but it shows we can reallocate
+    %   %Plotting slows during reallocation
+    %   %n_samples_init = 5e7;
+    %   %This can be enabled to avoid any reallocation
+    %   n_samples_init = length(source_data);
+    %   xy = big_plot.streaming_data(dt,n_samples_init);
+    %   plotBig(xy)
+    %   %TODO: Add title
+    %   
+    %   %We'll plot the entire range, but you could plot a subset
+    %   %and scroll  => JAH TODO: list callback for added data
+    %   set(gca,'xlim',[0 n_seconds_max])
+    %   %Best not to have this move during plotting
+    %   set(gca,'ylim',[-2 3])
+    %
+    %   end_I = 0;
+    %   profile on
+    %   tic
+    %   for i = 1:n_seconds_max
+    %       start_I = end_I + 1;
+    %       end_I = start_I + fs - 1;
+    %       new_data = source_data(start_I:end_I);
+    %       xy.addData(new_data)
+    %       drawnow
+    %   end
+    %   toc
+    %   profile off
+    %
+    %   %On my crappy laptop this takes 40 seconds. 40 seconds to plot
+    %   %900 seconds of data. Although not tested directly this implies
+    %   %a rate of about 22.5 Hz for plotting 1 channel at 100kHz
+    %   %
+    %   %From debugging props I see that it tooks about 2 seconds to add
+    %   %the data and 1 second to determine what needed to be plotted. The
+    %   %remainder of the time is for rendering 
+    %
+    %   %Now how about animated line??
+    %   %----------------------------
+    %   cla
+    %   clear xy
+    %   set(gca,'xlim',[0 n_seconds_max])
+    %   set(gca,'ylim',[-2 3])
+    %   %TODO: What happens for Inf???
+    %   h = animatedline('MaximumNumPoints',floor(length(source_data)/4)+1)
+    %   end_I = 0;
+    %   tic
+    %   %Only run 1/4, this is painful
+    %   for i = 1:n_seconds_max/4
+    %       start_I = end_I + 1;
+    %       end_I = start_I + fs - 1;
+    %       new_data = source_data(start_I:end_I);
+    %       x = (start_I*dt):dt:(end_I*dt);
+    %       addpoints(h,x,source_data(start_I:end_I))
+    %       drawnow
+    %   end
+    %   toc
+    %
+    %   %I get 141 seconds for 1/4 of the plotting. Assuming a linear cost
+    %   %of plotting, which may not be true, we get 564 seconds to do what
+    %   %this code is doing in 40 s.
     
     
-    
-    %{
-        profile on
-        
-        %I create the data up front because rand() is a bit slow and
-        %I want to disentangle data creation versus plotting
-        fh = @(t) 0.0005.*t.*sin(0.01*t) + rand(1,length(t));
-        dt = 1/10000;
-        t = 0:dt:30;
-        y = fh(t);
-        t2 = 30+dt:dt:40;
-        y2 = fh(t2);
-        t3 = 40+dt:dt:500;
-        y3 = fh(t3);
-        t4 = 500+dt:dt:2000;
-        y4 = fh(t4);
-        t5 = 2000+dt:dt:10000;
-        y5 = fh(t5);
-    
-        %This buffer size is a bit small but it works for now ...
-        init_buffer_size = 2*length(y);
-        xy = big_plot.streaming_data(dt,init_buffer_size,'initial_data',y);
-
-        %Evaluate these manually
-        xy.addData(y2);
- 
-        xy.addData(y3);
-    
-        %The actual plotting
-        plotBig(xy)
-
-        %Adding more data to the plot
-        xy.addData(y4);
-    
-        %For now this is manual ...
-        set(gca,'xlim',[0 2000])
-
-        %Adding more data
-        xy.addData(y5);
-        set(gca,'xlim',[0 10000])
-    %}
-    
-    %{
-        subplot(1,2,1)
-        plot(xy.y(1:xy.n_samples))
-        subplot(1,2,2)
-        plot(xy.y_small(1:xy.I_small_all))
-    %}
     
     properties
         name
         
         %This is a property that any class wishing to contain both x and y
         %data for big_plot should have.
+        %
+        %Note: This design is not well flushed out. The idea was that
+        %anyone could implement an xy class.
         is_xy = true
         
-        %Values for calibration - output = m*input + b
+        %Values for calibration:
+        %
+        %   output = m*data + b
+        %
+        %  By making this dynamic we can change calibrations as needed
+        %  without having the original data change.
         m
         b
         
         
-        y %raw data, overallocated
+        y  %raw data, overallocated
+        %JAH: Do we specify row or column shape?
         dt %dt of the raw data
+        t0 %start time
         
+        %Design Note:
+        %------------
+        %The idea is that for really large data, we precompute min and max
+        %values so that determining what samples to plot is quicker.
+        %
+        %i.e. Let's say we have the following data:
+        %   1 10 3 4 5 8 9 -3 5 2 5 9  3 2 6 8
+        %
+        %  Then the general idea is that, for example, given 10 and 9
+        %  the other values will never be local maxima.
+        %
         y_small %downsampled data, also overallocated
         %Data is downsampled by taking min and max of a chunk of data
         dt_small %dt of the downsampled data
         
-        t0 %start time
         
+        %How many original samples are required to generate a min/max
+        %pair of small data
         downsample_amount
         
         n_samples = 0
         
+        %When preallocated data is exceeded, this is a multiplier on how
+        %much we expand the data. 1 would mean no growth. 2 would mean
+        %that we double the amount of data allocated.
         growth_rate
         
         %This is the # of samples in complete chunks. Anything not complete
@@ -99,7 +229,7 @@ classdef streaming_data < handle
         %has been processed)
         I_small_all
         
-        %Populated by big_plot.
+        %Populated by big_plot when plotting.
         %These callbacks get called by this class when:
         data_added_callback %data has been added to this class
         calibration_callback %the data has been calibrated
@@ -121,6 +251,7 @@ classdef streaming_data < handle
     
     %---------  Debugging -------------
     properties
+        %TODO: Document this
         n_add_events = 0
         n_grow_events = 0
         
@@ -134,32 +265,10 @@ classdef streaming_data < handle
             %
             %   obj = big_plot.streaming_data(dt,n_samples_init,varargin)
             %
-            %   Optional Inputs
-            %   ---------------
-            %   m :
-            %       Slope for calibration
-            %   b :
-            %       Offset for calibration
-            %   t0 : default 0
-            %       Start time of the time-series
-            %   initial_data : default []
-            %       Data that has already been collected.
-            %   data_type : default 'double'
-            %       If initial_data is passed in, then the data type
-            %       is based on the initial data. Otherwise this can be
-            %       used to preallocate data of the correct type.
-            %   growth_rate : default 2
-            %   downsample_amount : default 200
-            %       Number of samples to use when generating a pair of
-            %       min-max values in the "small" dataset. In other words
-            %       the default value means that every 200 samples we
-            %       generate a single min-max pair.
-            %
-            %   Examples
-            %   --------
-            %   xy = big_plot.streaming_data(1/1000,1e6);
-            %   plotBig(xy)
-            
+            %   See class documentation at top
+
+            %Optional Input Defaults
+            %------------------------
             in.m = [];
             in.b = [];
             in.name = '';
