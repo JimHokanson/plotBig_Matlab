@@ -1,10 +1,19 @@
 classdef (Hidden) data < handle
     %
     %   Class:
-    %   big_plot.data
+    %   big_plot.data.getRawLineData
+    %
+    %   This is generally not a public class.
+    %
+    %   See Also
+    %   --------
+    %   big_plot.getRawLineData
+    %   big_plot.getRawDataPointer
+    %   big_plot.raw_line_data
     
     properties
-        parent
+        parent %big_plot
+        %   The owning big_plot application
         
         plot_fcn %e.g. @plot
         
@@ -87,9 +96,21 @@ classdef (Hidden) data < handle
         end
         function s = getRawLineData(obj,group_I,line_I,in)
             %
+            %   s = getRawLineData(obj,group_I,line_I,in)
+            %
+            %   Inputs
+            %   ------
+            %   group_I
+            %   line_I
+            %   in
+            %
             %   Outputs
             %   -------
             %   s : big_plot.raw_line_data
+            %
+            %   See Also
+            %   --------
+            %   
             
             y_group = obj.y{group_I};
             x_group = obj.x{group_I};
@@ -100,6 +121,8 @@ classdef (Hidden) data < handle
                 return
             end
             
+            %Population of the raw_line_data object
+            %--------------------------------------
             s = big_plot.raw_line_data;
             
             if ~isobject(x_group)

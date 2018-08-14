@@ -9,6 +9,8 @@ classdef streaming_data < handle
     %   addData(new_data)
     %   getRawLineData()
     %
+    %   Documentation at streaming_data.md
+    %
     %   Purpose
     %   -------
     %   This class facilitates fast plotting of line data where the number
@@ -64,103 +66,13 @@ classdef streaming_data < handle
     %         following growth
     %     downsample_amount : default 200
     %         Number of samples to use when generating a pair of
-    %         min-max values in the "small" dataset. In other words
-    %         the default value means that every 200 samples we
-    %         generate a single min-max pair. This is used to 
+    %         min-max values in the "small" dataset. Downsampling is done
+    %         based on the small dataset at sufficient zoom out levels and
+    %         only on the original datset at high zoom levels.
+    %           The default value means that every 200 samples we
+    %         generate a single min-max pair for the small dataset. This 
+    %         thus has an overhead of 1% of the original data.
     %
-    %   Example %TODO: Reference READ ME and move code thre
-    %   ------------
-    %   %- might also consider a notebook
-    %   sin_freq = 1/60; %1 minute repeat
-    %   fs = 100000; %100 kHz sampling rate
-    %   dt = 1/fs;
-    %   %This is data that is received dynamically. In this case we
-    %   %just allocate it all at once and then "stream" it to our
-    %   %plotter
-    %
-    %   n_seconds_max = 900; %15 minutes of data
-    %   
-    %   %The following is just creating something that looks sort of
-    %   %interesting. It isn't important to understand this part.
-    %   %----------------------------------------------
-    %   n_samples = n_seconds_max*fs + 1
-    %   %This can change but animated line wants double :/
-    %   source_data = zeros(n_samples,1,'double');
-    %   noise_scale = 1/n_samples;
-    %   r = rand(1,1e5,'double'); %Our noise will repeat, this is just 
-    %   %to show that the line has dense data points when zooming in.
-    %
-    %   %Loops saves memory since Matlab is poor at minimizing intermediate
-    %   %memory usage for vectors
-    %   c = 2*pi*sin_freq;
-    %   for i = 1:n_samples
-    %       t = dt*(i-1);
-    %       noise_scale2 = noise_scale*i;
-    %       I = mod(i,1e5) + 1;
-    %       r2 = r(I);
-    %       source_data(i) = sin(c*t) + noise_scale2*r2;
-    %   end
-    %
-    %   %This is low, but it shows we can reallocate
-    %   %Plotting slows during reallocation
-    %   %n_samples_init = 5e7;
-    %   %This can be enabled to avoid any reallocation
-    %   n_samples_init = length(source_data);
-    %   xy = big_plot.streaming_data(dt,n_samples_init);
-    %   plotBig(xy)
-    %   %TODO: Add title
-    %   
-    %   %We'll plot the entire range, but you could plot a subset
-    %   %and scroll  => JAH TODO: list callback for added data
-    %   set(gca,'xlim',[0 n_seconds_max])
-    %   %Best not to have this move during plotting
-    %   set(gca,'ylim',[-2 3])
-    %
-    %   end_I = 0;
-    %   profile on
-    %   tic
-    %   for i = 1:n_seconds_max
-    %       start_I = end_I + 1;
-    %       end_I = start_I + fs - 1;
-    %       new_data = source_data(start_I:end_I);
-    %       xy.addData(new_data)
-    %       drawnow
-    %   end
-    %   toc
-    %   profile off
-    %
-    %   %On my crappy laptop this takes 40 seconds. 40 seconds to plot
-    %   %900 seconds of data. Although not tested directly this implies
-    %   %a rate of about 22.5 Hz for plotting 1 channel at 100kHz
-    %   %
-    %   %From debugging props I see that it tooks about 2 seconds to add
-    %   %the data and 1 second to determine what needed to be plotted. The
-    %   %remainder of the time is for rendering 
-    %
-    %   %Now how about animated line??
-    %   %----------------------------
-    %   cla
-    %   clear xy
-    %   set(gca,'xlim',[0 n_seconds_max])
-    %   set(gca,'ylim',[-2 3])
-    %   %TODO: What happens for Inf???
-    %   h = animatedline('MaximumNumPoints',floor(length(source_data)/4)+1)
-    %   end_I = 0;
-    %   tic
-    %   %Only run 1/4, this is painful
-    %   for i = 1:n_seconds_max/4
-    %       start_I = end_I + 1;
-    %       end_I = start_I + fs - 1;
-    %       new_data = source_data(start_I:end_I);
-    %       x = (start_I*dt):dt:(end_I*dt);
-    %       addpoints(h,x,source_data(start_I:end_I))
-    %       drawnow
-    %   end
-    %   toc
-    %
-    %   %I get 141 seconds for 1/4 of the plotting. Assuming a linear cost
-    %   %of plotting, which may not be true, we get 564 seconds to do what
-    %   %this code is doing in 40 s.
     
     
     
@@ -317,17 +229,31 @@ classdef streaming_data < handle
     %                       Public methods for users
     %----------------------------------------------------------------------
     methods
-        function setCalibration(obj,calibration)
+        function setCalibration(obj,m_or_c,b)
+            %
+            %   Calling Forms
+            %   -------------
+            %   setCalibration(obj,calibration)
+            %
+            %   setCalibration(obj,m,b)
             %
             %   Inputs
             %   ------
             %   calibration : struct or object with fields:
             %       - m
             %       - b
+            %   m :
+            %   b : 
             
-            obj.m = calibration.m;
-            obj.b = calibration.b;
-            
+            if isstruct(m_or_c)
+                calibration = m_or_c;
+                obj.m = calibration.m;
+                obj.b = calibration.b;
+            else
+                obj.m = m_or_c;
+                obj.b = b;
+            end
+
             %Notify the renderer that the data has been calibrated.
             obj.calibration_callback();
         end
@@ -342,6 +268,10 @@ classdef streaming_data < handle
             %   Outputs
             %   -------
             %   s : big_plot.raw_line_data
+            %       Returns a class which has access to the underlying
+            %       data. This class returns only the populated data, NOT 
+            %       the allocated data, so some memory allocation is done
+            %       by this call.
             %
             %   See Also
             %   --------
@@ -351,6 +281,7 @@ classdef streaming_data < handle
             %   -------
             %   %Get the raw data from 10 to 20 seconds
             %   s = obj.getRawLineData('xlim',[10 20])
+            %   => s.y_raw
             
             %Push creation to the raw_line_data class
             s = big_plot.raw_line_data.fromStreamingData(obj,varargin{:});
@@ -591,6 +522,13 @@ classdef streaming_data < handle
             
         end
         function time_array = getTimeArray(obj,varargin)
+            %
+            %   time_array = getTimeArray(obj,varargin)
+            %   
+            %   Optional Inputs
+            %   ---------------
+            %   start_index : (default 1)
+            %   end_index : (default n_samples)
             
             in.start_index = 1;
             in.end_index = obj.n_samples;
@@ -599,10 +537,8 @@ classdef streaming_data < handle
             I1 = in.start_index - 1;
             I2 = in.end_index - 1;
             
-            time_array = ((I1:I2)*obj.dt)';
-            %time_array = h__getTimeScaled(obj,time_array);
+            time_array = (((I1:I2)*obj.dt)') + obj.t0;
         end
-        
     end
 end
 
@@ -611,6 +547,9 @@ function calibrated_data = h__calibrateData(data,obj)
 end
 
 function h__processSmall(obj)
+%
+%
+%   
 
 
 n_samples_small_total = ceil(obj.n_samples/obj.downsample_amount)*2;
@@ -637,7 +576,13 @@ out_end_I = ceil(end_I/obj.downsample_amount)*2;
 %For right now anytime we get a subset of the data the mex code pads
 %with the first and the last sample. Thus we ignore those values
 %when doing the assigment.
-obj.y_small(out_start_I:out_end_I) = min_max_data(2:end-1);
+try
+    obj.y_small(out_start_I:out_end_I) = min_max_data(2:end-1);
+catch
+    %The above can fail if we allocate the same size as the initial
+    %amount of data
+    obj.y_small(out_start_I:out_end_I) = min_max_data;
+end
 
 obj.I_small_all = out_end_I;
 

@@ -73,10 +73,25 @@ plotBig(x,y,'Color','r');
 ```
 # Streaming Data
 
-This library also supports the ability to add on data for plotting, such as from a DAQ.
+This library also supports the ability to continuously add on data to a line plot, such as when data are being collected from a DAQ. This can be considered to be similar to Matlab's [animatedline](https://www.mathworks.com/help/matlab/ref/animatedline.html), but with much better performance.
 
-TODO: Finish documentation
+The basic usage is as such:
 
+```
+fs = 20000;
+n_samples_init = 1e7;
+xy = big_plot.streaming_data(1/fs,n_samples_init);
+
+%Setting up of the plot
+subplot(2,1,2)
+plotBig(xy)
+
+%In a loop where we are getting more data ...
+%This will update the plot with the new data
+xy.addData(new_data)
+```
+
+More information can be found [here](documentation/streaming_data.md)
 
 # Current Limitations
 
@@ -91,6 +106,6 @@ The speedups are perhaps a bit hard to really appreciate (for me at least). The 
 
 <p align="center"><img src="/documentation/speed1_double.png" alt="speed1_double" width="600"/></p>
 
-The code also supports multiple data types. Smaller data types fit better into SIMD registers so you can get better speedups with smaller data types. This example shows int16 which could be useful for plotting DAQ data. (JAH TODO: Support scaling after down-sampling the data - i.e. determining what to plot based on int16 but plotting of scaled data)
+The code also supports multiple data types. Smaller data types fit better into SIMD registers so you can get better speedups with smaller data types. This example shows int16 which could be useful for plotting DAQ data.
 
 <p align="center"><img src="/documentation/speed1_int16.png" alt="speed1_int16" width="600"/></p>

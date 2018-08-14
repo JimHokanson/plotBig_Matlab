@@ -14,7 +14,9 @@ classdef (Hidden) line_data_pointer < handle
     %
     %   See Also
     %   --------
+    %   big_plot.getRawLineData
     %   big_plot.data.initRawDataPointers
+    
     
     properties
         big_plot_ref %big_plot
@@ -29,6 +31,9 @@ classdef (Hidden) line_data_pointer < handle
         function ptr = retrieveFromLineHandle(h_line)
             %
             %   ptr = big_plot.line_data_pointer.retrieveFromLineHandle(h_line);
+            
+            %This is the "magic", we've stored the class instance
+            %in the line handle using setappdata. Now we retrieve it
             ptr = getappdata(h_line,'big_plot__data_pointer');
         end
     end
@@ -56,8 +61,15 @@ classdef (Hidden) line_data_pointer < handle
             %   Output
             %   ------
             %   s : big_plot.raw_line_data
+            %
+            %   See Also
+            %   --------
+            %   big_plot.getRawLineData
             
+            %data : big_plot.data
             data = obj.big_plot_ref.data;
+            
+            %big_plot.data.getRawLineData
             s = data.getRawLineData(obj.group_I,obj.line_I,in);
         end
         function storeObjectInLineHandle(obj,h_line)
