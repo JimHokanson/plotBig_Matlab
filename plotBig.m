@@ -146,16 +146,16 @@ end
 %Define x based on time specs (if necessary)
 %-------------------------------------------------------------------
 n_samples = size(y,1);
+
+%This may occur when the data should be transposed i.e. plotting y'
+%When 'x' is provided, we can adjust y accordingly, but when only
+%time info is provided, we can't resolve between 1 channel with many
+%samples and many channels with 1 sample each.
+if n_samples == 1 && isempty(in.x)
+    error('Currently 1 sample per channel is not supported')
+end
+
 if ~isempty(in.dt)
-    
-    
-    %This may occur when the data should be transposed i.e. plotting y'
-    %When 'x' is provided, we can adjust y accordingly, but when only
-    %time info is provided, we can't resolve between 1 channel with many
-    %samples and many channels with 1 sample each.
-    if n_samples == 1
-        error('Currently 1 sample per channel is not supported')
-    end
     x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
 else
     x = in.x;
