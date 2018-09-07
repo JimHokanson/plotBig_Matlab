@@ -1,4 +1,13 @@
 function compile(varargin)
+%
+%   **********************************************************************
+%   It is recommended that you use compile2.m inside the private directory
+%   instead.
+%   **********************************************************************
+%
+
+
+
 %x This function compiles the code necessary for this repo.
 %
 %   For people that are not Jim is probably best to run the script

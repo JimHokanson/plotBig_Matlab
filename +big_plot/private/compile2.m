@@ -111,6 +111,24 @@ options = [options; F1];
 mex(options{:})
 
 
+s = struct;
+s.date = datestr(now);
+s.use_openmp = logical(USE_OPENMP);
+s.use_simd = logical(USE_SIMD);
+output_str = jsonencode(s);
+file_name = sprintf('%s.json',computer);
+
+
+
+fid = fopen(file_name,'w');
+try
+    fwrite(fid,output_str);
+    fclose(fid);
+catch ME
+    fclose(fid);
+    rethrow(ME)
+end
+
 %Now for the simple files
 %------------------------
 if ismac || isunix
@@ -121,4 +139,6 @@ else
 end
 
 mex simd_check.c
+
+
 
