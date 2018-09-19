@@ -1,14 +1,22 @@
 function pb001_missingPointOldFex(options)
 %
-%   big_plot_tests.previous_bugs.pb001_missingPointOldFex
+%
+%   big_plot_tests.previous_bugs.pb001_missingPointOldFex(use_old)
 %
 %   Based on a comment for:
 %   http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-
 %
 %   Comment from Robbert at 12 Dec 2014
 %
+%   
+%
+%   Examples
+%   --------
+%   big_plot_tests.previous_bugs.pb001_missingPointOldFex(true)
+%
+%   big_plot_tests.previous_bugs.pb001_missingPointOldFex(true)
 
-if nargin == 1
+if nargin == 0
     USE_OLD = false;
 else
     big_plot_tests.errors.NOT_YET_IMPLEMENTED
@@ -33,7 +41,7 @@ if length(I) ~= 3 || I(3) == I(2)+1
     big_plot_tests.errors.ERROR_DETECTED
 end
 
-
-
+%TODO: We should request the reduced data and look for the missing point
+%TODO: This might be better as running both side by side in a subplot
 
 end
