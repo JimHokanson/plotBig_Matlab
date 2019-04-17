@@ -123,9 +123,38 @@ classdef big_plot < handle
     %               Public/Static Methods
     %--------------------------------------------------------
     methods (Static)
+%         function setAxisZeroedTime(h_axes,zero_time)
+%             
+%         end
+%         function zero_time = getAxisZeroedTime(h_axes)
+%             
+%         end
+        function cleanFigure(h_fig,varargin)
+            %Currently this clears the plot callbacks
+            %
+            %- Eventually this should allow replacing with the actual data
+            h_line = findall(h_fig,'type','line');
+            for i = 1:length(h_line)
+                ptr = big_plot.getRawDataPointer(h_line(i));
+                if ~isempty(ptr)
+                    ptr.disconnectFromFigure();
+                end
+            end
+        end
         function setAxisAbsoluteStartTime(h_axes,start_time)
             %
             %   big_plot.setAxisAbsoluteStartTime(h_axes,start_time)
+            %
+            %   Inputs
+            %   ------
+            %   h_axes : Matlab axes handle
+            %   start_time :
+            %       TODO: Describe
+            %
+            %   See Also
+            %   ---------
+            %   big_plot.axis_time
+            %   big_plot.axis_time.setStartTime
             
              big_plot.axis_time.setStartTime(h_axes,start_time)
         end
@@ -146,6 +175,8 @@ classdef big_plot < handle
             %   Outputs
             %   -------
             %   ptr : [] OR big_plot.line_data_pointer
+            %       The pointer class holds simple references to objects
+            %       of interest, notably to a big_plot instance.
             %
             
             

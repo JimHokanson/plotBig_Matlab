@@ -189,6 +189,7 @@ classdef (Hidden) callback_manager < handle
             %   1) Delete method
             %   2) big_plot>renderData - if none of the lines being 
             %   monitored are valid
+            %   3) big_plot.cleanFigure - user wants callbacks gone
             
             try %#ok<TRYNC>
                 if obj.kill_already_run

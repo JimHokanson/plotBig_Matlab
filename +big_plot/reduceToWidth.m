@@ -98,6 +98,10 @@ else
     n_y_samples = size(y,1);
     n_chans = size(y,2);
 end
+
+%A problem here may indicate a problem with:
+%big_plot.data>h__parseDataAndLinespecs
+
 if n_chans > N_CHANS_MAX
     %We might be able to handle more, but I ran into problems when
     %accidentally plotting the transpose of the actual data which had

@@ -19,13 +19,24 @@ classdef (Hidden) handles_and_listeners < handle
         %
         %   This should really be h_line, to be more specific
         
+        group_to_linear_map %cell
+        %index into this to get the index of the relevant line handle 
+        %in h_lines_array
+        %
+        %   e.g obj.group_to_linear_map{2}(3) => 5
+        %
+        %   This indicates that group 2, the 3rd h_line handle is in the 
+        %   linear array at position 5. This was added for mapping 
+        %   back to the h_lines_array and listen_array.
         
-        h_lines_array
-        listen_array
+        h_lines_array %an array of all line handles
+        listen_array %cell of listeners
         
         n_plot_groups
         
-        n_lines_active
+        n_lines_active %Every time a line object is deleted this is 
+        %decremented. When it gets to 0 we have no more active lines in 
+        %the big_plot object.
         
     end
     
@@ -57,6 +68,7 @@ classdef (Hidden) handles_and_listeners < handle
             end
         end
         function mask = getValidGroupMask(obj)
+            %TODO: Document this ...
             mask = cellfun(@(x) all(ishandle(x)),obj.h_line);
         end
         function initializePlotHandles(obj,n_plot_groups,temp_h_line,temp_h_indices)
@@ -75,10 +87,13 @@ classdef (Hidden) handles_and_listeners < handle
             %   Inputs
             %   ------
             %   n_plot_groups :
-            %   temp_h_line : 
-            %   temp_h_indices :
+            %   temp_h_line : array of Matlab line handles
+            %   temp_h_indices : cell {1 n_groups}
+            %       For each group, specifies which indices in the linear
+            %       array to grab for that groups lines.
             
             obj.h_lines_array = temp_h_line;
+            obj.group_to_linear_map = temp_h_indices;
             
             obj.n_lines_active = length(temp_h_line);
             
@@ -88,21 +103,46 @@ classdef (Hidden) handles_and_listeners < handle
             if ~isempty(temp_h_line)
                 for iG = 1:n_plot_groups
                     obj.h_line{iG} = temp_h_line(temp_h_indices{iG});
-                    temp = obj.h_line{iG};
-                    for i = 1:length(temp)
-                        
-                    end
                 end
             end
             
             obj.listen_array = cell(1,length(temp_h_line));
             for i = 1:length(temp_h_line)
+                %When the line is being destroyed, remove callbacks ...
                 obj.listen_array{i} = addlistener(temp_h_line(i), 'ObjectBeingDestroyed',@(~,~) obj.clearLine(i));
             end
         end
-        function clearLine(obj,line_I)
+        function clearLine(obj,line_I,group_I)
+            %
+            %   Calling Forms
+            %   -------------
+            %   obj.clearLine(linear_line_I)
+            %
+            %   obj.clearLine(line_I,group_I)
+            %
+            %   
+            %   This is called whenever a line is destroyed.
+            %
+            %   TODO: Eventually it would be nice to be able to call
+            %   this directly as well
+            %
+            %   Inputs
+            %   ------
+            %   linear_line_I : scalar
+            %       This indexes into a linear array of line handles. This
+            %       does not map into line indexes that 
+            
+            if nargin == 3
+                line_I = obj.group_to_linear_map{group_I}(line_I);
+                if isempty(obj.listen_array{line_I})
+                    %Already cleared ...
+                   return 
+                end
+            end
             obj.n_lines_active = obj.n_lines_active - 1;
-            h_line2 = obj.h_lines_array(line_I);
+            h_line2 = obj.h_lines_array(line_I); 
+            
+
             ptr = big_plot.line_data_pointer.retrieveFromLineHandle(h_line2);
             delete(ptr);
             delete(obj.listen_array{line_I});

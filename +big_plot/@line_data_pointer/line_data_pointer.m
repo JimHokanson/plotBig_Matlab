@@ -27,10 +27,32 @@ classdef (Hidden) line_data_pointer < handle
         line_I
     end
     
+%     properties (Dependent)
+%        h_line 
+%     end
+%     
+%     methods
+%         function value = get.h_line(obj)
+%             
+%         end
+%     end
+    
     methods (Static)
+%         function clearPointer(h_line)
+%             setappdata(h_line,'big_plot__data_pointer');
+%         end
+    
         function ptr = retrieveFromLineHandle(h_line)
             %
             %   ptr = big_plot.line_data_pointer.retrieveFromLineHandle(h_line);
+            %
+            %   Inputs
+            %   ------
+            %   h_line : Matlab line handle
+            %
+            %   Outputs
+            %   -------
+            %   ptr : big_plot.line_data_pointer or []
             
             %This is the "magic", we've stored the class instance
             %in the line handle using setappdata. Now we retrieve it
@@ -43,10 +65,16 @@ classdef (Hidden) line_data_pointer < handle
             %
             %   obj = big_plot.line_data_pointer(big_plot_ref,group_I,line_I)
             %
+            %   Created By
+            %   ----------
+            %   big_plot.data>initRawDataPointers
+            %
             %   Inputs
             %   ------
             %   group_I
             %   line_I
+            %
+            %
             
             obj.big_plot_ref = big_plot_ref;
             obj.group_I = group_I;
@@ -55,6 +83,10 @@ classdef (Hidden) line_data_pointer < handle
         function setCalibration(obj,calibration)
             data = obj.big_plot_ref.data;
             data.setCalibration(calibration,obj.group_I,obj.line_I)
+        end
+        function disconnectFromFigure(obj)
+            %
+            obj.big_plot_ref.h_and_l.clearLine(obj.line_I,obj.group_I);
         end
         function s = getRawLineData(obj,in)    
             %

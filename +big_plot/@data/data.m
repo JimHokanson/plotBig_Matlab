@@ -1,7 +1,7 @@
 classdef (Hidden) data < handle
     %
     %   Class:
-    %   big_plot.data.getRawLineData
+    %   big_plot.data
     %
     %   This is generally not a public class.
     %
@@ -252,7 +252,11 @@ for k = 1:n_inputs
             
             if isobject(xm)
                 %Assume of type sci.time_series.time for now
+                %JAH TODO: One of these should match
                 if size(ym,1) ~= xm.n_samples
+                    if size(ym,2) ~= xm.n_samples
+                        error('size mismatch between y-data and time specification')
+                    end
                     ym = ym';
                 end
             else

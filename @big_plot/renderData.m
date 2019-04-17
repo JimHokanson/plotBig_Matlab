@@ -106,7 +106,8 @@ function h__handleFirstPlotting(obj)
 %Axes and figure initialization
 plot_args = obj.h_and_l.initializeAxes();
 
-[plot_args,temp_h_indices] = h__setupInitialPlotArgs(obj,plot_args);
+[plot_args2,temp_h_indices] = h__setupInitialPlotArgs(obj,plot_args);
+plot_args = plot_args2; %for debugging, can't access output ....
 
 %Do the plotting
 %--------------------------------------------------------------------------
