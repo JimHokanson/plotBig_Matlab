@@ -29,6 +29,12 @@ function compile(varargin)
 %   -----------
 %   big_plot.compile('flags','simd openmp')
 
+%{
+big_plot.compile('use_simd',false,'use_openmp_with_simd',false,'arch','nehalem')
+
+%}
+
+
 
 if ~exist('mex.compilers.gcc') %#ok<EXIST>
     fprintf(2,'This is a bit experimental, it might be better to use compile2.m\n')
@@ -61,6 +67,13 @@ in.flags = {};
 in.use_simd = true;
 in.use_openmp_with_simd = true;
 in.use_openmp = true;
+%https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html
+%nehalem - SSE4.2 and POPCNT
+%westmere - nehalem + AES, PCLMUL
+%sandybridge - AVX
+%ivybridge - AVX an a few others
+%haswell - AVX2
+in.arch = 'ivybridge';
 in = big_plot.sl.in.processVarargin(in,varargin);
 
 if ~isempty(in.flags)
@@ -95,7 +108,8 @@ clear +big_plot\private\reduce_to_width_mex
 %This code uses https://github.com/JimHokanson/mex_maker
 
 c = mex.compilers.gcc('./private/reduce_to_width_mex.c','verbose',in.verbose);
-c.addCompileFlags('-mavx2');
+arch_flag = sprintf('-march=%s',in.arch);
+c.addCompileFlags(arch_flag);
 
 
 
@@ -115,6 +129,7 @@ if in.use_openmp_with_simd
 elseif in.use_openmp
     c.addCompileFlags('-DENABLE_OPENMP');
 end
+c.addCompileFlags(arch_flag);
 c.addLib('openmp');
 c.build();
 

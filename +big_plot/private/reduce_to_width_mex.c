@@ -7,6 +7,11 @@
 //
 //  Flags:
 //  ENABLE_SIMD
+//  ENABLE_SSE4
+//  ENABLE_AVX
+//  ENABLE_AVX2
+//  ENABLE_UP_TO_AVX
+//  ENABLE_UP_TO_AVX2
 
 //Status
 //-----------
@@ -16,11 +21,30 @@
 //4) Most of SIMD is implemented ...
 
 
+//Flags
+//- ENABLE_SSE4
+//- ENABLE_AVX
+//- ENABLE_AVX2
+
+//Ideally the user targets specific levels
 #ifdef ENABLE_SIMD
-#define SIMD_ENABLED 1
-#else
-#define SIMD_ENABLED 0
+#define ENABLE_SSE4
+#define ENABLE_AVX
+#define ENABLE_AVX2
 #endif
+
+#ifdef ENABLE_UP_TO_AVX2
+#define ENABLE_SSE4
+#define ENABLE_AVX
+#define ENABLE_AVX2
+#endif
+
+#ifdef ENABLE_UP_TO_AVX
+#define ENABLE_SSE4
+#define ENABLE_AVX
+#endif
+
+
 
 #ifdef _MSC_VER
 #define PRAGMA __pragma
@@ -45,12 +69,12 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     
     double temp = mxGetScalar(input);
     return (mwSize) temp;
-    
 }
 
 //=========================================================================
 
 //=========================================================================
+
 
 #define INIT_POINTERS(TYPE) \
   	TYPE *p_input_data_fixed = (TYPE *)mxGetData(prhs[0]); \
@@ -175,12 +199,13 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     *local_output_data = min;   \
 	*(++local_output_data) = max;
     
+    
 #define PROCESS_EXTRA_NON_CHUNK_SAMPLES(type) \
     /*---------------------------------------------------------------------*/ \
     /*           Processing last part that didn't fit into a chunk         */ \
     /*---------------------------------------------------------------------*/ \
     if (n_samples_not_in_chunk){                            \
-        PRAGMA("omp parallel for simd")                    \
+        PRAGMA("omp parallel for simd")                     \
         for (mwSize iChan = 0; iChan < n_chans; iChan++){   \
                                                             \
             type *current_input_data_point = p_input_data + n_samples_data*iChan + n_chunks*samples_per_chunk; \
@@ -283,7 +308,15 @@ void getMinMaxInt8_Standard(STD_INPUT_DEFINE(int8_t)){
 
 //==================================================================
 //                          MIN MAX SIMD
-//==================================================================    
+//================================================================== 
+
+//This gets the min and max value for a chunk. This occurs within the
+//channels and chunks loop.
+
+//                 TYPE     CAST        N_SIMD  SIMD_TYPE   LOAD                MAX              MIN              STORE
+//GET_MIN_MAX_SIMD(uint32_t,(__m256i *),8,      __m256i,    _mm256_loadu_si256, _mm256_max_epu32,_mm256_min_epu32,_mm256_storeu_si256)    
+
+
 #define GET_MIN_MAX_SIMD(TYPE,CAST,N_SIMD,SIMD_TYPE,LOAD,MAX,MIN,STORE) \
     SIMD_TYPE next;                         \
     SIMD_TYPE max_result;                   \
@@ -331,34 +364,52 @@ void getMinMaxInt8_Standard(STD_INPUT_DEFINE(int8_t)){
     *max_out = max;
 
 //=========================================================================
+
+//-----------------------------------------------------------
+#ifdef ENABLE_AVX    
+    //double, AVX
 void getMinMaxDouble_SIMD_256(STD_INPUT_DEFINE(double)){
     GET_MIN_MAX_SIMD(double,,4,__m256d,_mm256_loadu_pd,_mm256_max_pd,_mm256_min_pd,_mm256_storeu_pd)
 }
+#endif
+
+//-----------------------------------------------------------
+#ifdef ENABLE_AVX 
+    //single, AVX
 void getMinMaxFloat_SIMD_256(STD_INPUT_DEFINE(float)){
     GET_MIN_MAX_SIMD(float,,8,__m256,_mm256_loadu_ps,_mm256_max_ps,_mm256_min_ps,_mm256_storeu_ps)    
 }
-//--------------------
+#endif
+
+//-----------------------------------------------------------
+#ifdef ENABLE_AVX2    
+    //
 void getMinMaxUint32_SIMD_256(STD_INPUT_DEFINE(uint32_t)){
     GET_MIN_MAX_SIMD(uint32_t,(__m256i *),8,__m256i,_mm256_loadu_si256,_mm256_max_epu32,_mm256_min_epu32,_mm256_storeu_si256)    
 }
+#endif
+
+//-----------------------------------------------------------
+#ifdef ENABLE_SSE4
 void getMinMaxUint32_SIMD_128(STD_INPUT_DEFINE(uint32_t)){
     GET_MIN_MAX_SIMD(uint32_t,(__m128i *),4,__m128i,_mm_loadu_si128,_mm_max_epu32,_mm_min_epu32,_mm_storeu_si128)    
 }
-//--------------------
+#endif
+
+#ifdef ENABLE_AVX2  
 void getMinMaxUint16_SIMD_256(STD_INPUT_DEFINE(uint16_t)){
     GET_MIN_MAX_SIMD(uint16_t,(__m256i *),16,__m256i,_mm256_loadu_si256,_mm256_max_epu16,_mm256_min_epu16,_mm256_storeu_si256)    
 }
-void getMinMaxUint16_SIMD_128(STD_INPUT_DEFINE(uint16_t)){
-    GET_MIN_MAX_SIMD(uint16_t,(__m128i *),8,__m128i,_mm_loadu_si128,_mm_max_epu16,_mm_min_epu16,_mm_storeu_si128)    
-}
-//--------------------
+#endif
+
 void getMinMaxUint8_SIMD_256(STD_INPUT_DEFINE(uint8_t)){
     GET_MIN_MAX_SIMD(uint8_t,(__m256i *),32,__m256i,_mm256_loadu_si256,_mm256_max_epu8,_mm256_min_epu8,_mm256_storeu_si256)    
 }
+
 void getMinMaxUint8_SIMD_128(STD_INPUT_DEFINE(uint8_t)){
     GET_MIN_MAX_SIMD(uint8_t,(__m128i *),16,__m128i,_mm_loadu_si128,_mm_max_epu8,_mm_min_epu8,_mm_storeu_si128)    
 }
-//--------------------
+
 void getMinMaxInt32_SIMD_256(STD_INPUT_DEFINE(int32_t)){
     GET_MIN_MAX_SIMD(int32_t,(__m256i *),8,__m256i,_mm256_loadu_si256,_mm256_max_epi32,_mm256_min_epi32,_mm256_storeu_si256)    
 }
@@ -380,19 +431,32 @@ void getMinMaxInt8_SIMD_128(STD_INPUT_DEFINE(int8_t)){
     GET_MIN_MAX_SIMD(int8_t,(__m128i *),16,__m128i,_mm_loadu_si128,_mm_max_epi8,_mm_min_epi8,_mm_storeu_si128)    
 }
 //=========================================================================
+#endif
+
+void getMinMaxUint16_SIMD_128(STD_INPUT_DEFINE(uint16_t)){
+    GET_MIN_MAX_SIMD(uint16_t,(__m128i *),8,__m128i,_mm_loadu_si128,_mm_max_epu16,_mm_min_epu16,_mm_storeu_si128)    
+}
 
 static int hw_struct_initialized = 0;
 static struct cpu_x86 s;
 
 //=========================================================================
+//=========================================================================
 //                          MEX ENTRY POINT
+//=========================================================================
 //=========================================================================
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 {
     //
-    //  Calling Form
-    //  ------------
-    //  min_max_data = reduce_to_width_mex(data,samples_per_chunk,*start_sample,*end_sample);
+    //  Calling Forms
+    //  -------------
+    //  compile_options = reduce_to_width_mex();
+    //
+    //  min_max_data = reduce_to_width_mex(data,samples_per_chunk);
+    //
+    //  min_max_data = reduce_to_width_mex(data,samples_per_chunk,start_sample,end_sample);
+    //
+    //  min_max_data = reduce_to_width_mex(data,samples_per_chunk,start_sample,end_sample,run_option);
     //
     //  Inputs
     //  ------
@@ -422,11 +486,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         hw_struct_initialized = 1;
     }
     
-//     #ifdef _OPENMP
-//         mexPrintf("OpenMP version: %d\n",_OPENMP);
-//     #endif
+    //Debugging
+    //     #ifdef _OPENMP
+    //         mexPrintf("OpenMP version: %d\n",_OPENMP);
+    //     #endif
     
-    bool process_subset;
+    bool process_subset; //This is true when we have start and stop indices
+    //that are specified by the user
+    
     double p_type = 0;
     
     //---------------------------------------------------------------------
@@ -510,7 +577,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     
     if (n_samples_not_in_chunk){
         //Add on one extra pair when the # of samples per chunk doesn't 
-        //evenly dividie the input data
+        //evenly divide the input data
+        //  |----|----|----|--
+        //     2   4    6    x <= add 2 for this partial chunk
         n_outputs_per_chan += 2; 
     }
     
@@ -585,16 +654,37 @@ S_PROCESS_DOUBLE:;
         //- the OS_AVX is to be technically correct but I expect
         //all current OSs to have it enabled
         
-        if (SIMD_ENABLED && s.HW_AVX && s.OS_AVX && samples_per_chunk > 4){
-            INIT_MAIN_LOOP(double)
+        #ifdef ENABLE_AVX
+            //TODO: Add on user flag ...
+            //  - switch AVX or not
+            //  - switch AVX
+            if (s.HW_AVX && s.OS_AVX && samples_per_chunk > 4){
+                INIT_MAIN_LOOP(double)
                 getMinMaxDouble_SIMD_256(STD_INPUT_CALL);
-            END_MAIN_LOOP
-            p_type = 3;
-        }else{
-            INIT_MAIN_LOOP(double)
+                END_MAIN_LOOP
+                p_type = 3;
+                return;
+            }
+        #endif
+        
+        
+        
+        #if SIMD_ENABLED
+            if (s.HW_AVX && s.OS_AVX && samples_per_chunk > 4){
+                INIT_MAIN_LOOP(double)
+                    getMinMaxDouble_SIMD_256(STD_INPUT_CALL);
+                END_MAIN_LOOP
+                p_type = 3;
+            }else{
+                INIT_MAIN_LOOP(double)
+                    getMinMaxDouble_Standard(STD_INPUT_CALL);
+                END_MAIN_LOOP
+            }
+        #else
+         	INIT_MAIN_LOOP(double)
                 getMinMaxDouble_Standard(STD_INPUT_CALL);
             END_MAIN_LOOP
-        }
+        #endif
 
         PROCESS_EXTRA_NON_CHUNK_SAMPLES(double)
 
@@ -608,6 +698,7 @@ S_PROCESS_SINGLE:;
 
         GRAB_OUTSIDE_POINTS;
 
+        #if SIMD_ENABLED
         if (SIMD_ENABLED && s.HW_AVX && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(float)
                 getMinMaxFloat_SIMD_256(STD_INPUT_CALL);
@@ -618,6 +709,11 @@ S_PROCESS_SINGLE:;
                 getMinMaxFloat_Standard(STD_INPUT_CALL);
             END_MAIN_LOOP
         }
+        #else
+        	INIT_MAIN_LOOP(float)
+                getMinMaxFloat_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        #endif
 
         PROCESS_EXTRA_NON_CHUNK_SAMPLES(float)
 
@@ -648,7 +744,8 @@ S_PROCESS_UINT32:;
         INIT_POINTERS(uint32_t);    
 
         GRAB_OUTSIDE_POINTS;
-                    
+          
+        #if SIMD_ENABLED
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(uint32_t)
                 getMinMaxUint32_SIMD_256(STD_INPUT_CALL);
@@ -664,6 +761,11 @@ S_PROCESS_UINT32:;
                 getMinMaxUint32_Standard(STD_INPUT_CALL);
             END_MAIN_LOOP
         }
+    	#else
+            INIT_MAIN_LOOP(uint32_t)
+                getMinMaxUint32_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP 
+        #endif
 
         PROCESS_EXTRA_NON_CHUNK_SAMPLES(uint32_t)
 
@@ -677,6 +779,7 @@ S_PROCESS_UINT16:;
 
         GRAB_OUTSIDE_POINTS;
 
+        #if SIMD_ENABLED
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 16){
             INIT_MAIN_LOOP(uint16_t)
                 getMinMaxUint16_SIMD_256(STD_INPUT_CALL);
@@ -692,6 +795,19 @@ S_PROCESS_UINT16:;
                 getMinMaxUint16_Standard(STD_INPUT_CALL);
             END_MAIN_LOOP 
         }
+        #else
+        //TODO: SIMD flag needs to change to make this all clearer
+        if (s.HW_SSE41 && samples_per_chunk > 8){
+            INIT_MAIN_LOOP(uint16_t)
+                getMinMaxUint16_SIMD_128(STD_INPUT_CALL);
+            END_MAIN_LOOP
+            p_type = 2;
+        }else{
+           	INIT_MAIN_LOOP(uint16_t)
+                getMinMaxUint16_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP 
+        }
+        #endif
 
         PROCESS_EXTRA_NON_CHUNK_SAMPLES(uint16_t)
 
@@ -705,6 +821,7 @@ S_PROCESS_UINT8:;
 
         GRAB_OUTSIDE_POINTS;
 
+        #if SIMD_ENABLED
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 32){
             INIT_MAIN_LOOP(uint8_t)
                 getMinMaxUint8_SIMD_256(STD_INPUT_CALL);
@@ -720,6 +837,11 @@ S_PROCESS_UINT8:;
                 getMinMaxUint8_Standard(STD_INPUT_CALL);
             END_MAIN_LOOP
         }
+    	#else
+          	INIT_MAIN_LOOP(uint8_t)
+                getMinMaxUint8_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        #endif
 
         PROCESS_EXTRA_NON_CHUNK_SAMPLES(uint8_t)
 
@@ -749,6 +871,7 @@ S_PROCESS_INT32:;
 
         GRAB_OUTSIDE_POINTS;
 
+        #if SIMD_ENABLED
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(int32_t)
                 getMinMaxInt32_SIMD_256(STD_INPUT_CALL);
@@ -764,6 +887,11 @@ S_PROCESS_INT32:;
                 getMinMaxInt32_Standard(STD_INPUT_CALL);
             END_MAIN_LOOP 
         }
+        #else
+            INIT_MAIN_LOOP(int32_t)
+                getMinMaxInt32_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP  
+        #endif
 
         PROCESS_EXTRA_NON_CHUNK_SAMPLES(int32_t)
 
@@ -777,6 +905,7 @@ S_PROCESS_INT16:;
 
         GRAB_OUTSIDE_POINTS;
 
+        #if SIMD_ENABLED
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 16){
             INIT_MAIN_LOOP(int16_t)
                 getMinMaxInt16_SIMD_256(STD_INPUT_CALL);
@@ -792,6 +921,11 @@ S_PROCESS_INT16:;
                 getMinMaxInt16_Standard(STD_INPUT_CALL);
             END_MAIN_LOOP
         }
+        #else
+            INIT_MAIN_LOOP(int16_t)
+                getMinMaxInt16_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP   
+        #endif
 
         PROCESS_EXTRA_NON_CHUNK_SAMPLES(int16_t)
 
@@ -805,6 +939,7 @@ S_PROCESS_INT8:;
 
         GRAB_OUTSIDE_POINTS;
 
+        #if SIMD_ENABLED
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX  && samples_per_chunk > 32){
             INIT_MAIN_LOOP(int8_t)
                 getMinMaxInt8_SIMD_256(STD_INPUT_CALL);
@@ -820,6 +955,11 @@ S_PROCESS_INT8:;
                 getMinMaxInt8_Standard(STD_INPUT_CALL);
             END_MAIN_LOOP
         }
+        #else
+            INIT_MAIN_LOOP(int8_t)
+                getMinMaxInt8_Standard(STD_INPUT_CALL);
+            END_MAIN_LOOP
+        #endif
 
         PROCESS_EXTRA_NON_CHUNK_SAMPLES(int8_t)
 

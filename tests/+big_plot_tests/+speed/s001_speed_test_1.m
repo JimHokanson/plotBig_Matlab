@@ -25,7 +25,7 @@ s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8
 
 %int16
 s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8],'data_type','int16');
-
+s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8],'data_type','uint16');
 
 %single
 s1 = big_plot_tests.speed.s001_speed_test_1('n_samples',[1e5 1e6 1e7 5e7 1e8 2e8],'data_type','single');
