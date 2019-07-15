@@ -402,36 +402,54 @@ void getMinMaxUint16_SIMD_256(STD_INPUT_DEFINE(uint16_t)){
 }
 #endif
 
+#ifdef ENABLE_AVX2  
 void getMinMaxUint8_SIMD_256(STD_INPUT_DEFINE(uint8_t)){
     GET_MIN_MAX_SIMD(uint8_t,(__m256i *),32,__m256i,_mm256_loadu_si256,_mm256_max_epu8,_mm256_min_epu8,_mm256_storeu_si256)    
 }
+#endif
 
+//SSE2
 void getMinMaxUint8_SIMD_128(STD_INPUT_DEFINE(uint8_t)){
     GET_MIN_MAX_SIMD(uint8_t,(__m128i *),16,__m128i,_mm_loadu_si128,_mm_max_epu8,_mm_min_epu8,_mm_storeu_si128)    
 }
 
+#ifdef ENABLE_AVX2 
 void getMinMaxInt32_SIMD_256(STD_INPUT_DEFINE(int32_t)){
     GET_MIN_MAX_SIMD(int32_t,(__m256i *),8,__m256i,_mm256_loadu_si256,_mm256_max_epi32,_mm256_min_epi32,_mm256_storeu_si256)    
 }
+#endif
+
+//SSE4.1
+#ifdef ENABLE_SSE4
 void getMinMaxInt32_SIMD_128(STD_INPUT_DEFINE(int32_t)){
     GET_MIN_MAX_SIMD(int32_t,(__m128i *),4,__m128i,_mm_loadu_si128,_mm_max_epi32,_mm_min_epi32,_mm_storeu_si128)    
 }
-//--------------------
+#endif
+
+#ifdef ENABLE_AVX2 
 void getMinMaxInt16_SIMD_256(STD_INPUT_DEFINE(int16_t)){
     GET_MIN_MAX_SIMD(int16_t,(__m256i *),16,__m256i,_mm256_loadu_si256,_mm256_max_epi16,_mm256_min_epi16,_mm256_storeu_si256)    
 }
+#endif
+
+//SSE2
 void getMinMaxInt16_SIMD_128(STD_INPUT_DEFINE(int16_t)){
     GET_MIN_MAX_SIMD(int16_t,(__m128i *),8,__m128i,_mm_loadu_si128,_mm_max_epi16,_mm_min_epi16,_mm_storeu_si128)    
 }
-//--------------------
+
+#ifdef ENABLE_AVX2 
 void getMinMaxInt8_SIMD_256(STD_INPUT_DEFINE(int8_t)){
     GET_MIN_MAX_SIMD(int8_t,(__m256i *),32,__m256i,_mm256_loadu_si256,_mm256_max_epi8,_mm256_min_epi8,_mm256_storeu_si256)    
 }
+#endif
+
+#ifdef ENABLE_SSE4
 void getMinMaxInt8_SIMD_128(STD_INPUT_DEFINE(int8_t)){
     GET_MIN_MAX_SIMD(int8_t,(__m128i *),16,__m128i,_mm_loadu_si128,_mm_max_epi8,_mm_min_epi8,_mm_storeu_si128)    
 }
-//=========================================================================
 #endif
+//=========================================================================
+
 
 void getMinMaxUint16_SIMD_128(STD_INPUT_DEFINE(uint16_t)){
     GET_MIN_MAX_SIMD(uint16_t,(__m128i *),8,__m128i,_mm_loadu_si128,_mm_max_epu16,_mm_min_epu16,_mm_storeu_si128)    
