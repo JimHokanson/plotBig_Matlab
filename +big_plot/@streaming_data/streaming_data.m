@@ -205,10 +205,19 @@ classdef streaming_data < handle
             
             if ~isempty(in.initial_data)
                 in.data_type = class(in.initial_data);
+                if length(in.initial_data) == n_samples_init
+                    obj.y = in.initial_data;
+                elseif length(in.initial_data) > n_samples_init
+                    error('Initial data is larger than the # of samples to initialize')
+                else
+                    obj.y = zeros(n_samples_init,1,in.data_type);
+                    obj.y(1:length(in.initial_data)) = in.initial_data;
+                end
+                obj.n_samples = length(in.initial_data);
+            else
+                obj.y = zeros(n_samples_init,1,in.data_type);
             end
-            
-            obj.y = zeros(n_samples_init,1,in.data_type);
-            
+                        
             %TODO: Base this on above and downsampling ...
             n_samples_small = ceil(n_samples_init/in.downsample_amount*2);
             obj.y_small = zeros(n_samples_small,1,in.data_type);
@@ -216,7 +225,7 @@ classdef streaming_data < handle
             if ~isempty(in.initial_data)
                 n_samples = length(in.initial_data);
                 if n_samples > n_samples_init
-                    error('Initial data is larger than the # of samples to initialize')
+                    
                 end
                 obj.y(1:n_samples) = in.initial_data;
                 obj.n_samples = n_samples;
