@@ -119,6 +119,10 @@ struct cpu_x86{
     bool HW_AVX512_DQ;
     bool HW_AVX512_IFMA;
     bool HW_AVX512_VBMI;
+    
+    
+    bool BOTH_AVX;
+    bool BOTH_AVX2;
 
 
 };
@@ -228,6 +232,9 @@ void cpu_x86__detect_host(struct cpu_x86 *s){
         s->HW_FMA4  = (info[2] & ((int)1 << 16)) != 0;
         s->HW_XOP   = (info[2] & ((int)1 << 11)) != 0;
     }
+    
+    s->BOTH_AVX = s->HW_AVX & s->OS_AVX;
+    s->BOTH_AVX2 = s->HW_AVX2 & s->OS_AVX;
 }
 
 //     cpu_x86();

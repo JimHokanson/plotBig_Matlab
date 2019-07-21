@@ -68,11 +68,11 @@ in.use_simd = true;
 in.use_openmp_with_simd = true;
 in.use_openmp = true;
 %https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html
-%nehalem - SSE4.2 and POPCNT
-%westmere - nehalem + AES, PCLMUL
+%nehalem     - SSE4.2 and POPCNT
+%westmere    - nehalem + AES, PCLMUL
 %sandybridge - AVX
-%ivybridge - AVX an a few others
-%haswell - AVX2
+%ivybridge   - AVX and a few others
+%haswell     - AVX2
 in.arch = 'ivybridge';
 in = big_plot.sl.in.processVarargin(in,varargin);
 
@@ -125,7 +125,7 @@ if in.use_simd
     c.addCompileFlags('-DENABLE_SIMD');
 end
 if in.use_openmp_with_simd 
-    c.addCompileFlags('-DENABLE_OPNEMP_SIMD');
+    c.addCompileFlags('-DENABLE_OPENMP_SIMD');
 elseif in.use_openmp
     c.addCompileFlags('-DENABLE_OPENMP');
 end

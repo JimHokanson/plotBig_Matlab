@@ -25,7 +25,7 @@ USE_SIMD = 1;   %make parallel within thread
 
 SIMD = '-DENABLE_SIMD';
 OPENMP = '-DENABLE_OPENMP';
-OPENMP_SIMD = '-DENABLE_OPNEMP_SIMD';
+OPENMP_SIMD = '-DENABLE_OPENMP_SIMD';
 
 F1 = 'reduce_to_width_mex.c';
 
