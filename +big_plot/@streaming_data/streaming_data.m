@@ -15,7 +15,7 @@ classdef streaming_data < handle
     %   -------
     %   This class facilitates fast plotting of line data where the number
     %   of samples increases over time. This case was specifically written
-    %   to handle plotting of DAQ data as it is acquired over time. 
+    %   to handle plotting of DAQ data as it is acquired over time.
     %
     %   Features
     %   --------
@@ -24,7 +24,7 @@ classdef streaming_data < handle
     %   2) Data are downsampled on acquisition for faster plotting of large
     %   regions of data, particularly when scrolling.
     %   3) Optional calibration for scaling of acquired data when plotting.
-    %     
+    %
     %   Constructor Info
     %   ---------------------------
     %
@@ -37,13 +37,13 @@ classdef streaming_data < handle
     %     ------
     %     dt : scalar
     %         Time between samples, inverse of the sampling rate.
-    %     n_samples_init : 
-    %         Number of samples to initialize. This should generally be a 
+    %     n_samples_init :
+    %         Number of samples to initialize. This should generally be a
     %         reasonable estimate of the number of samples that will be
     %         collected. Every time the length of data acquired is exceeded
     %         the array is resized.
-    %         
-    %   
+    %
+    %
     %     Optional Inputs
     %     ---------------
     %     m : scalar
@@ -70,7 +70,7 @@ classdef streaming_data < handle
     %         based on the small dataset at sufficient zoom out levels and
     %         only on the original datset at high zoom levels.
     %           The default value means that every 200 samples we
-    %         generate a single min-max pair for the small dataset. This 
+    %         generate a single min-max pair for the small dataset. This
     %         thus has an overhead of 1% of the original data.
     %
     
@@ -137,14 +137,26 @@ classdef streaming_data < handle
         I_small_complete = 0
         
         %This is the # of small values that have been populated. It is
-        %either I_small_complete or 2 greater (when an incomplete chunk 
+        %either I_small_complete or 2 greater (when an incomplete chunk
         %has been processed)
         I_small_all
         
         %Populated by big_plot when plotting.
         %These callbacks get called by this class when:
-        data_added_callback %data has been added to this class
+        data_added_callback  %data has been added to this class
         calibration_callback %the data has been calibrated
+        
+        
+        calibrated_since_render %flag indicating whether data has been 
+        %calibrated since the last render call. This helps us to know
+        %that we need to rerender even if the x-limits haven't changed.
+        new_data_since_render %another flag that is useful for considering
+        %whether or not to rerender. Technically this could be improved
+        %to provide a range of added data so that we don't rerender with
+        %only old data
+        
+        rendered_x_I = [NaN NaN]
+        last_render_small = false
     end
     
     properties (Dependent)
@@ -170,6 +182,9 @@ classdef streaming_data < handle
         t_add = 0 %For some reason this can be really really high ...
         
         t_reduce = 0
+        
+        n_small_reduce = 0
+        n_regular_reduce = 0
     end
     
     methods
@@ -178,7 +193,12 @@ classdef streaming_data < handle
             %   obj = big_plot.streaming_data(dt,n_samples_init,varargin)
             %
             %   See class documentation at top
-
+            %
+            %   Improvements
+            %   ------------
+            %   1) Allow disabling the downsampled array for performance
+            %   comparisons
+            
             %Optional Input Defaults
             %------------------------
             in.m = [];
@@ -207,6 +227,9 @@ classdef streaming_data < handle
                 in.data_type = class(in.initial_data);
                 if length(in.initial_data) == n_samples_init
                     obj.y = in.initial_data;
+                    if size(obj.y,1) == 1
+                        obj.y = obj.y';
+                    end
                 elseif length(in.initial_data) > n_samples_init
                     error('Initial data is larger than the # of samples to initialize')
                 else
@@ -217,18 +240,12 @@ classdef streaming_data < handle
             else
                 obj.y = zeros(n_samples_init,1,in.data_type);
             end
-                        
+            
             %TODO: Base this on above and downsampling ...
             n_samples_small = ceil(n_samples_init/in.downsample_amount*2);
             obj.y_small = zeros(n_samples_small,1,in.data_type);
             
             if ~isempty(in.initial_data)
-                n_samples = length(in.initial_data);
-                if n_samples > n_samples_init
-                    
-                end
-                obj.y(1:n_samples) = in.initial_data;
-                obj.n_samples = n_samples;
                 h__processSmall(obj)
             end
         end
@@ -252,7 +269,7 @@ classdef streaming_data < handle
             %       - m
             %       - b
             %   m :
-            %   b : 
+            %   b :
             
             if isstruct(m_or_c)
                 calibration = m_or_c;
@@ -262,7 +279,9 @@ classdef streaming_data < handle
                 obj.m = m_or_c;
                 obj.b = b;
             end
-
+            
+            obj.calibrated_since_render = true;
+            
             %Notify the renderer that the data has been calibrated.
             obj.calibration_callback();
         end
@@ -278,7 +297,7 @@ classdef streaming_data < handle
             %   -------
             %   s : big_plot.raw_line_data
             %       Returns a class which has access to the underlying
-            %       data. This class returns only the populated data, NOT 
+            %       data. This class returns only the populated data, NOT
             %       the allocated data, so some memory allocation is done
             %       by this call.
             %
@@ -299,6 +318,8 @@ classdef streaming_data < handle
             %
             %   addData(obj,new_data)
             %
+            
+            obj.new_data_since_render = true;
             
             I = obj.n_add_events + 1;
             obj.n_add_events = I;
@@ -350,6 +371,34 @@ classdef streaming_data < handle
     %              Methods called by other parts of the package
     %----------------------------------------------------------------------
     methods
+        function r = checkRedrawCase(obj,new_x_limits)
+            
+            if obj.new_data_since_render || obj.calibrated_since_render
+                r = big_plot.render_info.RECOMPUTE_DATA_FOR_PLOTTING;
+            else
+                
+                I = obj.getClosestIndicesFromTimePair(new_x_limits,obj.last_render_small);
+                
+                if isequal(obj.rendered_x_I,I)
+                    r = big_plot.render_info.NO_CHANGE;
+                else
+                    r = big_plot.render_info.RECOMPUTE_DATA_FOR_PLOTTING;
+                end
+            end
+            
+            
+            %calibrated_since_render
+            %new_data_since_render
+            
+            %- we won't reset to original, this is difficult to do
+            %- we could decide to do nothing new (use above properties)
+            % big_plot.render_info
+            %
+            %           NO_CHANGE = 0
+            %RESET_TO_ORIGINAL = 1
+            %RECOMPUTE_DATA_FOR_PLOTTING = 2
+            
+        end
         function r = getDataReduction(obj,x_limits,axis_width_in_pixels)
             %
             %   r = getDataReduction(obj,x_limits,axis_width_in_pixels)
@@ -358,45 +407,28 @@ classdef streaming_data < handle
             %   actually plot.
             
             h_tic = tic;
+            
+            obj.new_data_since_render = false;
+            obj.calibrated_since_render = false;
+            
+            
             t_end = obj.getTimesFromIndices(obj.n_samples);
             
-            %Get x indices
-            %-----------------------------------------
-            if any(isinf(x_limits))
-                x1 = 1;
-                x2 = obj.n_samples;
-                x1_small = 1;
-                x2_small = obj.I_small_all;
-            else
-                %Get samples from times ------------
-                t1 = x_limits(1);
-                t2 = x_limits(2);
-                x1 = obj.getIndicesFromTimes(t1);
-                x2 = obj.getIndicesFromTimes(t2);
-                
-                %Limit samples based on the data --------------
-                if x1 < 1
-                    x1 = 1;
-                end
-                if x2 > obj.n_samples
-                    x2 = obj.n_samples;
-                end
-                
-                %Get the corresonding small samples ---------------
-                x1_small = obj.getIndicesFromTimes(t1,true);
-                x2_small = obj.getIndicesFromTimes(t2,true);
-                
-                if x1_small < 1
-                    x1_small = 1;
-                end
-                if x2_small > obj.I_small_all
-                    x2_small = obj.I_small_all;
-                end
-            end
+            xI = obj.getClosestIndicesFromTimePair(x_limits);
+            xI_small = obj.getClosestIndicesFromTimePair(x_limits,true);
+            
+            x1 = xI(1);
+            x2 = xI(2);
+            x1_small = xI_small(1);
+            x2_small = xI_small(2);
+            
             
             %Get info for data retrieval
             %----------------------------------------------------
             if x2_small - x1_small > 2*axis_width_in_pixels
+                obj.last_render_small = true;
+                %If we have a sufficient amount of small data then
+                %we reduce the small data, not the original data
                 start_I = x1_small;
                 end_I = x2_small;
                 data = obj.y_small;
@@ -404,13 +436,20 @@ classdef streaming_data < handle
                 %past our data ...
                 t1 = obj.getTimesFromIndices(x1_small,true);
                 t2 = obj.getTimesFromIndices(x2_small,true);
+                obj.rendered_x_I = xI_small;
+                obj.n_small_reduce = obj.n_small_reduce + 1;
             else
+                obj.last_render_small = false;
                 start_I = x1;
                 end_I = x2;
                 data = obj.y;
                 t1 = obj.getTimesFromIndices(x1);
                 t2 = obj.getTimesFromIndices(x2);
+                obj.rendered_x_I = xI;
+                obj.n_regular_reduce = obj.n_regular_reduce + 1;
             end
+            
+            
             
             %The actual data reduction
             %-------------------------------------------------------
@@ -449,7 +488,7 @@ classdef streaming_data < handle
             %   ---------------
             %   xlim : [min_time max_time]
             %   get_calibrated : logical (default true)
-            %       If true, returns calibrated data when available. The 
+            %       If true, returns calibrated data when available. The
             %       raw data are returned when false or when no calibration
             %       has been set.
             %
@@ -481,18 +520,49 @@ classdef streaming_data < handle
             end
             
             if obj.calibrated_available && in.get_calibrated
-            	used_calibrated = true;
-             	data = h__calibrateData(data,obj);
+                used_calibrated = true;
+                data = h__calibrateData(data,obj);
             else
                 used_calibrated = false;
             end
             
             if nargout == 2
-               info = struct;
-               info.x1 = I(1);
-               info.x2 = I(2);
-               info.is_calibrated = used_calibrated;
-               info.calibrated_available = obj.calibrated_available;
+                info = struct;
+                info.x1 = I(1);
+                info.x2 = I(2);
+                info.is_calibrated = used_calibrated;
+                info.calibrated_available = obj.calibrated_available;
+            end
+        end
+        function I = getClosestIndicesFromTimePair(obj,times,use_small)
+            %
+            %   I = getClosestIndicesFromTimePair(obj,times,*use_small)
+            %
+            
+            if nargin == 2
+                use_small = false;
+            end
+            
+            if length(times) ~= 2
+                error('Code error, times input must have length of 2')
+            end
+
+            if use_small
+                I = obj.getIndicesFromTimes(times,true);
+                if I(1) < 1
+                    I(1) = 1;
+                end
+                if I(2) > obj.I_small_all
+                    I(2) = obj.I_small_all;
+                end
+            else
+                I = obj.getIndicesFromTimes(times,false);
+                if I(1) < 1
+                    I(1) = 1;
+                end
+                if I(2) > obj.n_samples
+                    I(2) = obj.n_samples;
+                end
             end
         end
         function min_time_duration = getMinDurationSmall(obj,axis_width_in_pixels)
@@ -509,31 +579,49 @@ classdef streaming_data < handle
             min_time_duration = n_samples_small_min*obj.dt_small;
         end
         function indices = getIndicesFromTimes(obj,times,use_small)
+            %
+            %   indices = getIndicesFromTimes(obj,times,use_small)
+            %
+            
             if nargin == 2
                 use_small = false;
             end
             if use_small
-                indices = times/obj.dt_small + 1;
+                indices = times./obj.dt_small + 1;
             else
-                indices = times/obj.dt + 1;
+                indices = times./obj.dt + 1;
             end
             indices = round(indices);
         end
         function times = getTimesFromIndices(obj,indices,use_small)
+            %
+            %   times = getTimesFromIndices(obj,indices,use_small)
+            %
+            %   Inputs
+            %   ------
+            %   indices : generally of length 2
+            %       For the specified indices returns their values as
+            %       times. No effort is made to keep the indices in a valid
+            %       range.
+            %
+            %   See Also
+            %   --------
+            %   getClosestIndicesFromTimePair
+            %   getIndicesFromTimes
+            
             if nargin == 2
                 use_small = false;
             end
             if use_small
-                times = (indices-1)*obj.dt_small;
+                times = (indices-1).*obj.dt_small;
             else
-                times = (indices-1)*obj.dt;
+                times = (indices-1).*obj.dt;
             end
-            
         end
         function time_array = getTimeArray(obj,varargin)
             %
             %   time_array = getTimeArray(obj,varargin)
-            %   
+            %
             %   Optional Inputs
             %   ---------------
             %   start_index : (default 1)
@@ -552,13 +640,13 @@ classdef streaming_data < handle
 end
 
 function calibrated_data = h__calibrateData(data,obj)
-    calibrated_data = double(data).*obj.m + obj.b;
+calibrated_data = double(data).*obj.m + obj.b;
 end
 
 function h__processSmall(obj)
 %
 %
-%   
+%
 
 
 n_samples_small_total = ceil(obj.n_samples/obj.downsample_amount)*2;

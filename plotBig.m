@@ -38,7 +38,6 @@ function varargout = plotBig(varargin)
 %       Currently differing times for each y input are not supported.
 %   dt : scalar
 %       The time difference between two samples, i.e. 1/(sampling_rate)
-
 %   fs : scalar
 %       Sampling rate
 %   t0 : numeric

@@ -273,6 +273,7 @@ function redraw_option = h__replotData(obj)
 
 ax = obj.h_and_l.h_axes;
 ri = obj.render_info;
+%ri : big_plot.render_info
 
 %As lines are deleted groups of lines may be come invalid
 %---------------------------------------------------------
@@ -289,8 +290,17 @@ new_x_limits = get(ax,'XLim');
 
 %Determine redraw option
 %------------------------------------
-if obj.data.y_object_present || obj.force_rerender
+if obj.force_rerender
+    %Note, if we have an object, the object needs to determine
+    %whether it wants to rerender ...
     redraw_option = ri.RECOMPUTE_DATA_FOR_PLOTTING;
+elseif obj.data.y_object_present
+    %Note, if we want to support multiple objects
+    %this will need to be pushed down ...
+    %
+    %Eventually we could automatically iterate over all groups
+    %and ask this question for each group ...
+    redraw_option = obj.data.y{1}.checkRedrawCase(new_x_limits);      
 else
     redraw_option = ri.determineRedrawCase(new_x_limits);
 end

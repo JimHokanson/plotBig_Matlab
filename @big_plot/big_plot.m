@@ -108,6 +108,7 @@ classdef big_plot < handle
     
     %------------------------     Debugging    ----------------------------
     properties
+        d2 = '------ Debugging ------'
         render_in_progress = false
         
         %This gets set by the callback_manager
@@ -116,7 +117,9 @@ classdef big_plot < handle
     
     %---------------------    Internal    -----------------------------
     properties
+        d3 = '------ Internal -------'
         force_rerender = false;
+        status = 'active'
     end
     
     %--------------------------------------------------------
@@ -364,6 +367,7 @@ classdef big_plot < handle
             obj.h_and_l = [];
             obj.render_info = [];
             obj.callback_manager = [];
+            obj.status = 'object cleared';
             %disp('killing all')
         end
         function delete(obj)

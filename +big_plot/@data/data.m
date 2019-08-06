@@ -39,7 +39,8 @@ classdef (Hidden) data < handle
         %   such as big_plot.streaming_data
         
         
-        y_object_present = false;
+        y_object_present = false
+        %Indicates xy_object is present
     end
     
     properties (Dependent)
@@ -288,6 +289,11 @@ for k = 1:n_inputs
             temp_x{end+1} = xy; %#ok<AGROW>
             temp_y{end+1} = xy; %#ok<AGROW>
             n_groups = n_groups + 1;
+            if n_groups ~= 1
+                %- renderData will short circuit rendering
+                %
+                error('Code limitation: currently code relies on only having 1 xy object per plot')
+            end
             previous_type = 'y';
         else %Assume x object for now
             previous_type = 'x';

@@ -39,7 +39,7 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y, axis_width_in_pixels, x
 %   -------
 %   x_reduced :
 %   y_reduced :
-%       s :
+%           s :
 %           - range_I: 
 %           - same_range: logical
 %               This can only be determined when 'last_range_I' is passed
@@ -63,15 +63,17 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y, axis_width_in_pixels, x
 %                 %but looks the same.
 %   hold off
 %
+%
+%   Called by:
+%   big_plot>renderData
 
+%TODO: This should be a class ...
 s = struct(...
     'range_I',[NaN NaN],...
     'same_range',false,...
     'mex_time',0,...
     'plot_all',false,...
     'show_everything',false);
-% s.range_I = [];
-% s.same_range = [];
 
 N_CHANS_MAX = 100; %This was put in place to catch some fall through cases
 %where I was plotting [1 x n] instead of [n x 1] for y. It is also helpful
@@ -144,7 +146,9 @@ if isobject(y)
    x_reduced = r.x_reduced;
    y_reduced = r.y_reduced;
    s.range_I = r.range_I;
-   s.same_range = false;
+   %This is difficult because we might be recalibrating
+   %which causes problems
+   s.same_range = false; %isequal(s.range_I,last_range_I);
    s.mex_time = r.mex_time;
    return
 end
