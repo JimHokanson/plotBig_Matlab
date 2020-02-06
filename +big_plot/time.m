@@ -1,7 +1,7 @@
 classdef time < handle
     %
     %   Class:
-    %   line_plot_reducer.time
+    %   big_plot.time
     %
     %   obj = sci.time_series.time(dt,n_samples)
     %
@@ -10,12 +10,8 @@ classdef time < handle
     %   I'm holding onto "instructions" as to how to construct the full
     %   time series.
     %
-    %   I'm slowly working this into functions where I really only
-    %   need some of the instructions on the time series, not the whole
-    %   thing.
-    %
-    %   See Also:
-    %   sci.time_series.data
+    %   This file was copied from my standard library version:
+    %   sci.time_series.time
     
     properties
         start_datetime %

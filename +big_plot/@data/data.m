@@ -11,6 +11,13 @@ classdef (Hidden) data < handle
     %   big_plot.getRawDataPointer
     %   big_plot.raw_line_data
     
+    
+    %   wtf1 = datetime;
+    %   wtf2 = wtf1 + duration(1,0,0);
+    %   %20 kHz sampling
+    %   d2 = duration(0,0,1/20000);
+    %   wtf3 = wtf1:d2:wtf2;
+    
     properties
         parent %big_plot
         %   The owning big_plot application
@@ -59,6 +66,18 @@ classdef (Hidden) data < handle
             %Call into helper to reduce indentation ...
             obj.parent = parent;
             h__init(obj, hl, varargin{:});
+            %TODO: Should validate that we can't mix regular plotting
+            %with datetime plotting ...
+        end
+        function flag = datetimePresent(obj)
+            flag = false;
+            for i = 1:length(obj.x)
+               cur_x = obj.x{i};
+               if isa(cur_x,'big_plot.datetime')
+                   flag = true;
+                   return
+               end
+            end
         end
         function initRawDataPointers(obj,parent,h_and_l)
             %
@@ -355,9 +374,15 @@ function x_data_out = h__simplifyX(x_data)
 
 x_data_out = x_data;
 
-%This length here is somewhat arbitrary, although it can't be less than 2
-%otherwise we can't calculate dt
-if ~isobject(x_data) && length(x_data) > 2 && big_plot.hasSameDiff(x_data)
+if isa(x_data,'datetime')
+    error('Not yet supported')
+elseif ~isobject(x_data) && length(x_data) > 2 && big_plot.hasSameDiff(x_data)
+    %This length check here is somewhat arbitrary, although it can't 
+    %be less than 2 otherwise we can't calculate dt
+    
+    %JAH TODO: Do we support uneven channels? Why doesn't failing
+    %hasSameDiff() throw an error?
+    
     dt = (x_data(end)-x_data(1))/(length(x_data)-1);
     t0 = x_data(1);
     x_data_out = big_plot.time(dt,length(x_data),'start_offset',t0);

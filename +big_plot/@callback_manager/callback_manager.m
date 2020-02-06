@@ -177,6 +177,8 @@ classdef (Hidden) callback_manager < handle
                     if strcmp(ME.identifier,'MATLAB:class:InvalidHandle')
                         obj.killCallbacks();
                     else
+                        assignin('base','big_plot_ME',ME)
+                        fprintf(2,'See "big_plot_ME" in base worksspace for error details\n')
                         disp(ME);
                     end
                 end

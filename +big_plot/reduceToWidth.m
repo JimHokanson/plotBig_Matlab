@@ -1,4 +1,5 @@
-function [x_reduced, y_reduced, s] = reduceToWidth(x, y, axis_width_in_pixels, x_limits, last_range_I)
+function [x_reduced, y_reduced, s] = reduceToWidth(x, y,... 
+                            axis_width_in_pixels, x_limits, last_range_I)
 %x  Reduces the # of points in a data set
 %
 %   [x_reduced, y_reduced, s] = ...
@@ -9,6 +10,10 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y, axis_width_in_pixels, x
 %   specified limits.
 %
 %   This helps us to increase the rate at which we can plot data.
+%
+%   Known Callers
+%   -------------
+%   big_plot.renderData
 %
 %   Inputs:
 %   -------
@@ -111,6 +116,8 @@ if n_chans > N_CHANS_MAX
     error('Cowardly refusing to process more than 100 channels using this code ...')
 end
 
+%Plotting all data, early exit ...
+%--------------------------------------------------------------
 if n_y_samples < N_SAMPLES_JUST_PLOT
     s.plot_all = true;
     if isobject(y)
@@ -141,7 +148,10 @@ if n_y_samples < N_SAMPLES_JUST_PLOT
     return
 end
 
+%Not plotting all data - get reduced values
+%--------------------------------------------------------------------------
 if isobject(y)
+   %NOTE: This doesn't support datetime x_limits ...
    r = y.getDataReduction(x_limits,axis_width_in_pixels);
    x_reduced = r.x_reduced;
    y_reduced = r.y_reduced;
@@ -207,7 +217,11 @@ if show_everything
 else
     if isobject(x)
         dt = x.dt;
-        I1 = floor((x_limits(1)- x_1)./dt) + 1;
+        diff1 = x_limits(1)- x_1;
+        if isobject(diff1)
+            diff1 = seconds(diff1);
+        end
+        I1 = floor(diff1./dt) + 1;
         
         %Note, we need these checks here, otherwise our times will be off
         if I1 < 1
@@ -217,7 +231,11 @@ else
         if isinf(x_limits(2))
             I2 = size(y,1);
         else
-            I2 = ceil((x_limits(2)-x_1)./dt) + 1;
+            diff2 = x_limits(2)- x_1;
+            if isobject(diff2)
+                diff2 = seconds(diff2);
+            end
+            I2 = ceil(diff2./dt) + 1;
             if I2 > x.n_samples
                 I2 = x.n_samples;
             end
@@ -266,7 +284,12 @@ else
     s.mex_time = toc(t);
     n_y_reduced = size(y_reduced,1);
     %chunk_time_width = (samples_per_chunk-1)*dt;
-    x_reduced = zeros(n_y_reduced,1);
+    
+    if isa(x_1,'datetime')
+        x_reduced = NaT(n_y_reduced,1);
+    else
+        x_reduced = zeros(n_y_reduced,1);
+    end
     
     %The first and last sample stay still
     x_reduced(1) = x_1;

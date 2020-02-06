@@ -191,8 +191,18 @@ n_plot_groups = obj.data.n_plot_groups;
 
 temp_h_indices = cell(1,n_plot_groups);
 
-group_x_min = zeros(1,n_plot_groups);
-group_x_max = zeros(1,n_plot_groups);
+
+%TODO: Are we plotting datetime values?
+
+use_datetime = obj.data.datetimePresent();
+
+if use_datetime
+    group_x_min = NaT(1,n_plot_groups);
+    group_x_max = NaT(1,n_plot_groups);
+else
+    group_x_min = NaN(1,n_plot_groups);
+    group_x_max = NaN(1,n_plot_groups);
+end
 
 for iG = 1:n_plot_groups
     start_h = end_h + 1;
@@ -211,21 +221,26 @@ for iG = 1:n_plot_groups
                 obj.data.x{iG}, obj.data.y{iG}, n_min_max_pairs, [-Inf Inf]);
     perf_mon.logReducePerformance(s,toc(t));
             
-            
     %We get an empty value when the line is not in the range of the plot
     %Note, this may no longer be true as we always keep the first and last
     %points ...
     
-    if isempty(x_r)
-        group_x_min(iG) = NaN;
-        group_x_max(iG) = NaN;
-    elseif length(x_r) == 1
-        group_x_min(iG) = x_r(1);
-        group_x_max(iG) = x_r(1);
-    else
+    if ~isempty(x_r)
         group_x_min(iG) = x_r(1);
         group_x_max(iG) = x_r(end);
     end
+    
+% % %     %Old, delete after testing
+% % %  	if isempty(x_r)
+% % %         group_x_min(iG) = NaN;
+% % %         group_x_max(iG) = NaN;
+% % %     elseif length(x_r) == 1
+% % %         group_x_min(iG) = x_r(1);
+% % %         group_x_max(iG) = x_r(1);
+% % %     else
+% % %         group_x_min(iG) = x_r(1);
+% % %         group_x_max(iG) = x_r(end);
+% % %     end
     
     %We might change this to two different calls
     %since we don't know the limits yet ...
