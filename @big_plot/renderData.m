@@ -393,10 +393,20 @@ for iG = find(is_valid_group_mask)
     if size(x_r,2) == 1
         for iChan = 1:length(local_h)
             set(local_h(iChan), 'XData', x_r, 'YData', y_r(:,iChan));
+            try
+                brush_data = get(local_h(iChan), 'BrushData');
+                set(local_h(iChan), 'BrushData', brush_data);
+            catch
+            end
         end
     else
         for iChan = 1:length(local_h)
             set(local_h(iChan), 'XData', x_r(:,iChan), 'YData', y_r(:,iChan));
+            try
+                brush_data = get(local_h(iChan), 'BrushData');
+                set(local_h(iChan), 'BrushData', brush_data);
+            catch
+            end
         end
     end
     
