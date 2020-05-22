@@ -243,6 +243,7 @@ else
         x_end = x.getTimesFromIndices(x.n_samples);
         x_I1 = x.getTimesFromIndices(I1);
         x_I2 = x.getTimesFromIndices(I2);
+        n_samples = x.n_samples;
     else
         if isLinearTime(x)
             dt = x(2)-x(1);
@@ -259,19 +260,39 @@ else
         end
         x_I1 = x(I1);
         x_I2 = x(I2);
+        n_samples = length(x);
     end
     
+    %Out of range check ...
+    %---------------------------------------------------
+    if I1 > n_samples || I2 < 1
+       %zooming too far right or left ... 
+       range_I = [0 0]; %This is arbitrary ...
+       s.range_I = range_I;
+       s.same_range = isequal(range_I,last_range_I);
+       if s.same_range
+          return
+       else
+           y_reduced = vertcat(y(1,:), y(end,:));
+           x_reduced = [x_1; x_end];
+           return
+       end
+    end
+    
+    %General same range check ...
+    %----------------------------------
     range_I = [I1 I2];
     s.range_I = range_I;
-    same_range = isequal(range_I,last_range_I);
-    s.same_range = same_range;
-    if same_range
+    s.same_range = isequal(range_I,last_range_I);
+    if s.same_range
         return
     end
-    
+
+    %With a subset we might want to plot everything
+    %----------------------------------------------------------------
     n_samples = I2 - I1 + 1;
     if n_samples < N_SAMPLES_JUST_PLOT
-        %We also need the edges to prevent resizing ...
+        %*** We also need the edges to prevent resizing ...
         y_reduced = vertcat(y(1,:), y(I1:I2,:), y(end,:));
         x_reduced = [x_1; linspace(x_I1,x_I2,n_samples)'; x_end];
         return
