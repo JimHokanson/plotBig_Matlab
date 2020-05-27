@@ -70,6 +70,16 @@ classdef big_plot < handle
         http://www.mathworks.com/matlabcentral/fileexchange/40790-plot--big-/
         http://www.mathworks.com/matlabcentral/fileexchange/42191-jplot
     %}
+    
+    %Design Notes
+    %----------------------------------------------------------------------
+    %   
+    %   Note this class is meant to mainly hold classes that keep track of
+    %   everything (where hold means the other classes are properties of
+    %   this class). In addition, it has public methods that are generally
+    %   useful for interfacing with the underlying data.
+    %
+    %
         
     %------------           User Options         --------------------
     properties
@@ -136,9 +146,25 @@ classdef big_plot < handle
             %Currently this clears the plot callbacks
             %
             %- Eventually this should allow replacing with the actual data
+            %
+            %   Optional Inputs
+            %   ---------------
+            
+            in.restore_data = false;
+            in = big_plot.sl.in.processVarargin(in,varargin);
+            
             h_line = findall(h_fig,'type','line');
             for i = 1:length(h_line)
-                ptr = big_plot.getRawDataPointer(h_line(i));
+                cur_h_line = h_line(i);
+                ptr = big_plot.getRawDataPointer(cur_h_line);
+                %   big_plot.line_data_pointer
+                
+                if in.restore_data
+                    s = ptr.getRawLineData();
+                    cur_h_line.XData = s.x;
+                    cur_h_line.YData = s.y_final;
+                end
+                
                 if ~isempty(ptr)
                     ptr.disconnectFromFigure();
                 end
@@ -164,6 +190,10 @@ classdef big_plot < handle
         function start_time = getAxisAbsoluteStartTime(h_axes)
             %
             %  start_time = big_plot.getAxisAbsoluteStartTime(h_axes)
+            %
+            %   Inputs
+            %   ------
+            %   h_axes : Matlab axes handle
             
              start_time = big_plot.axis_time.getStartTime(h_axes);
         end
@@ -191,13 +221,13 @@ classdef big_plot < handle
             %
             %   s = big_plot.getRawLineData(h_plot,varargin)
             %
-            %   This method allows retrieval of the underlying line data. This is
-            %   needed because big_plot may only render a small percentage of the data,
-            %   so queries of the
+            %   This method allows retrieval of the underlying line data. 
+            %   This is needed because big_plot may only render a small 
+            %   percentage of the data, so queries of the
             %
             %   Inputs
             %   ------
-            %   h_line
+            %   h_line : Matlab line handle
             %
             %   Optional Inputs (see big_plot.raw_line_data_options)
             %   -----------------------------------------------------------
@@ -219,6 +249,11 @@ classdef big_plot < handle
             %   Improvements
             %   ------------
             %   - Allow processing of a vector of handles ...
+            %
+            %   See Also
+            %   --------
+            %   big_plot.raw_line_data_options
+            %   big_plot.line_data_pointer
             
             in = big_plot.raw_line_data_options;
             in = big_plot.sl.in.processVarargin(in,varargin);
@@ -238,8 +273,6 @@ classdef big_plot < handle
             else
                 s = ptr.getRawLineData(in);
             end
-            
-            
         end
         function forceRender(line_handles)
             %
@@ -284,10 +317,41 @@ classdef big_plot < handle
     %Constructor
     %-----------------------------------------
     methods
+        function obj = createOrAdd(varargin)
+            %TODO: What I would like to have is some support for merging
+            %multiple calls to a plot so that only one object is managing
+            %an axes
+            %
+            %   For Example
+            %   -----------
+            %   y = 1:10000
+            %   x = 1:10000
+            %
+            %   hold on
+            %   for i = 1:100
+            %   plotBig(x + i*10,y)
+            %   end
+            %   hold off
+            %
+            %   Currently the performance here will be awful but I think
+            %   if we only had 1 big_plot object for the axes it would be
+            %   respectable since we wouldn't have so many callbacks on the
+            %   axes (only 1)
+            %
+            %   See Also
+            %   --------
+            %   big_plot.axes_state
+            
+        end
         function obj = big_plot(varargin)
             %x
             %
             %   obj = big_plot(varargin)
+            %
+            %   Optional Inputs
+            %   ---------------
+            %   These are all the plotting inputs that get passed to the
+            %   data parser.
             %
             %   See Also:
             %   plotBig()
@@ -296,6 +360,13 @@ classdef big_plot < handle
             obj.id = int2str(uint64(floor(1e8*(temp - floor(temp)))));
             
             obj.perf_mon = big_plot.perf_mon;
+            
+            %TODO: Here I want to capture render options
+            %- use openmp
+            %- use simd
+            %- processor support
+            
+            
             
             %We need to be able to reference back to the timer so
             %we pass in the object
@@ -335,11 +406,17 @@ classdef big_plot < handle
             %with renderData()
         end
         function h = getAllLineHandles(obj)
+            %I don't think this is needed since I think
+            %the h_lines_array property would be sufficient
+            %
+            %unless h_line makes guaranteess about what is valid or not
             all_lines = obj.h_and_l.h_line;
             h = vertcat(all_lines{:});
         end
     end
     
+    %Hidden
+    %------------------------------------------------------------
     methods (Hidden)
         function calibrationUpdated(obj)
             %
