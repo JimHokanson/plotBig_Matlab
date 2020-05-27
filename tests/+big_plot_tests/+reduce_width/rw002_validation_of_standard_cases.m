@@ -24,13 +24,24 @@ for i = 1:length(data_types)
     for j = 1:length(data_lengths)
         cur_length = data_lengths(j);
         for c = 1:cur_length+1
-            for k = 1:2
-                if k == 1
+            for k = 1:7
+                if k == 1 || k == 5
                     y = 1:cur_length;
-                else
+                elseif k == 2 || k == 6
                     y = cur_length:-1:1;
+                elseif k == 3 || k == 7
+                    y = [1:cur_length-1 cur_length:-1:1];
+                elseif k == 4 || k == 8
+                    y = [cur_length:-1:2 1:cur_length];
                 end
+                
+                if k > 4
+                    y(k-3:4:end) = NaN; 
+                end
+                
                 y = fh(y');
+                %fprintf('c = %d, y = :',c);
+                %disp(y);
                 [min_max_data,type] = big_plot.reduceToWidth_mex(y,c);
                 h__manualVerification(y,min_max_data,c)
             end
@@ -69,15 +80,8 @@ I = 0;
 for i = 1:n_chunks
     start_I = end_I + 1;
     end_I = start_I + c - 1;
-    min_val = y1(start_I);
-    max_val = y1(start_I);
-    for j = start_I+1:end_I
-        if y1(j) > max_val
-            max_val = y1(j);
-        elseif y1(j) < min_val
-            min_val = y1(j);
-        end
-    end
+    min_val = min(y1(start_I:end_I));
+    max_val = max(y1(start_I:end_I));
     I = I + 1;
     y3(I) = min_val;
     I = I + 1;
@@ -87,22 +91,15 @@ end
 if extra_samples
     start_I = length(y1) - extra_samples + 1;
     end_I = length(y1);
-    min_val = y1(start_I);
-    max_val = y1(start_I);
-    for j = start_I+1:end_I
-        if y1(j) > max_val
-            max_val = y1(j);
-        elseif y1(j) < min_val
-            min_val = y1(j);
-        end
-    end
+    min_val = min(y1(start_I:end_I));
+    max_val = max(y1(start_I:end_I));
     I = I + 1;
     y3(I) = min_val;
     I = I + 1;
     y3(I) = max_val;
 end
 
-if ~isequal(y2,y3)
+if ~isequaln(y2,y3)
     error('Mismatch in values')
 end
 

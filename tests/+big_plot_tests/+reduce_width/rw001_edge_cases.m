@@ -1,4 +1,4 @@
-function rw001_edge_cases()
+ function rw001_edge_cases()
 %
 %   big_plot_tests.reduce_width.rw001_edge_cases()
 
