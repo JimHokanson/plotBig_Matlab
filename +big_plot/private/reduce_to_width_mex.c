@@ -80,7 +80,59 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     TYPE *p_output_data = p_output_data_fixed;
 
 //=========================================================================    
-//=========================================================================    
+//=========================================================================
+
+
+#define GRAB_OUTSIDE_POINTS2(V1,V2) \
+    /*Initialize the first and last values of the output - not class specific*/ \
+    /*---------------------------------------------------------------------*/   \
+    /*We keep the first and last values if we are not plotting everything*/     \
+    /* - If we don't do this Matlab can mess with the x-axes limits*/           \
+    /*We need to loop through each channel and assign:*/                        \
+    /*  1) The first data point in each channel to the first output value*/     \
+    /*  2) The last data point in each channel to the last output value*/       \
+    /* */                                                       \
+    /*  - This is not class specific*/                          \
+    /*  - Ideally we could make this optional for streaming*/   \
+    if (pad_with_endpoints){                                    \
+        for (mwSize iChan = 0; iChan < n_chans; iChan++){       \
+            /*Store first data point to output*/                \
+            /* I had *p_output_data = 0 to reduce seek memory */ \
+            /* but this causes problems when edges are visible */ \
+            *p_output_data = V1;                                \
+            *(p_output_data+1) = V2;                            \
+                                                                \
+            /*Advance input and output pointers to end of column*/ \
+            /* 1 2 x x x 2 1 */                                 \
+            /* 0 1 2 3 4 5 6 */                                 \
+            /* n_outputs_per_chan = 7 */                        \
+            /*0 + 7 - 2 => 5 */                                      \
+            p_output_data += (n_outputs_per_chan-2);            \
+                                                                \
+            /*Store last data point*/                           \
+            *p_output_data = V2;                                \
+            *(p_output_data+1) = V1;                            \
+                                                                \
+            /*Roll over to the next channel*/                   \
+            /*1st sample of next is 2 more than last sample of current*/ \
+            p_output_data+=2;                                   \
+        }                                                       \
+                                                                \
+        /*Adjust pointers for next section*/                    \
+        /*------------------------------------------------*/    \
+        /*Resetting to initial position*/                       \
+        p_output_data = p_output_data_fixed;                    \
+        p_input_data = p_input_data_fixed;                      \
+                                                                \
+        /*Move output beyond first point (logged above)*/       \
+        p_output_data+=2;                                        \
+                                                                \
+        /* I think this is always true ... */                   \
+        if (process_subset){                                    \
+            p_input_data = p_input_data + start_index;          \
+        }                                                       \
+    }    
+    
 #define GRAB_OUTSIDE_POINTS \
     /*Initialize the first and last values of the output - not class specific*/ \
     /*---------------------------------------------------------------------*/   \
@@ -798,7 +850,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //data points if only one of those is cropped. This should be fine
     //for rendering.
     if (pad_with_endpoints){
-        n_outputs_per_chan += 2;
+        n_outputs_per_chan += 4;
     }
     
     
@@ -858,7 +910,7 @@ S_PROCESS_DOUBLE:;
         
         INIT_POINTERS(double);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,NAN);
 
         //Note I'm skipping the old SSE version since I expect
         //everyone to have AVX
@@ -886,7 +938,7 @@ S_PROCESS_SINGLE:;
     {
         INIT_POINTERS(float);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,NAN);
 
         if (SIMD_ENABLED && s.HW_AVX && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(float)
@@ -911,7 +963,7 @@ S_PROCESS_UINT64:;
         //I can't test it
         INIT_POINTERS(uint64_t);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,0);
 
         INIT_MAIN_LOOP(uint64_t)
             getMinMaxUint64_Standard(STD_INPUT_CALL);
@@ -927,7 +979,7 @@ S_PROCESS_UINT32:;
     {
         INIT_POINTERS(uint32_t);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,0);
                     
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(uint32_t)
@@ -955,7 +1007,7 @@ S_PROCESS_UINT16:;
     {
         INIT_POINTERS(uint16_t);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,0);
 
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 16){
             INIT_MAIN_LOOP(uint16_t)
@@ -983,7 +1035,7 @@ S_PROCESS_UINT8:;
     {
         INIT_POINTERS(uint8_t);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,0);
 
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 32){
             INIT_MAIN_LOOP(uint8_t)
@@ -1011,7 +1063,7 @@ S_PROCESS_INT64:;
     {
         INIT_POINTERS(int64_t);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,0);
 
         INIT_MAIN_LOOP(int64_t)
             getMinMaxInt64_Standard(STD_INPUT_CALL);
@@ -1027,7 +1079,7 @@ S_PROCESS_INT32:;
     {
         INIT_POINTERS(int32_t);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,0);
 
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 8){
             INIT_MAIN_LOOP(int32_t)
@@ -1055,7 +1107,7 @@ S_PROCESS_INT16:;
     {
         INIT_POINTERS(int16_t);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,0);
 
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX && samples_per_chunk > 16){
             INIT_MAIN_LOOP(int16_t)
@@ -1083,7 +1135,7 @@ S_PROCESS_INT8:;
     {
         INIT_POINTERS(int8_t);    
 
-        GRAB_OUTSIDE_POINTS;
+        GRAB_OUTSIDE_POINTS2(0,0);
 
         if (SIMD_ENABLED && s.HW_AVX2 && s.OS_AVX  && samples_per_chunk > 32){
             INIT_MAIN_LOOP(int8_t)
