@@ -1,7 +1,10 @@
 function data = getSinWithNoise(n_samples,dt,sin_freq,data_type)
 %X Generate example data for plot testing
 %
-%   data = getSinWithNoise(n_samples,dt,sin_freq,data_type)
+%   data = big_plot.example_data.getSinWithNoise(n_samples,dt,sin_freq,data_type)
+%
+%   %No arguments gives default example
+%   data = big_plot.example_data.getSinWithNoise
 %
 %   Inputs
 %   ------
@@ -17,6 +20,13 @@ function data = getSinWithNoise(n_samples,dt,sin_freq,data_type)
 %   n_seconds_max = 900; %15 minutes of data
 %   n_samples = n_seconds_max*fs + 1;
 %   data = big_plot.example_data.getSinWithNoise(n_samples,1/fs,sin_freq,'double');
+
+if nargin == 0
+   n_samples = 5e7;
+   dt = 0.001;
+   sin_freq = 0.0001;
+   data_type = 'double';
+end
 
 if ~any(strcmp(data_type,{'single','double'}))
    error('Invalid data type, only single or double currently supported') 
