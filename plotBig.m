@@ -158,11 +158,17 @@ if ~isempty(in.dt)
     x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
 else
     x = in.x;
+    
+    %no x specified, use default of 1, like plot(y) => x  becomes 1:x
     if isempty(x)
         in.t0 = 1;
         in.dt = 1;
         
         x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
+    elseif isobject(x)
+        if ~any(size(y) == x.n_samples)
+            error('Mismatch in # of elements between x and y')
+        end
     elseif ~any(size(y) == length(x))
         error('Mismatch in # of elements between x and y')
     end
