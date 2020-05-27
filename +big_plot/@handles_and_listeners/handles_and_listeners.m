@@ -2,6 +2,16 @@ classdef (Hidden) handles_and_listeners < handle
     %
     %   Class:
     %   big_plot.handles_and_listeners
+    %
+    %   This class holds onto all the Matlab handles (figure, axes, line)
+    %   as well as listeners that listen for when a line is going to be
+    %   destroyed ...
+    
+    
+    %{
+    
+    
+    %}
     
     properties
         parent %big_plot
@@ -13,11 +23,14 @@ classdef (Hidden) handles_and_listeners < handle
         %   The value is assigned either as an input to the constructor
         %   or during the first call to renderData()
         
+        
+        %TODO: I'd like to get rid of this and just have a linear array
+        %
+        %This will later facilitate merging multiple lines in one manager
         h_line %cell, {1 x n_groups} one for each group of x & y
         %
         %   e.g. plot(x1,y1,x2,y2,x3,y3) produces 3 groups
         %
-        %   This should really be h_line, to be more specific
         
         group_to_linear_map %cell
         %index into this to get the index of the relevant line handle 

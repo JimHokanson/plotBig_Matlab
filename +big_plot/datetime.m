@@ -29,6 +29,9 @@ classdef datetime < big_plot.time
         %TODO: Create constructor that calls parent
         %then check for start_datetime and for start offset to not
         %be valid
+        function obj = datetime(varargin)
+            obj@big_plot.time(varargin{:});
+        end
         function times = getTimesFromIndices(obj,indices)
             %x Given sample indices return times of these indices (in seconds)
             %

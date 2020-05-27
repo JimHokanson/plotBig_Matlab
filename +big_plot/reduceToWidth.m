@@ -215,6 +215,7 @@ if show_everything
     %a low # of samples originally), then we plot everything (correctly)
     x_reduced = linspace(x_1,x_end,n_y_reduced)';
 else
+    %Only show as subset of the data --------------------------------
     if isobject(x)
         dt = x.dt;
         diff1 = x_limits(1)- x_1;
@@ -265,6 +266,10 @@ else
     
     %Out of range check ...
     %---------------------------------------------------
+    %Basically we might have zoomed such that we are completely to the 
+    %left or right of our data, so nothing is visible. This had been
+    %working in code below with linspace on regular numbers but started
+    %failing on linspace for datetime. So we'll just make this explicit.
     if I1 > n_samples || I2 < 1
        %zooming too far right or left ... 
        range_I = [0 0]; %This is arbitrary ...
@@ -293,7 +298,14 @@ else
     n_samples = I2 - I1 + 1;
     if n_samples < N_SAMPLES_JUST_PLOT
         %*** We also need the edges to prevent resizing ...
-        y_reduced = vertcat(y(1,:), y(I1:I2,:), y(end,:));
+        %y_reduced = vertcat(y(1,:), y(I1:I2,:), y(end,:));
+        n_chans = size(y,2);
+        zero_array = zeros(1,n_chans,'like',y);
+        %Note, instead of adding on the first and the last points which
+        %might be NaNs we'll add on zeros. When adding on first and last
+        %Matlab was resetting the xlimits for resetting when xlimmode
+        %was set to auto.
+        y_reduced = vertcat(zero_array, y(I1:I2,:), zero_array);
         x_reduced = [x_1; linspace(x_I1,x_I2,n_samples)'; x_end];
         return
     end
@@ -313,10 +325,14 @@ else
     end
     
     %The first and last sample stay still
+    %JAH 5/2020 => modified to have 2 samples on each edge, one valid
+    %and one not (for floats) or just two 0s for integers
     x_reduced(1) = x_1;
+    x_reduced(2) = x_1;
+    x_reduced(end-1) = x_end;
     x_reduced(end) = x_end;
     %We fill in the middle based on the start and stop indices selected ...
-    x_reduced(2:end-1) = linspace(x_I1,x_I2,n_y_reduced-2);
+    x_reduced(3:end-2) = linspace(x_I1,x_I2,n_y_reduced-4);
 end
 
 

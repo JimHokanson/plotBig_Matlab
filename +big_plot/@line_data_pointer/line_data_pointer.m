@@ -23,6 +23,9 @@ classdef (Hidden) line_data_pointer < handle
         %This will most likely be kept in place as it allows us to 
         %access everything about the plot, not just the data
         
+        %These values are essentially used as an ID to work with other
+        %classes. Ideally I'd like to get rid of this format and just hold
+        %onto the line handle
         group_I
         line_I
     end
@@ -60,6 +63,8 @@ classdef (Hidden) line_data_pointer < handle
         end
     end
     
+    %Constructor
+    %----------------------------------------------------------------------
     methods
         function obj = line_data_pointer(big_plot_ref,group_I,line_I)
             %
@@ -71,8 +76,8 @@ classdef (Hidden) line_data_pointer < handle
             %
             %   Inputs
             %   ------
-            %   group_I
-            %   line_I
+            %   group_I :
+            %   line_I : 
             %
             %
             
@@ -80,15 +85,25 @@ classdef (Hidden) line_data_pointer < handle
             obj.group_I = group_I;
             obj.line_I = line_I;
         end
+    end
+    
+    methods
         function setCalibration(obj,calibration)
             data = obj.big_plot_ref.data;
             data.setCalibration(calibration,obj.group_I,obj.line_I)
         end
         function disconnectFromFigure(obj)
             %
+            
+            %big_plot.handles_and_listeners
             obj.big_plot_ref.h_and_l.clearLine(obj.line_I,obj.group_I);
         end
         function s = getRawLineData(obj,in)    
+            %
+            %   Inputs
+            %   ------
+            %   in : big_plot.raw_line_data_options
+            %   
             %
             %   Output
             %   ------
@@ -97,6 +112,10 @@ classdef (Hidden) line_data_pointer < handle
             %   See Also
             %   --------
             %   big_plot.getRawLineData
+            
+            if nargin == 1
+                in = big_plot.raw_line_data_options;
+            end
             
             %data : big_plot.data
             data = obj.big_plot_ref.data;
