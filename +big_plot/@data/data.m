@@ -41,13 +41,21 @@ classdef (Hidden) data < handle
         %
         %   x = {x1 x2}
         
-        y %cell, same format as 'x'
-        % - contains either column vector, matrix or data object
-        %   such as big_plot.streaming_data
+        y 
+        %   cell, same format as 'x'
+        %   Contains either:
+        %       - column vector
+        %       - matrix [n_samples n_channels]
+        %       - object
+        %
+        %   Currently only know object is:
+        %   big_plot.streaming_data
         
         
         y_object_present = false
         %Indicates xy_object is present
+        %
+        %??? Who uses this? Why?
     end
     
     properties (Dependent)
@@ -61,14 +69,43 @@ classdef (Hidden) data < handle
         end
     end
     
+    %Constructor
+    %---------------------------------------------------
     methods
         function obj = data(parent, hl, varargin)
+            %
+            %   Inputs
+            %   ------
+            %   hl : 
+            %   varargin : 
+            
             %Call into helper to reduce indentation ...
             obj.parent = parent;
+            
             h__init(obj, hl, varargin{:});
             %TODO: Should validate that we can't mix regular plotting
             %with datetime plotting ...
+            
+            %We now have:
+            %.x
+            %.y
+            %.linespecs
+            %.extra_plot_options
+            
+            %At this point:
+            %- x is simplified
+            %- shapes are correct 
+            
+            %- Any NaNs?
+            %- It would be great to linearize here ... so that we can
+            %  easily add on more ...
+            %
+            
+            
         end
+    end
+    
+    methods
         function flag = datetimePresent(obj)
             flag = false;
             for i = 1:length(obj.x)
@@ -122,7 +159,8 @@ classdef (Hidden) data < handle
             %   ------
             %   group_I
             %   line_I
-            %   in
+            %   in : 
+            %       See 
             %
             %   Outputs
             %   -------
@@ -130,7 +168,8 @@ classdef (Hidden) data < handle
             %
             %   See Also
             %   --------
-            %   
+            %   big_plot.raw_line_data
+            %   big_plot.line_data_pointer
             
             y_group = obj.y{group_I};
             x_group = obj.x{group_I};
