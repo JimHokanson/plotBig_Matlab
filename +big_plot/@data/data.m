@@ -83,6 +83,7 @@ classdef (Hidden) data < handle
             obj.parent = parent;
             
             h__init(obj, hl, varargin{:});
+            
             %TODO: Should validate that we can't mix regular plotting
             %with datetime plotting ...
             
@@ -107,6 +108,10 @@ classdef (Hidden) data < handle
     
     methods
         function flag = datetimePresent(obj)
+            %
+            %   called when rendering data to keep track of original limits
+            %
+            %   
             flag = false;
             for i = 1:length(obj.x)
                cur_x = obj.x{i};

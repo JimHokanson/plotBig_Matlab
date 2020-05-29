@@ -104,9 +104,11 @@ varargin(delete_mask) = [];
 if length(varargin) > 1 && isnumeric(varargin{2})
     x_temp = varargin{1};
     y = varargin{2};
+    varargin(1:2) = [];
 else
     x_temp = [];
     y = varargin{1};
+    varargin(1) = [];
 end
 
 in.axes = [];
@@ -155,7 +157,11 @@ if n_samples == 1 && isempty(in.x)
 end
 
 if ~isempty(in.dt)
-    x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
+    if isa(in.t0,'datetime')
+        x = big_plot.datetime(in.dt,n_samples,'start_datetime',in.t0);
+    else
+        x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
+    end
 else
     x = in.x;
     
@@ -177,9 +183,9 @@ end
 %Setup of the big_plot class
 %-----------------------------------------------------
 if ~isempty(in.axes)
-    temp = big_plot(in.axes,x,y);
+    temp = big_plot(in.axes,x,y,varargin{:});
 else
-    temp = big_plot(x,y);
+    temp = big_plot(x,y,varargin{:});
 end
 
 %By calling plotBig (this function) we expect rendering to happen

@@ -30,7 +30,16 @@ classdef datetime < big_plot.time
         %then check for start_datetime and for start offset to not
         %be valid
         function obj = datetime(varargin)
+            
+            dt = varargin{1};
+            if isa(dt,'duration')
+                dt = seconds(dt);
+                varargin{1} = dt;
+            end
+            
             obj@big_plot.time(varargin{:});
+            
+            %TODO: Verify that start_datetime is a datetime ...
         end
         function times = getTimesFromIndices(obj,indices)
             %x Given sample indices return times of these indices (in seconds)

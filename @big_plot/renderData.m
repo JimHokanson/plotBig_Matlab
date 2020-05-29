@@ -193,7 +193,7 @@ temp_h_indices = cell(1,n_plot_groups);
 
 
 %TODO: Are we plotting datetime values?
-
+%big_plot.data
 use_datetime = obj.data.datetimePresent();
 
 if use_datetime
