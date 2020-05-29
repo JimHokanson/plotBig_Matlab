@@ -3,7 +3,7 @@
 This code:
 1) Speeds up time to plot data.
 2) Speeds up time to plot after zooming.
-3) Has support for plotting streaming data. (documentation needed)
+3) Has support for plotting streaming data. See https://jimhokanson.com/blog/2019/2019_07_stream_plotting_matlab/
 
 This code is based on an approach which I originally saw in the following code:
 [matlab-plot-big](https://github.com/tuckermcclure/matlab-plot-big)
@@ -24,7 +24,7 @@ Speedups specific to this code:
 4) The code used SIMD intrinsics to further speedup computing within the processor.
 
 A detailed examination of the speed of plotting for this code can be found at:
-https://jimhokanson.github.io/2018/01/29/plotBig_Matlab.html
+https://jimhokanson.com/blog/2018/2018_01_PlotBig_Matlab/
 
 # Example Code
 
@@ -35,7 +35,7 @@ n = 1e8;
 t = linspace(0,1,n);
 y = sin(25*(2*pi).*t) + t.*rand(1,n);
 
-y = y';
+y = y'; %Note, 'y' must be a column vector or matrix where # of samples = # of rows
 
 %Normal plotting, try resizing ...
 tic
@@ -59,7 +59,6 @@ plotBig(y,'dt',t(2)-t(1),'t0',0);
 %Plotting with options
 plotBig(t,y,'r','Linewidth',2);
 
-%This currently doesn't work :/
 plotBig(y,'dt',t(2)-t(1),'t0',0,'Color','r');
 
 %Abstract time
@@ -69,6 +68,16 @@ x = big_plot.time(dt,n_samples);
 
 %Plotting but with abstract time
 plotBig(x,y,'Color','r');
+
+%Datetime support now available as well
+%Note, datetime only supported with a special datetime object ...
+(dt,n,'start_datetime',datetime);
+dt = 10; %10 seconds
+dt = minutes(0.1) % 0.1 minutes
+cur_time = datetime(); %now as datetime
+plotBig(y,'dt',dt,'t0',cur_time)
+
+
 
 ```
 # Streaming Data
@@ -96,7 +105,8 @@ More information can be found [here](documentation/streaming_data.md)
 # Current Limitations
 
 * Does not support non-evenly sampled data. This is currently low priority. (https://github.com/JimHokanson/plotBig_Matlab/issues/7)
-* Only supports standard numerical times, not datetimes and the like.
+* Will likely not work on older machines. The code needs to be recompiled for machines from around 2010 and before. 
+* Does not properly render markers or NaN values. 
 
 # Speed comparisons
 
