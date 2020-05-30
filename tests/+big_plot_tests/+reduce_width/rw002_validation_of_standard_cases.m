@@ -63,6 +63,8 @@ function h__manualVerification(y1,y2,c,add_edges,s1,s2)
 %   y1 - input
 %   y2 - output
 
+%TODO: replace parts with big_plot.reduceToWidth_slow
+
 if isempty(y1)
     if isempty(y2)
         %good
