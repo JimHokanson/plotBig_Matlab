@@ -24,6 +24,10 @@ function renderData(obj)
 %   Relevant objects
 %   ----------------
 %   big_plot.render_info
+%
+%   See Also
+%   --------
+%   big_plot.reduceToWidth
 
 perf_mon = obj.perf_mon;
 ri = obj.render_info;
@@ -229,19 +233,7 @@ for iG = 1:n_plot_groups
         group_x_min(iG) = x_r(1);
         group_x_max(iG) = x_r(end);
     end
-    
-% % %     %Old, delete after testing
-% % %  	if isempty(x_r)
-% % %         group_x_min(iG) = NaN;
-% % %         group_x_max(iG) = NaN;
-% % %     elseif length(x_r) == 1
-% % %         group_x_min(iG) = x_r(1);
-% % %         group_x_max(iG) = x_r(1);
-% % %     else
-% % %         group_x_min(iG) = x_r(1);
-% % %         group_x_max(iG) = x_r(end);
-% % %     end
-    
+        
     %We might change this to two different calls
     %since we don't know the limits yet ...
     is_original = true;
@@ -378,7 +370,7 @@ for iG = find(is_valid_group_mask)
         perf_mon.logReducePerformance(s,toc(h_tic));
         range_I = s.range_I;
         
-        if s.same_range
+        if s.skip || s.same_range
             obj.render_info.logNoRenderCall(new_x_limits);
             continue
         end

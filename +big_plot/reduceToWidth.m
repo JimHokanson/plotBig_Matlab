@@ -78,7 +78,8 @@ s = struct(...
     'same_range',false,...
     'mex_time',0,...
     'plot_all',false,...
-    'show_everything',false);
+    'show_everything',false,...
+    'skip',false);
 
 N_CHANS_MAX = 100; %This was put in place to catch some fall through cases
 %where I was plotting [1 x n] instead of [n x 1] for y. It is also helpful
@@ -272,16 +273,11 @@ else
     %failing on linspace for datetime. So we'll just make this explicit.
     if I1 > n_samples || I2 < 1
        %zooming too far right or left ... 
-       range_I = [0 0]; %This is arbitrary ...
-       s.range_I = range_I;
-       s.same_range = isequal(range_I,last_range_I);
-       if s.same_range
-          return
-       else
-           y_reduced = vertcat(y(1,:), y(end,:));
-           x_reduced = [x_1; x_end];
-           return
-       end
+       %range_I = [0 0]; %This is arbitrary ...
+       %s.range_I = range_I;
+       %s.same_range = isequal(range_I,last_range_I);
+       s.skip = true;
+       return
     end
     
     %General same range check ...
