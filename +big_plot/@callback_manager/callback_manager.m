@@ -39,8 +39,6 @@ classdef (Hidden) callback_manager < handle
         t_edt = 0
     end
     
-    
-    
     methods
         function obj = callback_manager(parent)
             obj.parent = parent;
@@ -104,6 +102,7 @@ classdef (Hidden) callback_manager < handle
             %No need to render if the xlim hasn't changed from what we last
             %rendered
             if isequal(obj.last_processed_xlim,get(obj.axes_handle,'XLim'))
+                %obj.parent.call_logger.addEntry('x_ruler_cleaned, ignoring, same xlim')
                 return
             end
             obj.throwCallbackOnEDT();
@@ -178,7 +177,7 @@ classdef (Hidden) callback_manager < handle
                         obj.killCallbacks();
                     else
                         assignin('base','big_plot_ME',ME)
-                        fprintf(2,'See "big_plot_ME" in base worksspace for error details\n')
+                        fprintf(2,'See "big_plot_ME" in base workspace for error details, killing callbacks\n')
                         disp(ME);
                     end
                 end
@@ -190,7 +189,7 @@ classdef (Hidden) callback_manager < handle
             %   Who kills?
             %   1) Delete method
             %   2) big_plot>renderData - if none of the lines being 
-            %   monitored are valid
+            %      monitored are valid
             %   3) big_plot.cleanFigure - user wants callbacks gone
             
             try %#ok<TRYNC>

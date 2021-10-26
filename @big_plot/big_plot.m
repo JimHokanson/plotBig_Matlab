@@ -119,6 +119,7 @@ classdef big_plot < handle
     %------------------------     Debugging    ----------------------------
     properties
         d2 = '------ Debugging ------'
+        call_logger
         render_in_progress = false
         
         %This gets set by the callback_manager
@@ -333,6 +334,19 @@ classdef big_plot < handle
             %   end
             %   hold off
             %
+            %   %New approach
+            %   %Best - In plotBig detect existence on plot and 'hold on'
+            %   status and add to same big_plot object
+            %   %Easier
+            %   h = plotBig('null');
+            %   hold on
+            %   for i = 1:100
+            %   h.plot(x + i*10,y)
+            %   end
+            %   hold off  
+            %
+            %   Which calls this behind the scenes (or we rename)
+            %
             %   Currently the performance here will be awful but I think
             %   if we only had 1 big_plot object for the axes it would be
             %   respectable since we wouldn't have so many callbacks on the
@@ -341,7 +355,11 @@ classdef big_plot < handle
             %   See Also
             %   --------
             %   big_plot.axes_state
-            
+
+            error('Not yet implemented')
+        end
+        function enableDebugging(obj)
+            obj.call_logger.enable();
         end
         function obj = big_plot(varargin)
             %x
@@ -361,6 +379,8 @@ classdef big_plot < handle
             
             obj.perf_mon = big_plot.perf_mon;
             
+            obj.call_logger = big_plot.call_logger();
+
             %TODO: Here I want to capture render options
             %- use openmp
             %- use simd

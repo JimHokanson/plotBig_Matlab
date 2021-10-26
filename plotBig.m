@@ -74,7 +74,7 @@ s_in = struct;
 for i = 1:(nargin-1)
     if ischar(varargin{i})
         option_string = varargin{i};
-        if any(strcmp(option_string,{'axes','x','dt','t0','obj','fs'}))
+        if any(strcmp(option_string,{'axes','debug','x','dt','t0','obj','fs'}))
             direct_inputs_to_big_plot = false;
             s_in.(option_string) = varargin{i+1};
             delete_mask(i:i+1) = true;
@@ -112,6 +112,7 @@ else
 end
 
 in.axes = [];
+in.debug = false;
 in.x = x_temp;
 in.dt = [];
 in.fs = [];
@@ -124,6 +125,11 @@ if ~isempty(in.fs)
     in.dt = 1./in.fs;
 end
 
+%Calling forms to support
+%---------------------------------------------------------
+%TODO: Enumerate and discuss how they are covered below
+
+
 %This is a mess and should be cleaned up
 %-----------------------------------------
 if isobject(y)
@@ -131,6 +137,9 @@ if isobject(y)
         temp = big_plot(in.axes,y);
     else
         temp = big_plot(y);
+    end
+    if in.debug
+        temp.enableDebugging();
     end
     temp.renderData();
     if nargout
@@ -190,6 +199,9 @@ end
 
 %By calling plotBig (this function) we expect rendering to happen
 %so we call it manually
+if in.debug
+    temp.enableDebugging();
+end
 temp.renderData();
 
 

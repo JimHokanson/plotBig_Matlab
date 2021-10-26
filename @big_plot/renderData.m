@@ -31,9 +31,13 @@ function renderData(obj)
 
 perf_mon = obj.perf_mon;
 ri = obj.render_info;
+call_logger = obj.call_logger;
 
 %Initial Checks
 %------------------------------------------------
+
+call_logger.addEntry('renderData called')
+
 perf_mon.n_calls_all = perf_mon.n_calls_all + 1;
 
 forced = false;
@@ -44,6 +48,7 @@ if obj.force_rerender
     
     forced = true;
 elseif ~ri.isChangedXLim()
+    call_logger.addEntry('renderData called, xlimit did not change, quit early')
     return
 end
 
@@ -75,6 +80,7 @@ ri.incrementRenderCount();
 %Call render handlers
 %----------------------------------------------
 if obj.render_info.n_render_calls == 1
+    call_logger.addEntry('renderData called, first plotting done')
     h__handleFirstPlotting(obj)
     type = 1;
 else
@@ -281,6 +287,8 @@ function redraw_option = h__replotData(obj)
 ax = obj.h_and_l.h_axes;
 ri = obj.render_info;
 %ri : big_plot.render_info
+call_logger = obj.call_logger;
+
 
 %As lines are deleted groups of lines may be come invalid
 %---------------------------------------------------------
@@ -288,6 +296,7 @@ ri = obj.render_info;
 %- Possible early exit
 is_valid_group_mask = obj.h_and_l.getValidGroupMask();
 if ~any(is_valid_group_mask)
+    call_logger.addEntry('renderData called for replotting, no valid groups, all callbacks killed')
     obj.callback_manager.killCallbacks();
     redraw_option = ri.NO_CHANGE;
     return
@@ -318,14 +327,35 @@ use_original = false;
 perf_mon = obj.perf_mon;
 switch redraw_option
     case ri.NO_CHANGE
+        if isa(new_x_limits,'datetime')
+            call_logger.addEntry('no x-limit change detected, x-lim: %s, %s',...
+                new_x_limits(1),new_x_limits(2));
+        else
+            call_logger.addEntry('no x-limit change detected, x-lim: %g, %g',...
+                new_x_limits(1),new_x_limits(2));
+        end
         %no change needed
         perf_mon.n_render_no_ops = perf_mon.n_render_no_ops + 1;
         return
     case ri.RESET_TO_ORIGINAL
+        if isa(new_x_limits,'datetime')
+            call_logger.addEntry('resetting to original x-limit rendering: %s, %s',...
+                new_x_limits(1),new_x_limits(2));
+        else
+            call_logger.addEntry('resetting to original x-limit rendering: %g, %g',...
+                new_x_limits(1),new_x_limits(2));
+        end
         %reset data to original view
         perf_mon.n_render_resets = perf_mon.n_render_resets + 1;
         use_original = true;
     case ri.RECOMPUTE_DATA_FOR_PLOTTING
+        if isa(new_x_limits,'datetime')
+            call_logger.addEntry('renderData called for replotting, recomputing data, new x-lim: %s, %s',...
+            new_x_limits(1),new_x_limits(2));
+        else
+            call_logger.addEntry('renderData called for replotting, recomputing data, new x-lim: %g, %g',...
+            new_x_limits(1),new_x_limits(2));
+        end
         %recompute data for plotting
         obj.render_info.incrementReductionCalls();
     otherwise
@@ -371,6 +401,11 @@ for iG = find(is_valid_group_mask)
         range_I = s.range_I;
         
         if s.skip || s.same_range
+            if s.skip
+                call_logger.addEntry('skipping render, out of range');
+            else
+                call_logger.addEntry('skipping render, same range');
+            end
             obj.render_info.logNoRenderCall(new_x_limits);
             continue
         end

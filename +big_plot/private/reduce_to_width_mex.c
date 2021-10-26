@@ -84,6 +84,9 @@ mwSize getScalarInput(const mxArray *input, int input_number){
 
 
 #define GRAB_OUTSIDE_POINTS2(V1,V2) \
+    /*This is the fixed version that uses specific values, not */ \
+    /*data based on the actual array, in case the original array */ \
+    /*has NaNs */ \
     /*Initialize the first and last values of the output - not class specific*/ \
     /*---------------------------------------------------------------------*/   \
     /*We keep the first and last values if we are not plotting everything*/     \
@@ -134,6 +137,7 @@ mwSize getScalarInput(const mxArray *input, int input_number){
     }    
     
 #define GRAB_OUTSIDE_POINTS \
+    /* NO LONGER USED, SEE ABOVE V2 FUNCTION */ \
     /*Initialize the first and last values of the output - not class specific*/ \
     /*---------------------------------------------------------------------*/   \
     /*We keep the first and last values if we are not plotting everything*/     \
@@ -830,7 +834,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //In general we pad with the endpoints to prevent axes resizing 
     //(in Matlab). We always pad with the endpoints when a subset 
     //is requested.
-    bool pad_with_endpoints = n_samples_process != n_samples_data;
+    //bool pad_with_endpoints = n_samples_process != n_samples_data;
+    bool pad_with_endpoints = 1;
     
     //Integer division, should automatically floor (as desired)
     mwSize n_chunks = n_samples_process/samples_per_chunk;

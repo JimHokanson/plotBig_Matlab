@@ -1,10 +1,11 @@
-function [x_reduced, y_reduced, s] = reduceToWidth(x, y,... 
-                            axis_width_in_pixels, x_limits, last_range_I)
+function [x_reduced, y_reduced, s] = reduceToWidth(x, y, ...
+    axis_width_in_pixels, min_max_t_plot, ...
+    last_range_I, min_max_valid_x)
 %x  Reduces the # of points in a data set
 %
 %   [x_reduced, y_reduced, s] = ...
-%       reduceToWidth(x, y, axis_width_in_pixels, x_limits, *last_range_I)
-%       
+%       reduceToWidth(x, y, axis_width_in_pixels, x_limits, *last_range_I, *x_edges)
+%
 %   For a given data set, this function returns the maximum and minimum
 %   points within non-overlapping subsets of the data, bounded by the
 %   specified limits.
@@ -17,14 +18,18 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y,...
 %
 %   Inputs:
 %   -------
-%   x : array OR big_plot.time
+%   x : array OR big_plot.time OR big_plot.datetime
 %       [samples x channels]
-%       The samples may be evenly spaced or not evenly spaced.
+%       The samples may be evenly spaced or not evenly spaced. Not evenly
+%       spaced will throw an error as it is not yet supported.
 %   y : array
 %       [samples x channels]
 %   axis_width_in_pixels :
 %       This is used to determine the number of min/max pairs to generate.
-%   x_limits :
+%       Note, in the 'big_plot' code this is hardcoded at a large # so that
+%       even if the axis resizes we can basically leave this fix. This
+%       can help with reusing of the downsampling.
+%   min_max_t_plot :
 %       2 element vector [min,max], can be [-Inf Inf] to indicate everything
 %       This limit is applied to the 'x' input to exclude any points that
 %       are outside the limits.
@@ -36,7 +41,7 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y,...
 %       e.g. consider x = 1:1e8 with last_range_I = [1 1e8]. If the new
 %       xlimits were [0.95 1e8+1], then the new range_I would be [1 1e8]
 %       Thus, if the renderer has held onto the appropriate y-values
-%       associated with this range, there is no need to recompute the 
+%       associated with this range, there is no need to recompute the
 %       values to plot again.
 %
 %
@@ -45,14 +50,14 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y,...
 %   x_reduced :
 %   y_reduced :
 %           s :
-%           - range_I: 
+%           - range_I:
 %           - same_range: logical
 %               This can only be determined when 'last_range_I' is passed
 %               in. If true, then 'x_reduced' and 'y_reduced' are not
-%               computed. Note, this function does not store the reduced 
-%               data, so it can't pass out what was last used even if this 
+%               computed. Note, this function does not store the reduced
+%               data, so it can't pass out what was last used even if this
 %               value is true (without recomputing).
-%       
+%
 %
 %   Example
 %   -------
@@ -72,14 +77,7 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y,...
 %   Called by:
 %   big_plot>renderData
 
-%TODO: This should be a class ...
-s = struct(...
-    'range_I',[NaN NaN],...
-    'same_range',false,...
-    'mex_time',0,...
-    'plot_all',false,...
-    'show_everything',false,...
-    'skip',false);
+s = big_plot.reduction_summary();
 
 N_CHANS_MAX = 100; %This was put in place to catch some fall through cases
 %where I was plotting [1 x n] instead of [n x 1] for y. It is also helpful
@@ -95,16 +93,19 @@ if ~exist('last_range_I','var')
     last_range_I = [];
 end
 
-x_reduced = [];
-y_reduced = [];
-
 if isobject(y)
-    n_y_samples = y.n_samples;
+    n_y_samples_in = y.n_samples;
     %We'll impose this limitation for now ...
     n_chans = 1;
 else
-    n_y_samples = size(y,1);
+    n_y_samples_in = size(y,1);
     n_chans = size(y,2);
+end
+
+if isobject(x) && x.n_samples ~= n_y_samples_in
+    error('Size mismatch between time object and input data')
+elseif size(x,2) > 1
+    error('Multiple x channels not yet handled')
 end
 
 %A problem here may indicate a problem with:
@@ -117,224 +118,355 @@ if n_chans > N_CHANS_MAX
     error('Cowardly refusing to process more than 100 channels using this code ...')
 end
 
-%Plotting all data, early exit ...
-%--------------------------------------------------------------
-if n_y_samples < N_SAMPLES_JUST_PLOT
-    s.plot_all = true;
+
+%Edge cases -----------------------------------------------
+%TODO: Check for edge cases
+%- all nans
+%- empty data
+if ~isobject(y)
+    if isempty(y)
+        x_reduced = [];
+        y_reduced = [];
+        return
+    end
+end
+
+
+if ~exist('min_max_valid_x','var')
+    %TODO: This ignores objects potentially having NaNs ...
     if isobject(y)
-        y_reduced = y.getRawData();
-        %This was added to ensure a valid plot handle
-        if isempty(y_reduced)
-            y_reduced = NaN;
-        end
-    elseif isempty(y)
-        y_reduced = NaN;
-    else
-        y_reduced = y;
-    end
-    if isobject(x)
-        x_reduced = x.getTimeArray;
-        if size(x_reduced,1) == 1
-            x_reduced = x_reduced';
-        elseif isempty(x_reduced)
-            %Not sure what to make this ...
-            %x_limits might be invalid (i.e. -inf inf)
-            x_reduced = 0;
+        if isobject(x)
+            x_edges = [1 x.n_samples];
+        else
+            x_edges = [1 length(x)];
         end
     else
-        x_reduced = x;
+        if all(isnan(y(:)))
+            x_reduced = [];
+            y_reduced = [];
+            return
+        end
+
+        first_I = ones(1,n_chans);
+        last_I = ones(1,n_chans);
+        for i = 1:n_chans
+            temp = find(~isnan(y(:,i)),1,'first');
+            if ~isempty(temp)
+                first_I(i) = temp;
+            end
+            temp = find(~isnan(y(:,i)),1,'last');
+            if ~isempty(temp)
+                last_I(i) = temp;
+            end
+        end
+        x_edges = [min(first_I),max(last_I)];
     end
-    s.range_I = [1 n_y_samples];
-    s.same_range = isequal(s.range_I,last_range_I);
+else
+    x_edges = min_max_valid_x;
+    if isempty(x_edges)
+        x_reduced = [];
+        y_reduced = [];
+        return
+    end
+end
+x_I1 = x_edges(1);
+x_Iend = x_edges(end);
+
+
+
+
+
+%Plotting all data, early exit ... ---------------------------------------
+if n_y_samples_in < N_SAMPLES_JUST_PLOT
+    [x_reduced, y_reduced, s] = h__plotAllSamples(s,x,y);
     return
 end
 
-%Not plotting all data - get reduced values
-%--------------------------------------------------------------------------
+%Object plotting, let object handle details -------------------------------
 if isobject(y)
-   %NOTE: This doesn't support datetime x_limits ...
-   r = y.getDataReduction(x_limits,axis_width_in_pixels);
-   x_reduced = r.x_reduced;
-   y_reduced = r.y_reduced;
-   s.range_I = r.range_I;
-   %This is difficult because we might be recalibrating
-   %which causes problems
-   s.same_range = false; %isequal(s.range_I,last_range_I);
-   s.mex_time = r.mex_time;
-   return
+    [x_reduced, y_reduced, s] = h__plotObjectSubset(s,min_max_t_plot,axis_width_in_pixels,y);
+    return
 end
 
-if isobject(x) && x.n_samples ~= n_y_samples
-    error('Size mismatch between time object and input data')
-elseif size(x,2) > 1
-    error('Multiple x channels not yet handled')
-end
+x_reduced = [];
+y_reduced = [];
 
 if isobject(x)
-    x_1   = x.getTimesFromIndices(1);
-    x_end = x.getTimesFromIndices(x.n_samples);
+    x_t1   = x.getTimesFromIndices(x_I1);
+    x_tend = x.getTimesFromIndices(x_Iend);
 else
-    x_1   = x(1);
-    x_end = x(end);
+    x_t1  = x(x_I1);
+    x_tend = x(x_Iend);
+end
+
+s.show_everything = isinf(min_max_t_plot(1)) || (min_max_t_plot(1) <= x_t1 && min_max_t_plot(2) >= x_tend);
+
+if ~(isobject(x) || h__isLinearTime(x))
+    error('Non-uniform x spacing not yet supported');
+end
+
+%fprintf('x_I1:%g, %g, %g, %g,show: %d\n',x_I1,x_Iend,x_t1,x_tend,s.show_everything);
+
+[x_Istart,x_Istop,x_tstart,x_tstop] = h__getSampleMinMax(x,s.show_everything,min_max_t_plot,x_I1,x_Iend,x_t1,x_tend);
+
+%fprintf('x_Istart:%g, %g, %g, %g\n',x_Istart,x_Istop,x_tstart,x_tstop);
+
+%Out of range check ... -----------------------------------------
+%Basically we might have zoomed such that we are completely to the
+%left or right of our data, so nothing is visible. This had been
+%working in code below with linspace on regular numbers but started
+%failing on linspace for datetime. So we'll just make this explicit.
+if x_Istart > x_Iend || x_Istop < x_I1
+    s.skip = true;
+    %fprintf('Skipped\n');
+    return
+end
+
+%Same range check ... -------------------------------------------
+plot_xI = [x_Istart,x_Istop];
+s.range_I = plot_xI;
+same_range = isequal(plot_xI,last_range_I);
+s.same_range = same_range;
+if same_range
+    return
+end
+
+%JAH, at this point ...
+n_y_samples_visible = x_Istop - x_Istart + 1;
+
+%Not sure if I want before if ceil or floor
+%ceil - less samples out
+%floor - more samples out
+%Note, 1 sample per chunk would be no downsizing
+s.samples_per_chunk = ceil(n_y_samples_visible/axis_width_in_pixels);
+
+%With a subset we might want to plot everything
+%----------------------------------------------------------------
+if n_y_samples_visible < N_SAMPLES_JUST_PLOT
+    s.plotted_all_subset = true;
+    temp_y = y(x_Istart:x_Istop,:);
+    %Probably could do min(temp_y(:)) here, not sure of memory implications
+    valid_y = min(min(temp_y));
+    null_y = zeros(1,n_chans,'like',y);
+    null_y(:) = valid_y;
+    %Note, instead of adding on the first and the last points which
+    %might be NaNs we'll add on zeros. When adding on first and last
+    %Matlab was resetting the xlimits for resetting when xlimmode
+    %was set to auto.
+    y_reduced = vertcat(null_y, temp_y, null_y);
+    x_reduced = [x_t1; linspace(x_tstart,x_tstop,n_y_samples_visible)'; x_tend];
+    return
 end
 
 
-show_everything = isinf(x_limits(1)) || ...
-    (x_limits(1) <= x_1 && x_limits(2) >= x_end);
+
+t = tic;
+y_reduced = reduce_to_width_mex(y,s.samples_per_chunk,x_Istart,x_Istop);
+s.mex_time = toc(t);
+%Ugh, need to remove buffer samples that were put in by mex
+%default is 0 Nan for floats or 0,0 for ints
+valid_y = min(min(y_reduced(3:end-2,:)));
+y_reduced(1,:) = valid_y;
+y_reduced(end,:) = valid_y;
+n_y_reduced = size(y_reduced,1);
+
+if isa(x_tstart,'datetime')
+    x_reduced = NaT(n_y_reduced,1);
+else
+    x_reduced = zeros(n_y_reduced,1);
+end
+
+%The first and last sample stay still
+%JAH 5/2020 => modified to have 2 samples on each edge, one valid
+%and one not (for floats) or just two 0s for integers
+x_reduced(1) = x_t1;
+x_reduced(2) = x_t1;
+x_reduced(end-1) = x_tend;
+x_reduced(end) = x_tend;
+%We fill in the middle based on the start and stop indices selected ...
+x_reduced(3:end-2) = linspace(x_tstart,x_tstop,n_y_reduced-4);
+
+
+
+
+
+% % % % if show_everything
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %     t = tic;
+% % % %     y_reduced = reduce_to_width_mex(y,s.samples_per_chunk);
+% % % %     s.mex_time = toc(t);
+% % % %     n_y_reduced = size(y_reduced,1);
+% % % %
+% % % %     %Note, rather than carrying about exactly where the min and max
+% % % %     %occur, we just do a linear spacing of points. This should be fine
+% % % %     %as long as we sample sufficiently high. Once the # of points gets
+% % % %     %low, so that you can see individual points (due to zooming or just
+% % % %     %a low # of samples originally), then we plot everything (correctly)
+% % % %     x_reduced = linspace(x_1,x_end,n_y_reduced)';
+% % % % else
+% % % %     %Only show as subset of the data --------------------------------
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %
+% % % %     samples_per_chunk = ceil(n_samples/axis_width_in_pixels);
+% % % %     t = tic;
+% % % %     y_reduced = reduce_to_width_mex(y,samples_per_chunk,I1,I2);
+% % % %     s.mex_time = toc(t);
+% % % %     n_y_reduced = size(y_reduced,1);
+% % % %     %chunk_time_width = (samples_per_chunk-1)*dt;
+% % % %
+% % % %     if isa(x_1,'datetime')
+% % % %         x_reduced = NaT(n_y_reduced,1);
+% % % %     else
+% % % %         x_reduced = zeros(n_y_reduced,1);
+% % % %     end
+% % % %
+% % % %     %The first and last sample stay still
+% % % %     %JAH 5/2020 => modified to have 2 samples on each edge, one valid
+% % % %     %and one not (for floats) or just two 0s for integers
+% % % %     x_reduced(1) = x_1;
+% % % %     x_reduced(2) = x_1;
+% % % %     x_reduced(end-1) = x_end;
+% % % %     x_reduced(end) = x_end;
+% % % %     %We fill in the middle based on the start and stop indices selected ...
+% % % %     x_reduced(3:end-2) = linspace(x_I1,x_I2,n_y_reduced-4);
+% % % % end
+
+
+
+end
+
+function [x_Istart,x_Istop,x_tstart,x_tstop] = h__getSampleMinMax(x,show_everything,min_max_t_plot,x_I1,x_Iend,x_t1,x_tend)
+%
+%   1 - first valid sample, normally sample 1
+%   end - last valid sample, normally end (or length of array)
+%   I - indices
+%   t - times
 
 if show_everything
-    s.show_everything = true;
-    if isobject(x)
-        range_I = [1 x.n_samples];
+    x_tstart = x_t1;
+    x_tstop = x_tend;
+    x_Istart = x_I1;
+    x_Istop = x_Iend;
+elseif isobject(x)
+    dt = x.dt;
+    diff1 = min_max_t_plot(1)-x_t1;
+    if isobject(diff1)
+        diff1 = seconds(diff1);
+    end
+    %How many dt's have we moved
+    %
+    %   Let's say:
+    %   - first valid sample is at 3 - x_I1 = 3
+    %   - start plotting at
+    %
+    %
+    I1 = floor(diff1./dt) + x_I1;
+
+    %Note, we need these checks here, otherwise our times will be off
+    if I1 < x_I1
+        I1 = x_I1;
+    end
+
+    if isinf(min_max_t_plot(2))
+        I2 = x_Iend;
     else
-        range_I = [1 length(x)];
+        diff2 = min_max_t_plot(2)-x_t1;
+        if isobject(diff2)
+            diff2 = seconds(diff2);
+        end
+        I2 = ceil(diff2./dt) + x_I1;
+        if I2 > x_Iend
+            I2 = x_Iend;
+        end
     end
-    s.range_I = range_I;
-    same_range = isequal(range_I,last_range_I);
-    s.same_range = same_range;
-    if same_range
-        return
-    end
-    
-    %Not sure if I want before if ceil or floor
-    %ceil - less samples out
-    %floor - more samples out
-    samples_per_chunk = ceil(n_y_samples/axis_width_in_pixels);
-    
-    t = tic;
-    y_reduced = reduce_to_width_mex(y,samples_per_chunk);
-    s.mex_time = toc(t);
-    n_y_reduced = size(y_reduced,1);
-    if ~isobject(x) && ~isLinearTime(x)
-        error('Non-uniform x spacing not yet supported');
-    end
-    
-    %Note, rather than carrying about exactly where the min and max
-    %occur, we just do a linear spacing of points. This should be fine
-    %as long as we sample sufficiently high. Once the # of points gets
-    %low, so that you can see individual points (due to zooming or just
-    %a low # of samples originally), then we plot everything (correctly)
-    x_reduced = linspace(x_1,x_end,n_y_reduced)';
+    %x_end = x.getTimesFromIndices(x.n_samples);
+    x_tstart = x.getTimesFromIndices(I1);
+    x_tstop = x.getTimesFromIndices(I2);
+    x_Istart = I1;
+    x_Istop = I2;
+    %n_samples = x.n_samples;
 else
-    %Only show as subset of the data --------------------------------
-    if isobject(x)
-        dt = x.dt;
-        diff1 = x_limits(1)- x_1;
-        if isobject(diff1)
-            diff1 = seconds(diff1);
-        end
-        I1 = floor(diff1./dt) + 1;
-        
-        %Note, we need these checks here, otherwise our times will be off
-        if I1 < 1
-            I1 = 1;
-        end
-        
-        if isinf(x_limits(2))
-            I2 = size(y,1);
-        else
-            diff2 = x_limits(2)- x_1;
-            if isobject(diff2)
-                diff2 = seconds(diff2);
-            end
-            I2 = ceil(diff2./dt) + 1;
-            if I2 > x.n_samples
-                I2 = x.n_samples;
-            end
-        end
-        x_end = x.getTimesFromIndices(x.n_samples);
-        x_I1 = x.getTimesFromIndices(I1);
-        x_I2 = x.getTimesFromIndices(I2);
-        n_samples = x.n_samples;
-    else
-        if isLinearTime(x)
-            dt = x(2)-x(1);
-            I1 = floor((x_limits(1)-x(1))./dt) + 1;
-            if I1 < 1
-                I1 = 1;
-            end
-            I2 = ceil((x_limits(2)-x(1))./dt) + 1;
-            if I2 > length(x)
-                I2 = length(x);
-            end
-        else
-            error('Non-uniform x spacing not yet supported')
-        end
-        x_I1 = x(I1);
-        x_I2 = x(I2);
-        n_samples = length(x);
+    dt = x(2)-x(1);
+    I1 = floor((min_max_t_plot(1)-x(1))./dt) + 1;
+    if I1 < 1
+        I1 = 1;
     end
-    
-    %Out of range check ...
-    %---------------------------------------------------
-    %Basically we might have zoomed such that we are completely to the 
-    %left or right of our data, so nothing is visible. This had been
-    %working in code below with linspace on regular numbers but started
-    %failing on linspace for datetime. So we'll just make this explicit.
-    if I1 > n_samples || I2 < 1
-       %zooming too far right or left ... 
-       %range_I = [0 0]; %This is arbitrary ...
-       %s.range_I = range_I;
-       %s.same_range = isequal(range_I,last_range_I);
-       s.skip = true;
-       return
+    I2 = ceil((min_max_t_plot(2)-x(1))./dt) + 1;
+    if I2 > length(x)
+        I2 = length(x);
     end
-    
-    %General same range check ...
-    %----------------------------------
-    range_I = [I1 I2];
-    s.range_I = range_I;
-    s.same_range = isequal(range_I,last_range_I);
-    if s.same_range
-        return
-    end
-
-    %With a subset we might want to plot everything
-    %----------------------------------------------------------------
-    n_samples = I2 - I1 + 1;
-    if n_samples < N_SAMPLES_JUST_PLOT
-        %*** We also need the edges to prevent resizing ...
-        %y_reduced = vertcat(y(1,:), y(I1:I2,:), y(end,:));
-        n_chans = size(y,2);
-        zero_array = zeros(1,n_chans,'like',y);
-        %Note, instead of adding on the first and the last points which
-        %might be NaNs we'll add on zeros. When adding on first and last
-        %Matlab was resetting the xlimits for resetting when xlimmode
-        %was set to auto.
-        y_reduced = vertcat(zero_array, y(I1:I2,:), zero_array);
-        x_reduced = [x_1; linspace(x_I1,x_I2,n_samples)'; x_end];
-        return
-    end
-    
-    
-    samples_per_chunk = ceil(n_samples/axis_width_in_pixels);
-    t = tic;
-    y_reduced   = reduce_to_width_mex(y,samples_per_chunk,I1,I2);
-    s.mex_time = toc(t);
-    n_y_reduced = size(y_reduced,1);
-    %chunk_time_width = (samples_per_chunk-1)*dt;
-    
-    if isa(x_1,'datetime')
-        x_reduced = NaT(n_y_reduced,1);
-    else
-        x_reduced = zeros(n_y_reduced,1);
-    end
-    
-    %The first and last sample stay still
-    %JAH 5/2020 => modified to have 2 samples on each edge, one valid
-    %and one not (for floats) or just two 0s for integers
-    x_reduced(1) = x_1;
-    x_reduced(2) = x_1;
-    x_reduced(end-1) = x_end;
-    x_reduced(end) = x_end;
-    %We fill in the middle based on the start and stop indices selected ...
-    x_reduced(3:end-2) = linspace(x_I1,x_I2,n_y_reduced-4);
+    x_Istart = x(I1);
+    x_Istop = x(I2);
+    %n_samples = length(x);
+end
 end
 
-
-
-end
-
-function linear_time = isLinearTime(x)
+function linear_time = h__isLinearTime(x)
 linear_time = same_diff_mex(x);
+end
+
+function [x_reduced, y_reduced, s] = h__plotObjectSubset(s,x_limits,axis_width_in_pixels, y)
+%
+%
+%   Inputs
+%   ------
+%
+%TODO: What object do we expect y to be ...
+%    -> I think this is for streaming data
+%NOTE: This doesn't support datetime x_limits ...
+r = y.getDataReduction(x_limits, axis_width_in_pixels);
+x_reduced = r.x_reduced;
+y_reduced = r.y_reduced;
+s.range_I = r.range_I;
+%This is difficult because we might be recalibrating
+%which causes problems
+s.same_range = false; %isequal(s.range_I,last_range_I);
+s.mex_time = r.mex_time;
+end
+
+function [x_reduced, y_reduced, s] = h__plotAllSamples(s,x,y)
+s.plotted_all_samples = true;
+
+%Y --------------------------------
+if isobject(y)
+    %big_plot.streaming_data
+    y_reduced = y.getRawData();
+    %This was added to ensure a valid plot handle
+    if isempty(y_reduced)
+        y_reduced = NaN;
+    end
+elseif isempty(y)
+    y_reduced = NaN;
+else
+    y_reduced = y;
+end
+
+%X --------------------------------
+if isobject(x)
+    x_reduced = x.getTimeArray;
+    if size(x_reduced,1) == 1
+        x_reduced = x_reduced';
+    elseif isempty(x_reduced)
+        %Not sure what to make this ...
+        %x_limits might be invalid (i.e. -inf inf)
+        x_reduced = 0;
+    end
+else
+    x_reduced = x;
+end
+
+s.range_I = [1 n_y_samples];
+s.same_range = isequal(s.range_I,last_range_I);
 end
