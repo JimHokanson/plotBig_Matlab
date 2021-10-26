@@ -107,7 +107,8 @@ classdef (Hidden) render_info < handle
                 %x_lim changed almost always means a redraw
                 %Let's build a check in here for being the original
                 %If so, go back to that
-                if new_x_limits(1) <= obj.original_xlim(1) && new_x_limits(2) >= obj.original_xlim(2)
+                if new_x_limits(1) <= obj.original_xlim(1) && ...
+                    new_x_limits(2) >= obj.original_xlim(2)
                     redraw_option = obj.RESET_TO_ORIGINAL;
                 else
                     redraw_option = obj.RECOMPUTE_DATA_FOR_PLOTTING;

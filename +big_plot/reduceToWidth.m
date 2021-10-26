@@ -1,6 +1,6 @@
 function [x_reduced, y_reduced, s] = reduceToWidth(x, y, ...
     axis_width_in_pixels, min_max_t_plot, ...
-    last_range_I, min_max_valid_x)
+    last_range_I, min_max_valid_I)
 %x  Reduces the # of points in a data set
 %
 %   [x_reduced, y_reduced, s] = ...
@@ -120,9 +120,6 @@ end
 
 
 %Edge cases -----------------------------------------------
-%TODO: Check for edge cases
-%- all nans
-%- empty data
 if ~isobject(y)
     if isempty(y)
         x_reduced = [];
@@ -131,8 +128,7 @@ if ~isobject(y)
     end
 end
 
-
-if ~exist('min_max_valid_x','var')
+if ~exist('min_max_valid_I','var')
     %TODO: This ignores objects potentially having NaNs ...
     if isobject(y)
         if isobject(x)
@@ -141,14 +137,8 @@ if ~exist('min_max_valid_x','var')
             x_edges = [1 length(x)];
         end
     else
-        if all(isnan(y(:)))
-            x_reduced = [];
-            y_reduced = [];
-            return
-        end
-
-        first_I = ones(1,n_chans);
-        last_I = ones(1,n_chans);
+        first_I = NaN(1,n_chans);
+        last_I = NaN(1,n_chans);
         for i = 1:n_chans
             temp = find(~isnan(y(:,i)),1,'first');
             if ~isempty(temp)
@@ -159,26 +149,36 @@ if ~exist('min_max_valid_x','var')
                 last_I(i) = temp;
             end
         end
+        if all(isnan(first_I))
+            if isobject(x)
+                x_reduced = [x.getTimesFromIndices(1); x.getTimesFromIndices(x.n_samples)];
+            else
+                x_reduced = [x(1); x(end)];
+            end
+            y_reduced = [NaN; NaN];
+            return
+        end
         x_edges = [min(first_I),max(last_I)];
     end
 else
-    x_edges = min_max_valid_x;
+    x_edges = min_max_valid_I;
     if isempty(x_edges)
-        x_reduced = [];
-        y_reduced = [];
+        %NaNs still generate a line - just YData contains NaNs
+        if isobject(x)
+            x_reduced = [x.getTimesFromIndices(1) x.getTimesFromIndices(x.n_samples)];
+        else
+            x_reduced = [x(1); x(end)];
+        end
+        y_reduced = [NaN; NaN];
         return
     end
 end
 x_I1 = x_edges(1);
 x_Iend = x_edges(end);
 
-
-
-
-
 %Plotting all data, early exit ... ---------------------------------------
 if n_y_samples_in < N_SAMPLES_JUST_PLOT
-    [x_reduced, y_reduced, s] = h__plotAllSamples(s,x,y);
+    [x_reduced, y_reduced, s] = h__plotAllSamples(s,x,y,last_range_I);
     return
 end
 
@@ -279,71 +279,20 @@ end
 %The first and last sample stay still
 %JAH 5/2020 => modified to have 2 samples on each edge, one valid
 %and one not (for floats) or just two 0s for integers
+%
+%- Note, we can't anchor x-limits with NaN values on tight.
+%- By why don't we always anchor with valid value (as it should be off
+%screen)?
+%
+%- Note, originally I didn't anchor for the whole subset, but this 
+%  caused problems with long starting and closing NaNs
+%
 x_reduced(1) = x_t1;
 x_reduced(2) = x_t1;
 x_reduced(end-1) = x_tend;
 x_reduced(end) = x_tend;
 %We fill in the middle based on the start and stop indices selected ...
 x_reduced(3:end-2) = linspace(x_tstart,x_tstop,n_y_reduced-4);
-
-
-
-
-
-% % % % if show_everything
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %     t = tic;
-% % % %     y_reduced = reduce_to_width_mex(y,s.samples_per_chunk);
-% % % %     s.mex_time = toc(t);
-% % % %     n_y_reduced = size(y_reduced,1);
-% % % %
-% % % %     %Note, rather than carrying about exactly where the min and max
-% % % %     %occur, we just do a linear spacing of points. This should be fine
-% % % %     %as long as we sample sufficiently high. Once the # of points gets
-% % % %     %low, so that you can see individual points (due to zooming or just
-% % % %     %a low # of samples originally), then we plot everything (correctly)
-% % % %     x_reduced = linspace(x_1,x_end,n_y_reduced)';
-% % % % else
-% % % %     %Only show as subset of the data --------------------------------
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %
-% % % %     samples_per_chunk = ceil(n_samples/axis_width_in_pixels);
-% % % %     t = tic;
-% % % %     y_reduced = reduce_to_width_mex(y,samples_per_chunk,I1,I2);
-% % % %     s.mex_time = toc(t);
-% % % %     n_y_reduced = size(y_reduced,1);
-% % % %     %chunk_time_width = (samples_per_chunk-1)*dt;
-% % % %
-% % % %     if isa(x_1,'datetime')
-% % % %         x_reduced = NaT(n_y_reduced,1);
-% % % %     else
-% % % %         x_reduced = zeros(n_y_reduced,1);
-% % % %     end
-% % % %
-% % % %     %The first and last sample stay still
-% % % %     %JAH 5/2020 => modified to have 2 samples on each edge, one valid
-% % % %     %and one not (for floats) or just two 0s for integers
-% % % %     x_reduced(1) = x_1;
-% % % %     x_reduced(2) = x_1;
-% % % %     x_reduced(end-1) = x_end;
-% % % %     x_reduced(end) = x_end;
-% % % %     %We fill in the middle based on the start and stop indices selected ...
-% % % %     x_reduced(3:end-2) = linspace(x_I1,x_I2,n_y_reduced-4);
-% % % % end
-
-
 
 end
 
@@ -436,7 +385,9 @@ s.same_range = false; %isequal(s.range_I,last_range_I);
 s.mex_time = r.mex_time;
 end
 
-function [x_reduced, y_reduced, s] = h__plotAllSamples(s,x,y)
+function [x_reduced, y_reduced, s] = h__plotAllSamples(s,x,y,last_range_I)
+%
+%   No downsampling 
 s.plotted_all_samples = true;
 
 %Y --------------------------------
@@ -467,6 +418,6 @@ else
     x_reduced = x;
 end
 
-s.range_I = [1 n_y_samples];
+s.range_I = [1 length(x_reduced)];
 s.same_range = isequal(s.range_I,last_range_I);
 end

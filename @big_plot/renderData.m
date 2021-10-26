@@ -228,7 +228,12 @@ for iG = 1:n_plot_groups
     %----------------------------------------
     t = tic;
     [x_r, y_r, s] = big_plot.reduceToWidth(...
-                obj.data.x{iG}, obj.data.y{iG}, n_min_max_pairs, [-Inf Inf]);
+                obj.data.x{iG}, ...
+                obj.data.y{iG}, ...
+                n_min_max_pairs, ...
+                [-Inf Inf], ... %xlimits
+                [],... %last range I
+                obj.data.min_max_valid_I{iG});
     perf_mon.logReducePerformance(s,toc(t));
             
     %We get an empty value when the line is not in the range of the plot
@@ -246,6 +251,7 @@ for iG = 1:n_plot_groups
     x_limits = NaN;
     obj.render_info.logRenderCall(iG,x_r,y_r,s.range_I,is_original,x_limits);
     
+    %Note if this is empty it will still work
     plot_args = [plot_args {x_r y_r}]; %#ok<AGROW>
     
     cur_linespecs = obj.data.linespecs{iG};
@@ -396,7 +402,8 @@ for iG = find(is_valid_group_mask)
             
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
         [x_r, y_r, s] = big_plot.reduceToWidth(...
-                x_input, obj.data.y{iG}, obj.n_min_max_pairs, new_x_limits, last_I);
+                x_input, obj.data.y{iG}, obj.n_min_max_pairs, new_x_limits, ...
+                last_I, obj.data.min_max_valid_I{iG});
         perf_mon.logReducePerformance(s,toc(h_tic));
         range_I = s.range_I;
         
