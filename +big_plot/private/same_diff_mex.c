@@ -17,6 +17,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     //
     //      Usage
     //      -----
+    //      flag = same_diff(data)
+    //      
     //      flag = same_diff(data,tolerance_multiplier)
     //
     //      - data is assumed to be 1d (this could be verified ...)

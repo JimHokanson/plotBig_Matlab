@@ -17,6 +17,8 @@ function flag = hasSameDiff(x_data)
 %   diff    0.8      0.2    1.3     1.7
 %   
 
+    %TODO: It looks like this would fail for floats ...
+
     flag = same_diff_mex(x_data);
 
 end
