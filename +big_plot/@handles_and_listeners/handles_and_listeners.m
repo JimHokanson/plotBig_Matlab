@@ -58,14 +58,17 @@ classdef (Hidden) handles_and_listeners < handle
             obj.parent = parent;
         end
         function plot_args = initializeAxes(obj)
+            %
+            %   See big_plot.renderData
+            %
             %The user may have already specified the axes.
             if isempty(obj.h_axes)
-                
-                %TODO: ???? Not sure what I meant by this ...
-                %   set(0, 'CurrentFigure', o.h_figure);
-                %   set(o.h_figure, 'CurrentAxes', o.h_axes);
-                
-                
+                %TODO: If we have no data, this behavior differs from
+                %   plot([]) in that it currently creates figure and axes
+                %   where plot([]) does not
+                %
+                %   Unfortunately this requires check y_data now rather
+                %   than later
                 obj.h_axes   = gca;
                 obj.h_figure = gcf;
                 plot_args = {};
