@@ -165,7 +165,7 @@ else
     if isempty(x_edges)
         %NaNs still generate a line - just YData contains NaNs
         if isobject(x)
-            x_reduced = [x.getTimesFromIndices(1) x.getTimesFromIndices(x.n_samples)];
+            x_reduced = [x.getTimesFromIndices(1); x.getTimesFromIndices(x.n_samples)];
         else
             x_reduced = [x(1); x(end)];
         end
