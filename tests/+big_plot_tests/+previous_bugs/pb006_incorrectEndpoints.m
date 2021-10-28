@@ -1,5 +1,8 @@
 function pb006_incorrectEndpoints()
 
+%Not sure what the bug was here :/
+
+
 data = (0.2e7:1e7)';
 tic
 wtf = plotBig(data,'obj',true);

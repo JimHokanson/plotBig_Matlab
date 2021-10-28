@@ -272,6 +272,10 @@ n_y_reduced = size(y_reduced,1);
 
 if isa(x_tstart,'datetime')
     x_reduced = NaT(n_y_reduced,1);
+elseif isa(x_tstart,'duration')
+    %https://www.mathworks.com/matlabcentral/answers/368435-create-an-array-of-empty-durations
+    %x_reduced = duration(nan(n_y_reduced,1));
+    x_reduced = NaT(n_y_reduced,1) - NaT(1);
 else
     x_reduced = zeros(n_y_reduced,1);
 end

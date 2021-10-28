@@ -79,6 +79,28 @@ plotBig(y,'dt',dt,'t0',cur_time)
 
 
 
+%TimeTable now supported:
+%Note, this is all just to setup a timetable, but if you have one
+%then you just need the last line
+fprintf('\nCreating data\n')
+n_samples = 1e8;
+dt = 1/1e6;
+sin_freq = 0.1;
+data_type = 'single';
+y = big_plot.example_data.getSinWithNoise(n_samples,dt,sin_freq,data_type);
+sample_rate = 1/dt;
+tt = timetable(y,'SampleRate', sample_rate);
+fprintf('Done creating data, plotting\n')
+h = tic;
+plotBig(tt,'r');
+drawnow()
+fprintf('Done plotting, %0.2fs\n',toc(h));
+
+h = tic;
+plot(tt.Time,tt.Variables)
+drawnow()
+fprintf('Done plotting slow way, %0.2fs\n',toc(h));
+
 ```
 # Streaming Data
 

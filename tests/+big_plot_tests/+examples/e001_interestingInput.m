@@ -30,16 +30,19 @@ function varargout = e001_interestingInput(varargin)
 %       - 2 - plot() normal Matlab function ...
 %       - 3 - animatedline
 %   data_type : default 'double'
-%   y
-%   t
+%   y : 
+%       An explict y to test 
+%   t :
+%       An explicty t to test, requires y as well
 %   get_data_only : default false
+%       If true no plotting occurs, we just get a nice signal
 %
 %   Examples
 %   ---------
 %   %Evaluate using this repo
 %   s = big_plot_tests.examples.e001_interestingInput('type',0);
 %
-%   %Evalute using TM option
+%   %Evalute using TM option - requires separate code download
 %   s = big_plot_tests.examples.e001_interestingInput('type',1);
 %
 %   %Evalute using Matlab
@@ -47,6 +50,10 @@ function varargout = e001_interestingInput(varargin)
 %
 %   %Evaluate with single data type
 %   s = big_plot_tests.examples.e001_interestingInput('data_type','single');
+%
+%   %Evaluate with more data points
+%   s = big_plot_tests.examples.e001_interestingInput('data_type','single');
+
 
 %
 
@@ -83,6 +90,7 @@ if ~isempty(in.y) && ~isempty(in.t)
     t = in.t;
 else
     fprintf('Initializing data with %d samples\n',n);
+    %I believe this came from Tucker McClure originally
     t = linspace(0,100,n);
     if in.single_channel
         y = (sin(0.10 * t) + 0.05 * randn(1, n))';

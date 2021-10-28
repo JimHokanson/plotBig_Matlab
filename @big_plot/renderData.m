@@ -201,14 +201,12 @@ n_plot_groups = obj.data.n_plot_groups;
 
 temp_h_indices = cell(1,n_plot_groups);
 
-
-%TODO: Are we plotting datetime values?
-%big_plot.data
-use_datetime = obj.data.datetimePresent();
-
-if use_datetime
+if obj.data.datetimePresent()
     group_x_min = NaT(1,n_plot_groups);
     group_x_max = NaT(1,n_plot_groups);
+elseif obj.data.durationPresent()
+    group_x_min = NaT(1,n_plot_groups) - NaT(1,1);
+    group_x_max = NaT(1,n_plot_groups) - NaT(1,1);
 else
     group_x_min = NaN(1,n_plot_groups);
     group_x_max = NaN(1,n_plot_groups);
@@ -333,7 +331,7 @@ use_original = false;
 perf_mon = obj.perf_mon;
 switch redraw_option
     case ri.NO_CHANGE
-        if isa(new_x_limits,'datetime')
+        if isa(new_x_limits,'datetime') || isa(new_x_limits,'duration')
             call_logger.addEntry('no x-limit change detected, x-lim: %s, %s',...
                 new_x_limits(1),new_x_limits(2));
         else
@@ -344,7 +342,7 @@ switch redraw_option
         perf_mon.n_render_no_ops = perf_mon.n_render_no_ops + 1;
         return
     case ri.RESET_TO_ORIGINAL
-        if isa(new_x_limits,'datetime')
+        if isa(new_x_limits,'datetime') || isa(new_x_limits,'duration')
             call_logger.addEntry('resetting to original x-limit rendering: %s, %s',...
                 new_x_limits(1),new_x_limits(2));
         else
@@ -355,7 +353,7 @@ switch redraw_option
         perf_mon.n_render_resets = perf_mon.n_render_resets + 1;
         use_original = true;
     case ri.RECOMPUTE_DATA_FOR_PLOTTING
-        if isa(new_x_limits,'datetime')
+        if isa(new_x_limits,'datetime') || isa(new_x_limits,'duration')
             call_logger.addEntry('renderData called for replotting, recomputing data, new x-lim: %s, %s',...
             new_x_limits(1),new_x_limits(2));
         else

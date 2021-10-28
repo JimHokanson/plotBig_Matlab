@@ -112,11 +112,43 @@ classdef (Hidden) data < handle
             %
             %   called when rendering data to keep track of original limits
             %
-            %   
+            
+            %TODO: I'm not sure that we can mix regular and datetime ...
+            %
+            %We should really enforce only one type 
+            %
+            %Or make the group limits a cell array in renderData
+            %
+            %Although, I'm not sure MATLAB supports multiple x-axis
+            %types, verify and make error if we mix
+            
             flag = false;
             for i = 1:length(obj.x)
                cur_x = obj.x{i};
-               if isa(cur_x,'big_plot.datetime')
+               if isa(cur_x.start_datetime,'datetime')
+                   flag = true;
+                   return
+               end
+            end
+        end
+        function flag = durationPresent(obj)
+            %
+            %   called when rendering data to keep track of original limits
+            %
+            
+            %TODO: I'm not sure that we can mix regular and datetime ...
+            %
+            %We should really enforce only one type 
+            %
+            %Or make the group limits a cell array in renderData
+            %
+            %Although, I'm not sure MATLAB supports multiple x-axis
+            %types, verify and make error if we mix
+            
+            flag = false;
+            for i = 1:length(obj.x)
+               cur_x = obj.x{i};
+               if isa(cur_x.start_datetime,'duration')
                    flag = true;
                    return
                end
@@ -347,6 +379,13 @@ for k = 1:n_inputs
             % If we don't have an x, this must be x.
         elseif isnumeric(current_argument)
             previous_type = 'x';
+        elseif isa(current_argument,'timetable')
+            t = big_plot.datetime(current_argument);
+            y = current_argument.Variables;
+            temp_x{end+1} = t; %#ok<AGROW>
+            temp_y{end+1} = y; %#ok<AGROW>
+            n_groups = n_groups + 1;
+            previous_type = 'y';
         elseif any(strcmp(fieldnames(current_argument),'is_xy'))
             obj.y_object_present = true;
             xy = current_argument;

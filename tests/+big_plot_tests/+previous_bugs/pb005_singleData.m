@@ -3,6 +3,8 @@ function pb005_singleData()
 %   big_plot_tests.previous_bugs.pb005_singleData
 %
 
+%This shouldn't throw an error anymore ...
+
 try
 plotBig(1:1e7,single(1:1e7))
 catch ME

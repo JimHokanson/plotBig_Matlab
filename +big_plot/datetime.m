@@ -24,17 +24,78 @@ classdef datetime < big_plot.time
     properties
         
     end
-    
+
     methods
-        %TODO: Create constructor that calls parent
-        %then check for start_datetime and for start offset to not
-        %be valid
         function obj = datetime(varargin)
+            %
+            %   obj = big_plot.datetime(dt,n_samples,varargin)
+            %
+            %
+            %
+            %   Optional Inputs
+            %   ---------------
+            %   See big_plot.time
             
-            dt = varargin{1};
-            if isa(dt,'duration')
-                dt = seconds(dt);
-                varargin{1} = dt;
+            
+            %t = big_plot.datetime(1/my_time_table.Properties.SampleRate,
+            %   numel(my_time_table{:, 1}), 'start_datetime',
+            %   my_time_table.Properties.RowTimes(1));
+            
+            %{
+             Description: ''
+                UserData: []
+          DimensionNames: {'Time'  'Variables'}
+           VariableNames: {'asdf'  'asdf2'}
+    VariableDescriptions: {}
+           VariableUnits: {}
+      VariableContinuity: []
+                RowTimes: [16830720×1 datetime]
+               StartTime: 01-Jan-2019
+              SampleRate: 0.2000
+                TimeStep: 00:00:05
+        CustomProperties: No custom properties are set.
+            
+            %}
+            
+            
+            
+            
+            if isa(varargin{1},'timetable')
+                %.Properties
+                %.Time - returns datetime array
+                
+                if length(varargin) > 1
+                    error('Unsupported case')
+                end
+                %dt
+                %n
+                %start_datetime
+                tt = varargin{1}; %tt -> time table
+                
+                n = size(tt.Variables,1);
+                
+                dt = 1/tt.Properties.SampleRate;
+                if isnan(dt)
+                    %Basically we are not sampling at a fixed rate
+                    %
+                    %This is fixable but not something I want to deal with
+                    %now
+                    error('Variable sampling rate not yet supported')
+                end
+                
+                start_datetime = tt.Properties.StartTime;
+                if ~(isa(start_datetime,'datetime') || isa(start_datetime,'duration'))
+                    error('Expecting start_datetime to be of type ''duration'' or ''datetime''')
+                end
+                
+                varargin = {dt,n,'start_datetime',start_datetime};
+                
+            else
+                dt = varargin{1};
+                if isa(dt,'duration')
+                    dt = seconds(dt);
+                    varargin{1} = dt;
+                end
             end
             
             obj@big_plot.time(varargin{:});
@@ -65,7 +126,7 @@ classdef datetime < big_plot.time
             %        will represent a value of the start_offset + dt.
             %
             %
-                                
+            
             %duration(h,m,s)
             times = obj.start_datetime + duration(0,0,(indices-1)*obj.dt);
             
@@ -77,7 +138,7 @@ classdef datetime < big_plot.time
             
             %times = obj.start_offset + (indices-1)*obj.dt;
             %times = h__getTimeScaled(obj,times);
-        end       
+        end
         function time_array = getTimeArray(obj,varargin)
             %x Creates the full time array.
             %
@@ -102,8 +163,8 @@ classdef datetime < big_plot.time
             
             time_array = obj.start_datetime + duration(0,0,(indices)*obj.dt);
             
-%             time_array = ((I1:I2)*obj.dt + obj.start_offset)';
-%             time_array = h__getTimeScaled(obj,time_array); 
+            %             time_array = ((I1:I2)*obj.dt + obj.start_offset)';
+            %             time_array = h__getTimeScaled(obj,time_array);
         end
     end
 end

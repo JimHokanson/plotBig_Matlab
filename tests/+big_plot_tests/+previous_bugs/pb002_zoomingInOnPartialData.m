@@ -1,10 +1,15 @@
 function pb002_zoomingInOnPartialData()
 %
-%  I had an error where zooming in on partial data caused the extraction
+%   I had an error where zooming in on partial data caused the extraction
 %   of indices that didn't actually exist when going from a time to an
 %   index in the time object
 %
 %   big_plot_tests.previous_bugs.pb002_zoomingInOnPartialData()
+
+error('This needs to be updated')
+%I used to return an object and now I return the line handle
+%
+%   Also, I think the variable names may have changed
 
 N = 1e7;
 y = zeros(N,1);

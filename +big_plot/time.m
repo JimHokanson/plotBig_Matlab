@@ -97,6 +97,8 @@ classdef time < handle
             %       This can be specified instead of "start_offset" in
             %       cases in which it is more natural to specify which
             %       sample is being used.
+            %           does: start_offset = dt*(sample_offset-1);
+            %       
             %
             %   See Also:
             %   sci.time_series.time.getNewTimeForDataSubset
