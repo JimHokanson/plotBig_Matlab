@@ -51,7 +51,7 @@ classdef (Hidden) data < handle
         %   Currently only know object is:
         %   big_plot.streaming_data
         
-        min_max_valid_I
+        edge_info
         
         y_object_present = false
         %Indicates xy_object is present
@@ -445,34 +445,20 @@ if n_groups == 0
 end
 
 %min_max_valid_y
+%        edges_valid_x
+%        edges_valid_y
 
-temp_min_max_valid = cell(1,n_groups);
-for j = 1:n_groups
-    y = temp_y{j};
-    if ~isobject(y)
-        n_chans = size(y,2);
-        first_I = NaN(1,n_chans);
-        last_I = NaN(1,n_chans);
-        for i = 1:n_chans
-            temp = find(~isnan(y(:,i)),1,'first');
-            if ~isempty(temp)
-                first_I(i) = temp;
-            end
-            temp = find(~isnan(y(:,i)),1,'last');
-            if ~isempty(temp)
-                last_I(i) = temp;
-            end
-        end
-        if all(isnan(first_I))
-            temp_min_max_valid{j} = [];
-        else
-            temp_min_max_valid{j} = [min(first_I),max(last_I)];
-        end
-    end
-end
-obj.min_max_valid_I = temp_min_max_valid;
 obj.x = temp_x;
 obj.y = temp_y;
+
+edges = cell(1,n_groups);
+for j = 1:n_groups         
+    y = obj.y{j};
+    x = obj.x{j};
+    edges{j} = big_plot.edges_info(x,y);
+end
+
+obj.edge_info = edges;
 obj.linespecs = temp_specs;
 
 end

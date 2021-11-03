@@ -201,6 +201,7 @@ n_plot_groups = obj.data.n_plot_groups;
 
 temp_h_indices = cell(1,n_plot_groups);
 
+%TODO: Ue out = big_plot.utils.getXInit(x,sz)
 if obj.data.datetimePresent()
     group_x_min = NaT(1,n_plot_groups);
     group_x_max = NaT(1,n_plot_groups);
@@ -231,7 +232,7 @@ for iG = 1:n_plot_groups
                 n_min_max_pairs, ...
                 [-Inf Inf], ... %xlimits
                 [],... %last range I
-                obj.data.min_max_valid_I{iG});
+                obj.data.edge_info{iG});
     perf_mon.logReducePerformance(s,toc(t));
             
     %We get an empty value when the line is not in the range of the plot
@@ -400,8 +401,12 @@ for iG = find(is_valid_group_mask)
             
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
         [x_r, y_r, s] = big_plot.reduceToWidth(...
-                x_input, obj.data.y{iG}, obj.n_min_max_pairs, new_x_limits, ...
-                last_I, obj.data.min_max_valid_I{iG});
+                x_input, ...
+                obj.data.y{iG}, ...
+                obj.n_min_max_pairs, ...
+                new_x_limits, ...
+                last_I, ...
+                obj.data.edge_info{iG});
         perf_mon.logReducePerformance(s,toc(h_tic));
         range_I = s.range_I;
         

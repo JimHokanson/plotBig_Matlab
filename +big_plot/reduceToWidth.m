@@ -1,6 +1,6 @@
 function [x_reduced, y_reduced, s] = reduceToWidth(x, y, ...
     axis_width_in_pixels, min_max_t_plot, ...
-    last_range_I, min_max_valid_I)
+    last_range_I, edge_info)
 %x  Reduces the # of points in a data set
 %
 %   [x_reduced, y_reduced, s] = ...
@@ -128,54 +128,6 @@ if ~isobject(y)
     end
 end
 
-if ~exist('min_max_valid_I','var')
-    %TODO: This ignores objects potentially having NaNs ...
-    if isobject(y)
-        if isobject(x)
-            x_edges = [1 x.n_samples];
-        else
-            x_edges = [1 length(x)];
-        end
-    else
-        first_I = NaN(1,n_chans);
-        last_I = NaN(1,n_chans);
-        for i = 1:n_chans
-            temp = find(~isnan(y(:,i)),1,'first');
-            if ~isempty(temp)
-                first_I(i) = temp;
-            end
-            temp = find(~isnan(y(:,i)),1,'last');
-            if ~isempty(temp)
-                last_I(i) = temp;
-            end
-        end
-        if all(isnan(first_I))
-            if isobject(x)
-                x_reduced = [x.getTimesFromIndices(1); x.getTimesFromIndices(x.n_samples)];
-            else
-                x_reduced = [x(1); x(end)];
-            end
-            y_reduced = [NaN; NaN];
-            return
-        end
-        x_edges = [min(first_I),max(last_I)];
-    end
-else
-    x_edges = min_max_valid_I;
-    if isempty(x_edges)
-        %NaNs still generate a line - just YData contains NaNs
-        if isobject(x)
-            x_reduced = [x.getTimesFromIndices(1); x.getTimesFromIndices(x.n_samples)];
-        else
-            x_reduced = [x(1); x(end)];
-        end
-        y_reduced = [NaN; NaN];
-        return
-    end
-end
-x_I1 = x_edges(1);
-x_Iend = x_edges(end);
-
 %Plotting all data, early exit ... ---------------------------------------
 if n_y_samples_in < N_SAMPLES_JUST_PLOT
     [x_reduced, y_reduced, s] = h__plotAllSamples(s,x,y,last_range_I);
@@ -188,16 +140,22 @@ if isobject(y)
     return
 end
 
+if ~exist('edge_info','var')
+    edge_info = big_plot.edges_info(x,y);
+end
+
+if edge_info.nans_only
+    x_reduced = big_plot.utils.indexToTime(x,[1; n_y_samples_in]);
+    y_reduced = NaN(2,n_chans);
+    return
+end
+
+x_t1 = edge_info.x_t1;
+x_tend = edge_info.x_tend;
+
+
 x_reduced = [];
 y_reduced = [];
-
-if isobject(x)
-    x_t1   = x.getTimesFromIndices(x_I1);
-    x_tend = x.getTimesFromIndices(x_Iend);
-else
-    x_t1  = x(x_I1);
-    x_tend = x(x_Iend);
-end
 
 s.show_everything = isinf(min_max_t_plot(1)) || (min_max_t_plot(1) <= x_t1 && min_max_t_plot(2) >= x_tend);
 
@@ -207,7 +165,8 @@ end
 
 %fprintf('x_I1:%g, %g, %g, %g,show: %d\n',x_I1,x_Iend,x_t1,x_tend,s.show_everything);
 
-[x_Istart,x_Istop,x_tstart,x_tstop] = h__getSampleMinMax(x,s.show_everything,min_max_t_plot,x_I1,x_Iend,x_t1,x_tend);
+[x_Istart,x_Istop,x_tstart,x_tstop] = ...
+    h__getSampleMinMax(x,s.show_everything,min_max_t_plot,edge_info.x_I1,edge_info.x_Iend,x_t1,x_tend);
 
 %fprintf('x_Istart:%g, %g, %g, %g\n',x_Istart,x_Istop,x_tstart,x_tstop);
 
@@ -216,7 +175,7 @@ end
 %left or right of our data, so nothing is visible. This had been
 %working in code below with linspace on regular numbers but started
 %failing on linspace for datetime. So we'll just make this explicit.
-if x_Istart > x_Iend || x_Istop < x_I1
+if x_tstart > x_tend || x_tstop < x_t1
     s.skip = true;
     %fprintf('Skipped\n');
     return
@@ -263,22 +222,29 @@ end
 t = tic;
 y_reduced = reduce_to_width_mex(y,s.samples_per_chunk,x_Istart,x_Istop);
 s.mex_time = toc(t);
-%Ugh, need to remove buffer samples that were put in by mex
-%default is 0 Nan for floats or 0,0 for ints
-valid_y = min(min(y_reduced(3:end-2,:)));
-y_reduced(1,:) = valid_y;
-y_reduced(end,:) = valid_y;
+
+y_reduced(1:2,:) = edge_info.output_y_left;
+y_reduced(end-1:end,:) = edge_info.output_y_right;
+
+
+% % % % % %Ugh, need to remove buffer samples that were put in by mex
+% % % % % %default is 0 Nan for floats or 0,0 for ints
+% % % % % valid_y = min(min(y_reduced(3:end-2,:)));
+% % % % % y_reduced(1,:) = valid_y;
+% % % % % y_reduced(end,:) = valid_y;
 n_y_reduced = size(y_reduced,1);
 
-if isa(x_tstart,'datetime')
-    x_reduced = NaT(n_y_reduced,1);
-elseif isa(x_tstart,'duration')
-    %https://www.mathworks.com/matlabcentral/answers/368435-create-an-array-of-empty-durations
-    %x_reduced = duration(nan(n_y_reduced,1));
-    x_reduced = NaT(n_y_reduced,1) - NaT(1);
-else
-    x_reduced = zeros(n_y_reduced,1);
-end
+
+x_reduced = big_plot.utils.getXInit(x_tstart,[n_y_reduced 1]);
+
+% if isa(x_tstart,'datetime')
+%     x_reduced = NaT(n_y_reduced,1);
+% elseif isa(x_tstart,'duration')
+%     %x_reduced = duration(nan(n_y_reduced,1));
+%     x_reduced = NaT(n_y_reduced,1) - NaT(1);
+% else
+%     x_reduced = zeros(n_y_reduced,1);
+% end
 
 %The first and last sample stay still
 %JAH 5/2020 => modified to have 2 samples on each edge, one valid
@@ -291,10 +257,8 @@ end
 %- Note, originally I didn't anchor for the whole subset, but this 
 %  caused problems with long starting and closing NaNs
 %
-x_reduced(1) = x_t1;
-x_reduced(2) = x_t1;
-x_reduced(end-1) = x_tend;
-x_reduced(end) = x_tend;
+x_reduced(1:2) = edge_info.output_x_left;
+x_reduced(end-1:end) = edge_info.output_x_right;
 %We fill in the middle based on the start and stop indices selected ...
 x_reduced(3:end-2) = linspace(x_tstart,x_tstop,n_y_reduced-4);
 

@@ -20,6 +20,8 @@ function data = getSinWithNoise(n_samples,dt,sin_freq,data_type)
 %   n_seconds_max = 900; %15 minutes of data
 %   n_samples = n_seconds_max*fs + 1;
 %   data = big_plot.example_data.getSinWithNoise(n_samples,1/fs,sin_freq,'double');
+%
+%   plotBig(data,'dt',1/fs)
 
 if nargin == 0
    n_samples = 5e7;
