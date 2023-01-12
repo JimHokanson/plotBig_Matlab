@@ -125,7 +125,7 @@ classdef (Hidden) data < handle
             flag = false;
             for i = 1:length(obj.x)
                cur_x = obj.x{i};
-               if isa(cur_x.start_datetime,'datetime')
+               if isfield(cur_x,'start_datetime') && isa(cur_x.start_datetime,'datetime')
                    flag = true;
                    return
                end
@@ -148,7 +148,7 @@ classdef (Hidden) data < handle
             flag = false;
             for i = 1:length(obj.x)
                cur_x = obj.x{i};
-               if isa(cur_x.start_datetime,'duration')
+               if isfield(cur_x,'start_datetime') && isa(cur_x.start_datetime,'duration')
                    flag = true;
                    return
                end
@@ -301,6 +301,11 @@ end
 
 function h__parseDataAndLinespecs(obj,varargin)
 %x  Parses data and linepecs
+%
+%   Note, varargin is what was passed in to big_plot. It is generally 
+%   of the same form as plot, e.g. big_plot(x,y,'r',x2,y2,'Linewidth',3)
+%
+%   in that example varargin would be: {x,y,'r',x2, etc.}
 %
 %   Populates properties:
 %   ---------------------
