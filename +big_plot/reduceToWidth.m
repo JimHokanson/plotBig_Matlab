@@ -43,6 +43,8 @@ function [x_reduced, y_reduced, s] = reduceToWidth(x, y, ...
 %       Thus, if the renderer has held onto the appropriate y-values
 %       associated with this range, there is no need to recompute the
 %       values to plot again.
+%   edge_info : Optional, big_plot.edges_info
+%       See big_plot.edges_info
 %
 %
 %   Outputs
@@ -157,8 +159,12 @@ x_tend = edge_info.x_tend;
 x_reduced = [];
 y_reduced = [];
 
-s.show_everything = isinf(min_max_t_plot(1)) || (min_max_t_plot(1) <= x_t1 && min_max_t_plot(2) >= x_tend);
+s.show_everything = isinf(min_max_t_plot(1)) || ...
+    (min_max_t_plot(1) <= x_t1 && min_max_t_plot(2) >= x_tend);
 
+%Note, in big_plot.data there is a function h__simplifyX() that attempts
+%to convert to an object when evenly sampled so we don't check that
+%every time we replot
 if ~(isobject(x) || h__isLinearTime(x))
     error('Non-uniform x spacing not yet supported');
 end
@@ -324,9 +330,10 @@ else
     if I2 > length(x)
         I2 = length(x);
     end
-    x_Istart = x(I1);
-    x_Istop = x(I2);
-    %n_samples = length(x);
+    x_tstart = x(I1);
+    x_tstop = x(I2);
+    x_Istart = I1;
+    x_Istop = I2;
 end
 end
 
