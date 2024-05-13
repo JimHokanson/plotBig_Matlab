@@ -146,11 +146,18 @@ classdef streaming_data < handle
         data_added_callback  %data has been added to this class
         calibration_callback %the data has been calibrated
         
+        %JAH 2024-05-12
+        %- added initialization since render seems to now be
+        %called before data are added
         
-        calibrated_since_render %flag indicating whether data has been 
+        calibrated_since_render = false %flag indicating whether data has been 
         %calibrated since the last render call. This helps us to know
         %that we need to rerender even if the x-limits haven't changed.
-        new_data_since_render %another flag that is useful for considering
+        
+        %JAH 2024-05-12
+        %- added initialization since render seems to now be
+        %called before data are added
+        new_data_since_render = false %another flag that is useful for considering
         %whether or not to rerender. Technically this could be improved
         %to provide a range of added data so that we don't rerender with
         %only old data
@@ -671,10 +678,10 @@ out_start_I = obj.I_small_complete + 1;
 out_end_I = ceil(end_I/obj.downsample_amount)*2;
 
 %For right now anytime we get a subset of the data the mex code pads
-%with the first and the last sample. Thus we ignore those values
-%when doing the assigment.
+%with two samples, I believe 0 NaN. 0 forces the limits to not jump
+%and the NaN makes it so that an arbitrary 0 is not rendered.
 try
-    obj.y_small(out_start_I:out_end_I) = min_max_data(2:end-1);
+    obj.y_small(out_start_I:out_end_I) = min_max_data(3:end-2);
 catch
     %The above can fail if we allocate the same size as the initial
     %amount of data
