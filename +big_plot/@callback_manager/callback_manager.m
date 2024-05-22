@@ -191,6 +191,9 @@ classdef (Hidden) callback_manager < handle
             %   2) big_plot>renderData - if none of the lines being 
             %      monitored are valid
             %   3) big_plot.cleanFigure - user wants callbacks gone
+            %
+            %   Above may be outdated
+            %   - renderDataCallback above throws kill call
             
             try %#ok<TRYNC>
                 if obj.kill_already_run

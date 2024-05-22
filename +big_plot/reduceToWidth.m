@@ -350,6 +350,9 @@ function [x_reduced, y_reduced, s] = h__plotObjectSubset(s,x_limits,axis_width_i
 %TODO: What object do we expect y to be ...
 %    -> I think this is for streaming data
 %NOTE: This doesn't support datetime x_limits ...
+
+%big_plot.streaming_data>getDataReduction
+
 r = y.getDataReduction(x_limits, axis_width_in_pixels);
 x_reduced = r.x_reduced;
 y_reduced = r.y_reduced;

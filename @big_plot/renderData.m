@@ -400,6 +400,7 @@ for iG = find(is_valid_group_mask)
         end
             
         %sl.plot.big_data.LinePlotReducer.reduce_to_width
+        % try
         [x_r, y_r, s] = big_plot.reduceToWidth(...
                 x_input, ...
                 obj.data.y{iG}, ...
@@ -407,6 +408,9 @@ for iG = find(is_valid_group_mask)
                 new_x_limits, ...
                 last_I, ...
                 obj.data.edge_info{iG});
+        % catch
+        %     keyboard
+        % end
         perf_mon.logReducePerformance(s,toc(h_tic));
         range_I = s.range_I;
         

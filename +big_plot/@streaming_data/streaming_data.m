@@ -95,9 +95,10 @@ classdef streaming_data < handle
         m
         b
         
-        
-        y  %raw data, overallocated
-        %JAH: Do we specify row or column shape?
+        %raw data, overallocated
+        %column vector
+        y  
+
         dt %dt of the raw data
         t0 %start time
         
@@ -420,6 +421,25 @@ classdef streaming_data < handle
             
             
             t_end = obj.getTimesFromIndices(obj.n_samples);
+
+            if (x_limits(2) <= obj.t0) || (x_limits(1) >= t_end)
+                r = big_plot.xy_reduction;
+                r.y_reduced = [NaN NaN];
+                r.x_reduced = x_limits;
+                r.range_I  = x_limits;
+                r.mex_time = 0;
+            % % % elseif x_limits(1) >= t_end
+            % % %     r = big_plot.xy_reduction;
+            % % %     r.y_reduced = [NaN NaN];
+            % % %     r.x_reduced = x_limits;
+            % % % 
+            % % %     %This is needed for performance monitoring
+            % % %     r.range_I  = x_limits;
+            % % %     r.mex_time = 0;   
+                return
+            end
+
+
             
             xI = obj.getClosestIndicesFromTimePair(x_limits);
             xI_small = obj.getClosestIndicesFromTimePair(x_limits,true);
@@ -429,6 +449,9 @@ classdef streaming_data < handle
             x1_small = xI_small(1);
             x2_small = xI_small(2);
             
+
+            
+
             
             %Get info for data retrieval
             %----------------------------------------------------
@@ -472,13 +495,14 @@ classdef streaming_data < handle
             end
             
             n_y_reduced = length(y_reduced);
-            x_reduced = [0 linspace(t1,t2,n_y_reduced-2) t_end]';
+            %x_reduced = [0 linspace(t1,t2,n_y_reduced-2) t_end]';
+            x_reduced = linspace(t1,t2,n_y_reduced-4)';
             
             %Population of the output
             %--------------------------------------------------------
             r = big_plot.xy_reduction;
-            r.y_reduced = y_reduced(2:end-1);
-            r.x_reduced = x_reduced(2:end-1);
+            r.y_reduced = y_reduced(3:end-2);
+            r.x_reduced = x_reduced; %(2:end-1);
             
             %This is needed for performance monitoring
             r.range_I  = [x1 x2];
