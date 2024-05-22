@@ -422,11 +422,12 @@ classdef streaming_data < handle
             
             t_end = obj.getTimesFromIndices(obj.n_samples);
 
-            if (x_limits(2) <= obj.t0) || (x_limits(1) >= t_end)
+            if (x_limits(2) < obj.t0) || (x_limits(1) > t_end)
                 r = big_plot.xy_reduction;
                 r.y_reduced = [NaN NaN];
                 r.x_reduced = x_limits;
-                r.range_I  = x_limits;
+                %I don't think this is actually used ...
+                r.range_I  = [NaN NaN];
                 r.mex_time = 0;
             % % % elseif x_limits(1) >= t_end
             % % %     r = big_plot.xy_reduction;
@@ -436,6 +437,21 @@ classdef streaming_data < handle
             % % %     %This is needed for performance monitoring
             % % %     r.range_I  = x_limits;
             % % %     r.mex_time = 0;   
+                return
+            elseif x_limits(2) == obj.t0
+                r = big_plot.xy_reduction;
+                r.y_reduced = [obj.y(1) obj.y(1)];
+                r.x_reduced = [obj.t0 obj.t0];
+                r.range_I  = [NaN NaN];
+                r.mex_time = 0;
+                return
+            elseif x_limits(1) == t_end
+                r = big_plot.xy_reduction;
+                y2 = obj.y(obj.n_samples);
+                r.y_reduced = [y2 y2];
+                r.x_reduced = [t_end t_end];
+                r.range_I  = [NaN NaN];
+                r.mex_time = 0;
                 return
             end
 
