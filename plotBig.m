@@ -61,6 +61,12 @@ function varargout = plotBig(varargin)
 %
 %   3)  Move the start time to 5
 %       plotBig(y,'dt',dt,'t0',5)
+%
+%   4)  Plotting with datetime units ...
+%       plotBig(y,'dt',seconds(dt),'t0',datetime('now'))
+%
+%   5)  Plotting with duration only
+%       plotBig(y,'dt',seconds(dt))
 %       
 %   See Also
 %   --------
@@ -166,20 +172,26 @@ if n_samples == 1 && isempty(in.x)
 end
 
 if ~isempty(in.dt)
+    %If dt specified, assume no 'x' variable, create object
     if isa(in.t0,'datetime')
         x = big_plot.datetime(in.dt,n_samples,'start_datetime',in.t0);
+    elseif isa(in.dt,'duration')
+        x = big_plot.datetime(in.dt,n_samples,'start_offset',in.t0);
     else
         x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
     end
 else
-    x = in.x;
-    
     %no x specified, use default of 1, like plot(y) => x  becomes 1:x
+    x = in.x;
     if isempty(x)
-        in.t0 = 1;
-        in.dt = 1;
-        
-        x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
+        if isa(in.t0,'datetime')
+            in.dt = 1;
+            x = big_plot.datetime(in.dt,n_samples,'start_datetime',in.t0);
+        else
+            in.t0 = 1;
+            in.dt = 1;
+            x = big_plot.time(in.dt,n_samples,'start_offset',in.t0);
+        end
     elseif isobject(x)
         if ~any(size(y) == x.n_samples)
             error('Mismatch in # of elements between x and y')

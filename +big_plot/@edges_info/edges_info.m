@@ -43,9 +43,14 @@ classdef edges_info < handle
         function obj = edges_info(x,y)
             %
             %   obj = big_plot.edges_info(x,y)
+
+
+            %Early return for objects
+            %----------------------------------------------------------
             if isobject(y)
                 return
             end
+            %----------------------------------------------------------
             
             n_samples = size(y,1);
             n_chans = size(y,2);

@@ -118,6 +118,11 @@ classdef time < handle
                 end
                 obj.start_offset = dt*(in.sample_offset-1);
             elseif ~isempty(in.start_offset)
+                % 
+                %   Hack :/   look away
+                if isduration(in.start_offset)
+                    in.start_offset = seconds(in.start_offset);
+                end
                 obj.start_offset = in.start_offset;
             else
                 obj.start_offset = 0;

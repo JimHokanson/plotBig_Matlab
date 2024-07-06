@@ -125,7 +125,7 @@ classdef (Hidden) data < handle
             flag = false;
             for i = 1:length(obj.x)
                cur_x = obj.x{i};
-               if isfield(cur_x,'start_datetime') && isa(cur_x.start_datetime,'datetime')
+               if isprop(cur_x,'start_datetime') && isa(cur_x.start_datetime,'datetime')
                    flag = true;
                    return
                end
@@ -148,7 +148,14 @@ classdef (Hidden) data < handle
             flag = false;
             for i = 1:length(obj.x)
                cur_x = obj.x{i};
-               if isfield(cur_x,'start_datetime') && isa(cur_x.start_datetime,'duration')
+               %Unfortunately for durations the start_datetime is null
+               %and the dt has been converted to floating point so we 
+               %need a different approach
+               % % if isprop(cur_x,'start_datetime') && isa(cur_x.start_datetime,'duration')
+               % %     flag = true;
+               % %     return
+               % % end
+               if isa(cur_x,'big_plot.datetime')
                    flag = true;
                    return
                end
@@ -352,9 +359,31 @@ for k = 1:n_inputs
             % m-by-n -> n series from columns
             % m-by-1 -> 1 series from rows (transpose)
             
-            if isobject(xm)
-                %Assume of type sci.time_series.time for now
-                %JAH TODO: One of these should match
+            if isa(xm,'duration') || isa(xm,'datetime')
+
+                if size(xm, 1) == 1
+                    xm = xm.';
+                end
+                if size(ym, 1) == 1
+                    ym = ym.';
+                end
+                % Transpose if necessary.
+                if size(xm, 1) ~= size(ym, 1)
+                    ym = ym';
+                end
+
+            elseif isobject(xm)
+                %
+                %   Known types:
+                %       - big_plot.time
+                %       - sci.time_series.time
+                %       - big_plot.datetime
+                %
+                %   There is an interface requirement that I should
+                %   document ...
+                %
+                %   Not type checking here because one could override
+                %   with a new type ...
                 if size(ym,1) ~= xm.n_samples
                     if size(ym,2) ~= xm.n_samples
                         error('size mismatch between y-data and time specification')
@@ -362,6 +391,8 @@ for k = 1:n_inputs
                     ym = ym';
                 end
             else
+
+                %I guess we could make this numeric
                 if size(xm, 1) == 1
                     xm = xm.';
                 end
@@ -476,9 +507,53 @@ function x_data_out = h__simplifyX(x_data)
 
 x_data_out = x_data;
 
-if isa(x_data,'datetime')
-    error('Not yet supported')
-elseif ~isobject(x_data) && length(x_data) > 2 && big_plot.hasSameDiff(x_data)
+STEP_SIZE_FOR_DT_VERIFICATION = 1e6;
+ALLOWED_ERROR = 0.000001;
+
+if isa(x_data,'datetime') || isa(x_data,'duration')
+
+    if length(x_data) < 3
+        %JAH 2024-07-05
+        %Unclear if this is what we should do
+        x_data_out = seconds(x_data);
+        return
+    end
+
+    I1 = 1:STEP_SIZE_FOR_DT_VERIFICATION:length(x_data);
+
+    %Note, I2(i) overlaps with I1(i+1)
+    %
+    %     1 2 3 4 5 6 7 8
+    % I1: 1     2 
+    % I2:       1       2 
+    %  1:  d d d   
+    %  2:        d d d d
+    %
+    %   All diffs checks
+
+    I2 = [I1(2:end) length(x_data)];
+    diff1 = x_data(2)-x_data(1);
+    range_scaler = ALLOWED_ERROR*abs(diff1);
+    lower_bound = diff1 - range_scaler;
+    upper_bound = diff1 + range_scaler;
+
+    for i = 1:length(I1)
+        diffs = diff(x_data(I1(i):I2(i)));
+        if ~all(diffs >= lower_bound & diffs <= upper_bound)
+            error('Unsupported behavior, "x" data is not sampled evenly')
+        end
+    end
+
+    if isa(x_data,'datetime')
+        x_data_out = big_plot.datetime(seconds(diff1),length(x_data),'start_datetime',x_data(1));
+    else
+        start_offset = seconds(x_data(1));
+        x_data_out = big_plot.datetime(seconds(diff1),length(x_data),'start_offset',start_offset);
+    end
+
+elseif ~isobject(x_data) && length(x_data) > 2
+    
+    if big_plot.hasSameDiff(x_data)
     %This length check here is somewhat arbitrary, although it can't 
     %be less than 2 otherwise we can't calculate dt
     
@@ -488,6 +563,17 @@ elseif ~isobject(x_data) && length(x_data) > 2 && big_plot.hasSameDiff(x_data)
     dt = (x_data(end)-x_data(1))/(length(x_data)-1);
     t0 = x_data(1);
     x_data_out = big_plot.time(dt,length(x_data),'start_offset',t0);
+
+    else
+        %This may be an error if running into floating issues ...
+        %
+        %You can get around this by passing in a time object or by
+        %passing in 'dt' (and optionally 't0')
+        %
+        %plotBig(y,'dt',dt,'t0',t0)
+        %
+        error('Unsupported behavior, "x" data is not sampled evenly')
+    end
 end
 
 end

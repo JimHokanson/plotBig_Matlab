@@ -35,6 +35,20 @@ classdef datetime < big_plot.time
             %   Optional Inputs
             %   ---------------
             %   See big_plot.time
+            %
+            %   See Also
+            %   ---------
+            %   big_plot.data>h__parseDataAndLinespecs
+
+
+
+            %   For datetime set:
+            %       - start_datetime : datetime
+            %       - dt : float or duration
+            %   For duration array set:
+            %       - start_offset : float
+            %       - 
+
             
             
             %t = big_plot.datetime(1/my_time_table.Properties.SampleRate,
@@ -93,6 +107,9 @@ classdef datetime < big_plot.time
             else
                 dt = varargin{1};
                 if isa(dt,'duration')
+                    %This converts the duration to a floating point
+                    %number that is the number of seconds represented
+                    %by the duration
                     dt = seconds(dt);
                     varargin{1} = dt;
                 end
@@ -125,10 +142,24 @@ classdef datetime < big_plot.time
             %        return a value of the start_offset and a value of 2
             %        will represent a value of the start_offset + dt.
             %
-            %
+            %   See Also
+            %   --------
+            %   big_plot.utils.getXInit
             
             %duration(h,m,s)
-            times = obj.start_datetime + duration(0,0,(indices-1)*obj.dt);
+            seconds_array = (indices-1)*obj.dt + obj.start_offset;
+            if isa(seconds_array,'duration')
+                error('internal code error')
+            end
+            
+            times = obj.start_datetime + seconds(seconds_array);
+
+            %Format of times
+            %   - duration: if obj.start_datetime is 0
+            %   - datetime: if obj.start_datetime is a datetime
+
+            
+
             
             %TODO: Is this going to be datetime values or numeric values?
             
