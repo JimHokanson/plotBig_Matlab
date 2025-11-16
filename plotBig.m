@@ -105,6 +105,13 @@ end
 %--------------------------------------
 varargin(delete_mask) = [];
 
+if ~isempty(varargin) && ishandle(varargin{1})
+    h_axes = varargin{1};
+    varargin(1) = [];
+else
+    h_axes = [];
+end
+
 %I don't know when we will have 2+ elemements
 %and not have a numeric #2 but I'll leave this in place for now
 if length(varargin) > 1 && isnumeric(varargin{2})
@@ -117,7 +124,7 @@ else
     varargin(1) = [];
 end
 
-in.axes = [];
+in.axes = h_axes;
 in.debug = false;
 in.x = x_temp;
 in.dt = [];
